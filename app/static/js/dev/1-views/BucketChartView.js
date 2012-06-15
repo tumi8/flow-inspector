@@ -105,7 +105,7 @@ var BucketChartView = Backbone.View.extend({
     		.attr("text-anchor", "end")
     		.text("#" + num_val);
     		
-    	$(".bar", this.el).twipsy({ offset: 3 });
+	$(".bar", this.el).twipsy({ offset: 3 });
     	
     	return this;
     },

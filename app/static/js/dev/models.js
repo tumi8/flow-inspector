@@ -1,6 +1,6 @@
 var AppState = Backbone.Model.extend({
     defaults: {
-    	page: "dashboard"
+    	page: "overview"
     }
 });
 
@@ -14,6 +14,13 @@ var Flow = Backbone.Model.extend({
 
 var BucketChartModel = Backbone.Model.extend({
 	defaults: {
+		value: "flows"
+	}
+});
+
+var OverviewModel = Backbone.Model.extend({
+	defaults: {
+		index: "nodes",
 		value: "flows"
 	}
 });
@@ -204,3 +211,4 @@ var IndexQuery = CachedCollection.extend({
     	return response.results;
     }
 });
+

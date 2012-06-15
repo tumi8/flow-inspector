@@ -13,7 +13,8 @@ var AppView = Backbone.View.extend({
     	this.currentPage = null;
     	
     	this.pageViews = {
-    		"dashboard": DashboardPageView,
+			"overview": OverviewPageView,
+	    		"dashboard": DashboardPageView,
    		 	"graph": GraphPageView,
    		 	"edge-bundle": EdgeBundlePageView,
    		 	"hive-plot": HivePlotPageView
@@ -200,3 +201,4 @@ var AppView = Backbone.View.extend({
 		this.svgExportTarget = null;
     }
 });
+

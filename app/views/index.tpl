@@ -17,7 +17,8 @@
 			<div class="container-fluid">
 				<a class="brand" href="/">Flow Inspector</a>
 				<ul class="nav primary-nav">
-					<li class="dashboard"><a href="/">Dashboard</a></li>
+					<li class="overview"><a href="/">Overview</a></li>
+					<li class="dashboard"><a href="/dashboard">Dashboard</a></li>
 					<li class="graph"><a href="/graph">Graph</a></li>
 					<li class="edge-bundle"><a href="/hierarchical-edge-bundle">Hierarchical Edge Bundle</a></li>
 					<li class="hive-plot"><a href="/hive-plot">Hive Plot</a></li>
@@ -34,7 +35,6 @@
 			</div>
 		</div>
 	</header>
-	
 	
 	<div class="alerts">
 	    <!--<div class="alert-message warning">
