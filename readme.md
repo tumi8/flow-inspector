@@ -21,6 +21,8 @@ Requirements
   pip install pymongo
 - Jinja2 (tested with v2.6)
   pip install Jinja2
+- ujson (tested with 1.18)
+  pip install ujson
 
 ### Preprocess
 

@@ -62,15 +62,17 @@ try: import cPickle as pickle
 except ImportError: # pragma: no cover
     import pickle
 
-try: from json import dumps as json_dumps, loads as json_lds
-except ImportError: # pragma: no cover
-    try: from simplejson import dumps as json_dumps, loads as json_lds
-    except ImportError: # pragma: no cover
-        try: from django.utils.simplejson import dumps as json_dumps, loads as json_lds
-        except ImportError: # pragma: no cover
-            def json_dumps(data):
-                raise ImportError("JSON support requires Python 2.6 or simplejson.")
-            json_lds = json_dumps
+try: from ujson import dumps as json_dumps, loads as json_lds
+except ImportError:
+  try: from json import dumps as json_dumps, loads as json_lds
+  except ImportError: # pragma: no cover
+      try: from simplejson import dumps as json_dumps, loads as json_lds
+      except ImportError: # pragma: no cover
+          try: from django.utils.simplejson import dumps as json_dumps, loads as json_lds
+          except ImportError: # pragma: no cover
+              def json_dumps(data):
+                  raise ImportError("JSON support requires Python 2.6 or simplejson.")
+              json_lds = json_dumps
 
 py3k = sys.version_info >= (3,0,0)
 NCTextIOWrapper = None
