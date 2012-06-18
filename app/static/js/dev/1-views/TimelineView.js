@@ -111,7 +111,7 @@ var TimelineView = Backbone.View.extend({
 		
 		var bar_enter =	bar.enter().append("g")
 			.attr("class", "bar")
-			.attr("transform", function(d) { console.log(x(d.get("bucket"))); return "translate(" + x(d.get("bucket")) + ",0)"; })
+			.attr("transform", function(d) { return "translate(" + x(d.get("bucket")) + ",0)"; })
 			.attr("title", titleFormat)
 			.on("mouseover", function(d) {
 				d3.select(this).selectAll("rect")
@@ -232,7 +232,6 @@ var TimelineView = Backbone.View.extend({
 		x.domain([this.min_bucket.getTime(), this.max_bucket.getTime() + bucket_size * 1000]);
     	
 		var drag_bucket = x.invert(e.offsetX);
-		console.log("drag_bucket: ", drag_bucket);
 		var bucket = this.min_bucket.getTime();
 		while(bucket + bucket_size*1000 <= drag_bucket) {
 			bucket += bucket_size*1000;
@@ -290,7 +289,6 @@ var TimelineView = Backbone.View.extend({
 	    		bucket_size = this.flows.bucket_size;
 
 			// Set the scale domain
-			console.log(new Date(this.max_bucket.getTime() + bucket_size*1000));
 		    	x.domain([this.min_bucket, new Date(this.max_bucket.getTime() + bucket_size*1000)]);
 		    	
 		    	if(end_bucket < start_bucket) {
@@ -299,7 +297,6 @@ var TimelineView = Backbone.View.extend({
     				start_bucket = s;
     			}
 	    	
-			console.log(start_bucket, x(start_bucket), this.min_bucket, bucket_size);
 		    	var start_x = x(start_bucket),
 			    end_x = x(new Date(end_bucket.getTime() + bucket_size*1000));
     		
