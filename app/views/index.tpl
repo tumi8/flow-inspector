@@ -18,6 +18,7 @@
 				<a class="brand" href="/">Flow Inspector</a>
 				<ul class="nav primary-nav">
 					<li class="overview"><a href="/">Overview</a></li>
+					<li class="query-page"><a href="/query-page">Flow Querys</a></li>
 					<li class="dashboard"><a href="/dashboard">Dashboard</a></li>
 					<li class="graph"><a href="/graph">Graph</a></li>
 					<li class="edge-bundle"><a href="/hierarchical-edge-bundle">Hierarchical Edge Bundle</a></li>

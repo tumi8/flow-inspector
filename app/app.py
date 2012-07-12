@@ -64,8 +64,12 @@ def get_bucket_size(start_time, end_time, resolution):
 			return s
 		
 @get("/")
+@get("/dashboard")
+@get("/dashboard/:##")
 @get("/graph")
 @get("/graph/:##")
+@get("/query-page")
+@get("/query-page/:##")
 @get("/hierarchical-edge-bundle")
 @get("/hierarchical-edge-bundle/:##")
 @get("/hive-plot")

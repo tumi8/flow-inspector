@@ -2,6 +2,7 @@ var MainRouter = Backbone.Router.extend({
 	routes: {
    		"": "overviewDashboard",
    		"dashboard": "pageDashboard",
+		"query-page": "queryPage",
    		"graph": "pageGraph",
    		"hierarchical-edge-bundle": "pageEdgeBundle",
    		"hive-plot": "pageHivePlot"
@@ -11,6 +12,9 @@ var MainRouter = Backbone.Router.extend({
 	},
 	overviewDashboard: function() {
 		this.model.set({page: "overview"});
+	},
+	queryPage: function() {
+		this.model.set({page: "query-page"});
 	},
 	pageDashboard: function() {
 		this.model.set({page: "dashboard"});

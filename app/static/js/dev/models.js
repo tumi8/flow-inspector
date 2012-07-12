@@ -41,6 +41,15 @@ var TimelineModel = Backbone.Model.extend({
 	}
 });
 
+var QueryModel = Backbone.Model.extend({
+	defaults: {
+		startTime: null,
+		endTime: null,
+		ipAddress: null,
+		maxLines: 10
+	}
+});
+
 var GraphModel = Backbone.Model.extend({
 	defaults: {
 		nodeLimit: 255,
