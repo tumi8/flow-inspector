@@ -19,7 +19,7 @@
 			<div class="viz-buckets"></div>
 		</div>
 		<footer>
-			<p>FlowInspector</p
+			<p>FlowInspector</p>
 		</footer>
 	</div>
 </script>
