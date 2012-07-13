@@ -246,7 +246,8 @@ def plot(title, y_label, in_path, out_path, x_range="", columns=[2]):
 #    print plot_generation
 
     #gnuplot_path ="/opt/data/software/bin/gnuplot"  
-    gnuplot_path ="/usr/local/bin/gnuplot"
+    #gnuplot_path ="/usr/local/bin/gnuplot"
+    gnuplot_path ="/usr/bin/gnuplot"
     p = subprocess.Popen([gnuplot_path], shell=False,
                          stdin=subprocess.PIPE)
     # for python 3 do this:
