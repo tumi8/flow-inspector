@@ -134,10 +134,17 @@ class Reader(object):
         self.dispatch(0, callback, *args)
     
     def __iter__(self):
-        self.__f.seek(FileHdr.__hdr_len__)
+	try:
+		self.__f.seek(FileHdr.__hdr_len__)
+	except IOError:
+		# not all file objects (e.g. stdin) are seekable
+		# ignore the seek (why is it performed anyway?) then
+		# we should be at the correct position in the stream anyway
+		pass
         while 1:
             buf = self.__f.read(PktHdr.__hdr_len__)
-            if not buf: break
+            if not buf: 
+		    break
             hdr = self.__ph(buf)
             buf = self.__f.read(hdr.caplen)
             yield (hdr.tv_sec + (hdr.tv_usec / 1000000.0), buf)
