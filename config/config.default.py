@@ -35,3 +35,6 @@ flow_filter_unknown_ports = True
 pre_cache_size = 10000
 # cache size for aggregated collections per bucket size
 pre_cache_size_aggr = 5
+ 
+# PCAP processor settings
+pcap_output_dir = '/opt/data/pcap_output/'

@@ -19,7 +19,7 @@ var AppView = Backbone.View.extend({
    		 	"graph": GraphPageView,
    		 	"edge-bundle": EdgeBundlePageView,
    		 	"hive-plot": HivePlotPageView,
-			"pcap-page": PcapPageView
+			"pcap": PcapPageView
     	};
     },
     render: function() {

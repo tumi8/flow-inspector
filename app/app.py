@@ -9,6 +9,7 @@ Author: Mario Volke
 
 import sys
 import os
+import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 
@@ -17,7 +18,7 @@ import bson
 import pymongo
 import config
 
-from bottle import TEMPLATE_PATH, HTTPError, get, run, debug, request, validate, static_file, error
+from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error
 from bottle import jinja2_view as view, jinja2_template as template
 
 # the collection prefix to use for flows
@@ -74,6 +75,8 @@ def get_bucket_size(start_time, end_time, resolution):
 @get("/hierarchical-edge-bundle/:##")
 @get("/hive-plot")
 @get("/hive-plot/:##")
+@get('/pcap')
+@get('/pcap/:##')
 @view("index")
 def index():
     # find js files
@@ -322,6 +325,39 @@ def api_index(name):
 @get("/static/:path#.+#")
 def server_static(path):
 	return static_file(path, root=os.path.join(os.path.dirname(__file__), "static"))
+
+def upload_view():
+	return """
+		<form action="/pcap/upload" method="post" enctype="multipart/form-data">
+		<input type="text" name="name" />
+		<input type="file" name="data" />
+		<input type="submit" name="submit" value="upload now" />
+		</form>
+	"""    
+
+@post('/pcap')
+def pcap_upload():
+	print "foo"
+	name = request.forms.get('name')
+	data = request.files.get('data')
+	
+	print "bar"
+	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', '-', '-o', config.pcap_output_dir ]
+	p = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
+	print "asdf"
+	
+	if data != None:
+		filename = data.filename
+		while True:
+			datachunk = data.file.read()
+			if not datachunk:
+				break
+			# for python 3 do this:
+			#p.communicate(input=bytes(datachunk, 'utf-8'))
+			p.communicate(input=datachunk)
+		return "Hello! You uploaded" # %s (%d bytes).<br><br>%s" % (filename, len(raw), raw)
+	return "You missed a field."
+
 
 if __name__ == "__main__":
 	debug(config.debug)
