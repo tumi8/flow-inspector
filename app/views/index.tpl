@@ -3,8 +3,8 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Flow Inspector</title>
-	<meta name="description" content="Visualize and analyse IPFIX flows with Flow Inspector.">
-    <meta name="author" content="Mario Volke">
+	<meta name="description" content="Visualize and analyse traffic flows with Flow Inspector.">
+    <meta name="authors" content="Mario Volke, Lothar Braun">
     
     <link href="/static/css/dev/bootstrap.css" rel="stylesheet">
     <link href="/static/css/dev/jquery.jscrollpane.css" rel="stylesheet">
@@ -18,6 +18,7 @@
 				<a class="brand" href="/">Flow Inspector</a>
 				<ul class="nav primary-nav">
 					<li class="overview"><a href="/">Overview</a></li>
+					<li class="pcap"><a href="/pcap">PCAP</a></li>
 					<li class="query-page"><a href="/query-page">Flow Querys</a></li>
 					<li class="dashboard"><a href="/dashboard">Dashboard</a></li>
 					<li class="graph"><a href="/graph">Graph</a></li>

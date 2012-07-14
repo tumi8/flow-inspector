@@ -6,6 +6,7 @@ var MainRouter = Backbone.Router.extend({
    		"graph": "pageGraph",
    		"hierarchical-edge-bundle": "pageEdgeBundle",
    		"hive-plot": "pageHivePlot"
+		"pcap-page": "pagePCAP"
 	},
 	initialize: function(options) {
 		this.model = options.model;
@@ -27,6 +28,9 @@ var MainRouter = Backbone.Router.extend({
 	},
 	pageHivePlot: function() {
 		this.model.set({page: "hive-plot"});
+	},
+	pagePCAP: function() {
+		this.model.set({page: "pcap-page"});
 	}
 });
 
