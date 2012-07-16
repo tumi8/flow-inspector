@@ -335,7 +335,7 @@ def pcap_upload():
 	name = request.forms.get('name')
 	data = request.files.get('data')
 	
-	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', '-', '-o', config.pcap_output_dir ]
+	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', '-', '-o', config.pcap_output_dir, '-g', config.gnuplot_path ]
 	p = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
 	
 	if data != None:

@@ -196,7 +196,7 @@ class ConnectionRecord:
 ##################### functions
 
 # plot a single graph
-def plot(title, y_label, in_path, out_path, x_range="", columns=[2]):
+def plot(title, y_label, in_path, out_path, x_range="", columns=[2], gnuplot_path='/usr/bin/gnuplot'):
     i = 0
     plots = ""
     for c in columns:
@@ -246,7 +246,7 @@ def plot(title, y_label, in_path, out_path, x_range="", columns=[2]):
 #    print plot_generation
 
     #gnuplot_path ="/opt/data/software/bin/gnuplot"  
-    gnuplot_path ="/usr/local/bin/gnuplot"
+    #gnuplot_path ="/usr/local/bin/gnuplot"
     #gnuplot_path ="/usr/bin/gnuplot"
     p = subprocess.Popen([gnuplot_path], shell=False,
                          stdin=subprocess.PIPE)
@@ -312,6 +312,8 @@ if __name__ == "__main__":
 			  help = "minimum throughput")
 	parser.add_option('-l', '--min-len', dest="minLenThroughput", type="int", default="1000000",
 			  help = "min number of bytes for connections to be considered for throughput dumping")
+	parser.add_option('-g', '--gnuplot-path', dest="gnuplot_path", default="/usr/bin/gnuplot",
+			  help="path to gnuplot executable")
 
 	(options, args) = parser.parse_args()
 	if options.inputFile == None:
@@ -451,8 +453,8 @@ if __name__ == "__main__":
 	print "plotting throughput graphs ..."
 	x_range = ""
 	t = ""
-	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.png"), x_range, [2,4,6,8])
-    	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.png"), x_range, [3,5,7,9])
+	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.png"), x_range, [2,4,6,8], options.gnuplot_path)
+    	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.png"), x_range, [3,5,7,9], options.gnuplot_path)
 	
 
 	print "creating statistics files ..."

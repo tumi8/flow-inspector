@@ -38,3 +38,5 @@ pre_cache_size_aggr = 5
  
 # PCAP processor settings
 pcap_output_dir = '/opt/data/pcap_output/'
+gnuplot_path='/usr/bin/gnuplot'
+
