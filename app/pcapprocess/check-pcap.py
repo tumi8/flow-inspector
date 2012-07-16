@@ -357,8 +357,8 @@ if __name__ == "__main__":
 	seen = 0
 
 	lastSec = 0
-	pkts = 0
-	bytes = 0
+	allPkts = 0
+	allBytes = 0
 	tcpPkts = 0
 	tcpBytes = 0
 	udpBytes = 0
@@ -371,9 +371,9 @@ if __name__ == "__main__":
 			if lastSec == 0:
 				lastSec = ts
 			if int(ts) > lastSec:
-				bwStats.write("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n" % (lastSec, pkts, bytes * 8, tcpPkts, tcpBytes * 8, udpPkts, udpBytes * 8, otherPkts, otherBytes * 8))
+				bwStats.write("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n" % (lastSec, allPkts, allBytes * 8, tcpPkts, tcpBytes * 8, udpPkts, udpBytes * 8, otherPkts, otherBytes * 8))
 				lastSec = ts
-				pkts = bytes = tcpPkts = tcpBytes = udpPkts = udpBytes = otherPkts = otherBytes = 0
+				allPkts = allBytes = tcpPkts = tcpBytes = udpPkts = udpBytes = otherPkts = otherBytes = 0
 	
 			seen += 1
 			eth = dpkt.ethernet.Ethernet(buf)
@@ -383,11 +383,11 @@ if __name__ == "__main__":
 			dstPort = 0
 			proto = ""
 
-			pkts += 1
-			if type(eth.data) == dpkt.ethernet.Ethernet:
-				bytes += eth.data.len
+			allPkts += 1
+			if type(eth.data) == dpkt.ip.IP:
+				allBytes += eth.data.len
 			else:
-				bytes += 28 # we only consider standard arp over ethernet ... TODO
+				allBytes += 28 # we only consider standard arp over ethernet ... TODO
 
 			if type(eth.data) == dpkt.ip.IP:
 				ip_packet = eth.data
@@ -406,7 +406,7 @@ if __name__ == "__main__":
 					dstPort = udp_packet.dport
 					proto = dpkt.udp.UDP;
 					udpPkts += 1
-					udpBytes += 1
+					udpBytes += eth.data.len
 				else:
 					unsupported += 1
 					otherPkts += 1
@@ -451,6 +451,7 @@ if __name__ == "__main__":
 	print "seen packets: %d\nunsupported packets (non IP, non UDP/TCP): %d" % (seen, unsupported)
 
 	print "plotting throughput graphs ..."
+	bwStats.close()
 	x_range = ""
 	t = ""
 	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.svg"), x_range, [2,4,6,8], options.gnuplot_path)
