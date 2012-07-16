@@ -5,7 +5,7 @@
 				<h1>PCAP Viewer Interface</h1>
 			</div>
 			<h2>Query Interface </h2>
-			<form action="/pcap" method="post" enctype="multipart/form-data">
+			<form class="navbar-search-pull-right" action="/pcap" method="post" enctype="multipart/form-data">
 				<input type="file" name="data" />
 				<input type="submit" name="submit" value="upload now" />
 			</form>

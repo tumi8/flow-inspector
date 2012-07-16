@@ -1,5 +1,6 @@
 var PcapPageView = PageView.extend({
 	events: {
+		"click a.submit" : "clickSubmit"
 	},
 	initialize: function() {
 		this.template = _.template($("#pcap-page-template").html());
@@ -18,5 +19,7 @@ var PcapPageView = PageView.extend({
 	remove: function() {
 		$(this.el).remove();
 		return this;
+	},
+	clickSubmit : function() {
 	}
 });
