@@ -9,7 +9,12 @@
 				<input type="file" name="data" />
 				<input type="submit" name="submit" value="upload now" />
 			</form>
-			<div class="stats-pictures"/>
+
+
+			<h2>Common Stats</h2>
+			<div class="stats-images"/>
+
+			<h2>Specific Stats</h2>
                         <ul class="pills pcap-stat-value">
                                 <li data-value="all"><a href="javascript:void(0)">All Flows</a></li>
                                 <li data-value="gaps"><a href="javascript:void(0)">Flows with Gaps</a></li>

@@ -458,3 +458,15 @@ body {
   stroke-width: 1px;
   stroke-opacity: .5;
 }
+
+/* Pcap Viewer */
+
+.stats-images {
+	height: 800px;
+	width: 100%;
+}
+
+.pcapstatsview {
+	height: 800px;
+}
+

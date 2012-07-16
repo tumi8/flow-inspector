@@ -3,17 +3,15 @@ var PcapPageView = PageView.extend({
 	},
 	initialize: function() {
 		this.template = _.template($("#pcap-page-template").html());
+
+		this.statsImages = new PcapStatsView();
 	},
 	render: function() {
 		$(this.el).html(this.template());
 
-		var container = $(this.el).empty();
-		svg = d3.select(container.get(0))
-			.append("svg:svg")
-			.attr("width", 200)
-			.attr("height", 200);
-		//var node  
-		$(".stats-pictures", this.el).append(svg);
+		$(".stats-images", this.el).append(this.statsImages.el);
+
+		this.statsImages.render();
 
 		return this;
 	},

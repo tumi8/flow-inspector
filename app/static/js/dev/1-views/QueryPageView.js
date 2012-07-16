@@ -58,7 +58,7 @@ var QueryPageView = PageView.extend({
 
 
 		// add the results shower
-		$(".query-results", this.el).append(this.resultsView);
+		$(".query-results", this.el).append(this.resultsView.el);
 		this.resultsView.render();
 
 		return this;
