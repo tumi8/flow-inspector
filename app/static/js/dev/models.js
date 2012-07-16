@@ -86,6 +86,8 @@ var HivePlotModel = Backbone.Model.extend({
 
 var IndexEntry = Backbone.Model.extend({});
 
+var PCAPImage = Backbone.Model.extend({});
+
 var CachedCollection = Backbone.Collection.extend({
     sync: function(method, model, options) {
     	var that = this;
@@ -221,3 +223,7 @@ var IndexQuery = CachedCollection.extend({
     }
 });
 
+var PCAPImages = Backbone.Collection.extend({
+	model: PCAPImage,
+	url: "/api/pcap/images"
+});
