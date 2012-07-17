@@ -1,6 +1,8 @@
 var PcapStatsView = Backbone.View.extend({
 	className: "pcapstatsview",
-	events: {},
+	events: {
+		//.submit : cli
+	},
 	initialize: function() {
 	/*
 		if(!this.model) {
@@ -37,11 +39,11 @@ var PcapStatsView = Backbone.View.extend({
 		this.throughPutImg = this.svg.append("svg:g");
 
 		this.svg.append("svg:image")
-			.attr("xlink:href", "/api/pcap/images/pps.svg")
+			.attr("xlink:href", "/api/pcap/images/pps.png")
 			.attr("width", w)
 			.attr("height", h/2);
 		this.svg.append("svg:image")
-			.attr("xlink:href", "/api/pcap/images/tp.svg")
+			.attr("xlink:href", "/api/pcap/images/tp.png")
 			.attr("y", h/2)
 			.attr("width", w)
 			.attr("height", h/2);

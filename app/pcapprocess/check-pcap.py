@@ -238,7 +238,7 @@ def plot(title, y_label, in_path, out_path, x_range="", columns=[2], gnuplot_pat
             'set style line 2 lt rgb "#00A000" lw 2 pt 9\n' \
             'set style line 3 lt rgb "#5060D0" lw 2 pt 5\n' \
             'set style line 4 lt rgb "#F25900" lw 2 pt 13\n' \
-            "set terminal svg size 1200, 600 noenhanced font '/usr/share/fonts/truetype/adf/GilliusADF-Regular.otf'\n" \
+            "set terminal png size 2200, 800 enhanced font '/usr/share/fonts/truetype/adf/GilliusADF-Regular.otf'\n" \
             "set output '{3}'\n" \
             "plot {4}".format(title, y_label, x_range, out_path, plots)
             #"set log y\n" \
@@ -454,8 +454,8 @@ if __name__ == "__main__":
 	bwStats.close()
 	x_range = ""
 	t = ""
-	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.svg"), x_range, [2,4,6,8], options.gnuplot_path)
-    	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.svg"), x_range, [3,5,7,9], options.gnuplot_path)
+	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.png"), x_range, [2,4,6,8], options.gnuplot_path)
+    	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.png"), x_range, [3,5,7,9], options.gnuplot_path)
 	
 
 	print "creating statistics files ..."
