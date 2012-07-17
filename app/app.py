@@ -17,6 +17,7 @@ import math
 import bson
 import pymongo
 import config
+import json
 
 from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error, response, redirect
 from bottle import jinja2_view as view, jinja2_template as template
@@ -332,21 +333,19 @@ def pcap_stats(fileName):
 
 @post('/pcap')
 def pcap_upload():
-	name = request.forms.get('name')
 	data = request.files.get('data')
-	
+	response.content_type = "application/json"
+
 	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', '-', '-o', config.pcap_output_dir, '-g', config.gnuplot_path ]
 	p = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
-	
-	if data != None:
-		filename = data.filename
-		while True:
-			datachunk = data.file.read()
-			if not datachunk:
-				break
-			# for python 3 do this:
-			#p.communicate(input=bytes(datachunk, 'utf-8'))
-			p.communicate(input=datachunk)
+
+	raw = data.value
+	filename = data.filename
+
+	# for python 3 do this:
+	#p.communicate(input=bytes(datachunk, 'utf-8'))
+	p.communicate(input=raw)
+
 	redirect('/pcap')
 
 
