@@ -1,8 +1,5 @@
 var PcapStatsView = Backbone.View.extend({
 	className: "pcapstatsview",
-	events: {
-		//.submit : cli
-	},
 	initialize: function() {
 	/*
 		if(!this.model) {
@@ -51,5 +48,5 @@ var PcapStatsView = Backbone.View.extend({
 //			.text("foobar");
 
 		return this;
-	}
+	},
 });

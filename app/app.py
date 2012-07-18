@@ -43,6 +43,8 @@ TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 # MongoDB
 db = pymongo.Connection(config.db_host, config.db_port)[config.db_name]
 
+pcapProcessor = None
+
 def get_bucket_size(start_time, end_time, resolution):
 	for i,s in enumerate(config.flow_bucket_sizes):
 		if i == len(config.flow_bucket_sizes)-1:
@@ -342,10 +344,16 @@ def pcap_upload():
 	raw = data.value
 	filename = data.filename
 
-	# for python 3 do this:
-	#p.communicate(input=bytes(datachunk, 'utf-8'))
-	p.communicate(input=raw)
+	saveFilename = os.path.join(config.pcap_output_dir, "tmp.pcap")
+	try:
+		f = open(saveFilename, 'w+')
+		f.write(raw)
+		f.close()
+	except Exception as inst:
+		return str(inst)
 
+	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', saveFilename, '-o', config.pcap_output_dir, '-g', config.gnuplot_path ]
+	pcapProcessor = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
 	redirect('/pcap')
 
 

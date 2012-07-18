@@ -21,5 +21,11 @@ var PcapPageView = PageView.extend({
 		return this;
 	},
 	clickSubmit : function() {
+		// check if filename has been given
+		if ($("#data").val() == "") {
+			alert("You need to select a file!");
+			return;
+		}
+		$("#fileupload").submit();
 	}
 });
