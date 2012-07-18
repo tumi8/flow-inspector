@@ -87,6 +87,7 @@ var HivePlotModel = Backbone.Model.extend({
 var IndexEntry = Backbone.Model.extend({});
 
 var PCAPImage = Backbone.Model.extend({});
+var PCAPLiveLine = Backbone.Model.extend({});
 
 var CachedCollection = Backbone.Collection.extend({
     sync: function(method, model, options) {
@@ -226,4 +227,16 @@ var IndexQuery = CachedCollection.extend({
 var PCAPImages = Backbone.Collection.extend({
 	model: PCAPImage,
 	url: "/api/pcap/images"
+});
+
+var PCAPLiveLines = Backbone.Collection.extend({
+	model : PCAPLiveLine,
+	initialize : function(models, options) {
+	},
+	url : function() {
+		return "/pcap/live-feed";
+	},
+	parse : function(response) {
+		return response;
+	}
 });

@@ -356,6 +356,19 @@ def pcap_upload():
 	pcapProcessor = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
 	redirect('/pcap')
 
+@get('/pcap/live-feed')
+def pcap_life_feed():
+	lifeFile = os.path.join(config.pcap_output_dir, "analysis-output.txt")
+	result = []
+	try:
+		f = open(lifeFile)
+		for line in f:
+			result.append('{line: ' + line + '}')
+	except:
+		# no failure handling necessary
+		return {}
+	return result
+
 
 if __name__ == "__main__":
 	debug(config.debug)

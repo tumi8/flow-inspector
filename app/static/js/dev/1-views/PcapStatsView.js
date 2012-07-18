@@ -1,14 +1,15 @@
 var PcapStatsView = Backbone.View.extend({
 	className: "pcapstatsview",
 	initialize: function() {
-	/*
+		this.pcapAnalysisStatus = false;
 		if(!this.model) {
-			this.model = new OverviewModel();
+			this.model = new PCAPLiveLines();
 		}
-    	
 		this.model.bind("change:value", this.render, this);
 		this.loaderTemplate = _.template($("#loader-template").html());
-    	
+		this.model.fetch();
+
+	/*
 		// chart formatting
 		this.m = [10, 20, 30, 70];
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
@@ -23,10 +24,18 @@ var PcapStatsView = Backbone.View.extend({
 		var container = $(this.el).empty();
 		var w = container.width();
 		var h = container.height();
+		var data = this.model.models;
+
+		//if (data.length !=  0) {
+			console.log(data);
+		//}
 
 		if (w <= 0) {
 			return;
 		}
+
+		
+
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")
 			.attr("width", w)
@@ -49,4 +58,10 @@ var PcapStatsView = Backbone.View.extend({
 
 		return this;
 	},
+	showPcapAnalysisStatus : function() {
+		this.pcapAnalysisStatus = true;
+	},
+	hidePcapAnalysisStatus : function() {
+		this.pcapAnalysisStatus = false;
+	}
 });

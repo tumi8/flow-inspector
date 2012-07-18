@@ -26,6 +26,7 @@ var PcapPageView = PageView.extend({
 			alert("You need to select a file!");
 			return;
 		}
+		this.statsImages.showPcapAnalysisStatus();
 		$("#fileupload").submit();
 	}
 });

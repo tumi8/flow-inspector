@@ -308,7 +308,7 @@ if __name__ == "__main__":
 			  help = "pcap filter (not implemented yet. please filter your file with tcpdump :()")
 	parser.add_option('-m', '--max-gap', dest="maxGap", default=300, type="float",
 			  help = "maximum gap between packets in seconds (default = 300 seconds)")
-	parser.add_option('-p', '--min-throughput', dest="minThroughput", default = 10000000, type="float",
+	parser.add_option('-p', '--min-throughput', dest="minThroughput", default = 10000001, type="float",
 			  help = "minimum throughput")
 	parser.add_option('-l', '--min-len', dest="minLenThroughput", type="int", default="1000000",
 			  help = "min number of bytes for connections to be considered for throughput dumping")
@@ -348,11 +348,13 @@ if __name__ == "__main__":
 	allFile = open(allFilename, 'w+')
 	throughputFile = open(throughputFilename, 'w+')
 
+	progressOutput = open(os.path.join(options.outputDir, "analysis-output.txt"), 'w+')
+
 	bwStatsFilename = os.path.join(options.outputDir, "throughput.txt") 
 	bwStats = open(bwStatsFilename, 'w+')
 	bwStats.write('timestamp\tpkts\tthroughput\ttcp:pkts\ttcp:throughput\tudp:pkts\tudp:throughput\tother:pkts\tother:throughput\n')
 	
-	print "starting to read packets ..."
+	progressOutput.write("starting to read packets ...\n")
 	unsupported = 0
 	seen = 0
 
@@ -439,18 +441,18 @@ if __name__ == "__main__":
 
 
 			if seen % 100000 == 0:
-				print "\tread ", seen, " packets ..."
+				progressOutput.write("\tread " + str(seen) + " packets ...\n")
 	except Exception as inst:
 		# end of file or bad file ending
 		# ignore and continue
-		print "Caught exception: %s" % (inst)
+		progressOutput.write("Caught exception: %s\n" % (inst))
 		import traceback
-		traceback.print_exc(file=sys.stdout)
+		traceback.print_exc(file=progressOutput)
 
 	
-	print "seen packets: %d\nunsupported packets (non IP, non UDP/TCP): %d" % (seen, unsupported)
+	progressOutput.write("seen packets: %d\nunsupported packets (non IP, non UDP/TCP): %d\n" % (seen, unsupported))
 
-	print "plotting throughput graphs ..."
+	progressOutput.write("plotting throughput graphs ...\n")
 	bwStats.close()
 	x_range = ""
 	t = ""
@@ -458,7 +460,7 @@ if __name__ == "__main__":
     	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.png"), x_range, [3,5,7,9], options.gnuplot_path)
 	
 
-	print "creating statistics files ..."
+	progressOutput.write("creating statistics files ...\n")
 
 	# find connections that have a maximum gap larger than the specified one
 	gapConnections = {}
