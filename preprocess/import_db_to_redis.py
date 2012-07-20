@@ -79,7 +79,7 @@ except psycopg2.OperationalError, e:
 		sys.exit(1)
 
 try:
-	r = redis.StrictRedis(host=args.dst_host, port=args.dst_port, db=args.dst_database)
+	r = redis.Redis(host=args.dst_host, port=args.dst_port, db=args.dst_database)
 except e:
 	print >> sys.stderr, "Could not connect to Redis database!"
 	sys.exit(1)

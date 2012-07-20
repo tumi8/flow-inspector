@@ -329,7 +329,7 @@ print "%s: Init..." % (datetime.datetime.now())
 
 # init redis connection
 try:
-	r = redis.StrictRedis(host=args.src_host, port=args.src_port, db=args.src_database)
+	r = redis.Redis(host=args.src_host, port=args.src_port, db=args.src_database)
 except Exception, e:
 	print >> sys.stderr, "Could not connect to Redis database: %s" % (e)
 	sys.exit(1)
