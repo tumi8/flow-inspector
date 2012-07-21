@@ -1,13 +1,6 @@
 var PcapStatsView = Backbone.View.extend({
 	className: "pcapstatsview",
 	initialize: function() {
-		this.pcapAnalysisStatus = false;
-		if(!this.model) {
-			this.model = new PCAPLiveLines();
-		}
-		this.model.bind("change:value", this.render, this);
-		this.loaderTemplate = _.template($("#loader-template").html());
-		this.model.fetch();
 
 	/*
 		// chart formatting
@@ -24,17 +17,10 @@ var PcapStatsView = Backbone.View.extend({
 		var container = $(this.el).empty();
 		var w = container.width();
 		var h = container.height();
-		var data = this.model.models;
-
-		//if (data.length !=  0) {
-			console.log(data);
-		//}
 
 		if (w <= 0) {
 			return;
 		}
-
-		
 
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")

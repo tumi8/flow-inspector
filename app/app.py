@@ -362,12 +362,14 @@ def pcap_life_feed():
 	result = []
 	try:
 		f = open(lifeFile)
+		lineNum = 0
 		for line in f:
-			result.append('{line: ' + line + '}')
+			result.append({"id": lineNum, "line": line })
+			lineNum += 1
 	except:
 		# no failure handling necessary
 		return {}
-	return result
+	return { "results": result }
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@
 			</div>
 	    </div>
 	    <footer>
-	    	<p>&copy; Mario Volke</p>
+	    	<p>FlowInspector</p>
 	    </footer>
 	</div>
 </script>

@@ -233,10 +233,17 @@ var PCAPLiveLines = Backbone.Collection.extend({
 	model : PCAPLiveLine,
 	initialize : function(models, options) {
 	},
-	url : function() {
-		return "/pcap/live-feed";
-	},
+	url : "/pcap/live-feed",
 	parse : function(response) {
-		return response;
+		return response.results;
+	},
+	add: function(models, options) {
+		var newModels = [];
+		_.each(models, function(model) {
+			if (_.isUndefined(this.get(model.id))) {
+				newModels.push(model);
+			}
+		}, this);
+		return Backbone.Collection.prototype.add.call(this, newModels, options);
 	}
 });

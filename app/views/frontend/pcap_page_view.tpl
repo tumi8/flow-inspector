@@ -6,25 +6,27 @@
 			</div>
 			<h2>Query Interface </h2>
 
-		<form id="fileupload" class="navbar-search-pull-right" action="/pcap" method="post" enctype="multipart/form-data" >
-			<span class="btn btn-success fileinput-button">
-				<i class="icon-plus icon-white"></i>
-				<span>Add files...</span>
-				<input type="file" name="data" id="data">
-			</span>
-                                        <a class="btn btn-primary submit start"
-                                                href="javascript:void(0)"
-                                                title="Submit"
-                                                data-content="Submit query to database"
-                                        >
+			<form id="fileupload" class="navbar-search-pull-right" action="/pcap" method="post" enctype="multipart/form-data" >
+				<span class="btn btn-success fileinput-button">
+					<i class="icon-plus icon-white"></i>
+					<span>Add files...</span>
+					<input type="file" name="data" id="data">
+				</span>
+				<a class="btn btn-primary submit start"
+					href="javascript:void(0)"
+					title="Submit"
+					data-content="Submit query to database">
                                                 <i class="icon-upload icon-white"></i>
 						<span>Start upload</span>
-                                        </a>
-		</form>
-			<h2>Common Stats</h2>
+				</a>
+			</form>
+			<h2>Statistics</h2>
+
+			<div class="pcap-live-stats">
+
 			<div class="stats-images"/>
 
-			<h2>Specific Stats</h2>
+			<h2>Detailed OverView</h2>
                         <ul class="pills pcap-stat-value">
                                 <li data-value="all"><a href="javascript:void(0)">All Flows</a></li>
                                 <li data-value="gaps"><a href="javascript:void(0)">Flows with Gaps</a></li>
