@@ -15,6 +15,15 @@ IPADDR_BINARY = struct.Struct("!BBBB")
 
 ##################### classes
 
+class Unbuffered:
+	def __init__(self, stream):
+		self.stream = stream
+	def write(self, data):
+		self.stream.write(data)
+		self.stream.flush()
+	def __getattr__(self, attr):
+		return getattr(self.stream, attr)
+
 class SequenceNumberAnalyzer:
 	def __init__(self, cli, serv, connString):
 		self.cli = cli
@@ -348,7 +357,7 @@ if __name__ == "__main__":
 	allFile = open(allFilename, 'w+')
 	throughputFile = open(throughputFilename, 'w+')
 
-	progressOutput = open(os.path.join(options.outputDir, "analysis-output.txt"), 'w+')
+	progressOutput = Unbuffered(open(os.path.join(options.outputDir, "analysis-output.txt"), 'w+'))
 
 	bwStatsFilename = os.path.join(options.outputDir, "throughput.txt") 
 	bwStats = open(bwStatsFilename, 'w+')
