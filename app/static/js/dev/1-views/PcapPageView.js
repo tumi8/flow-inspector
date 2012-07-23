@@ -91,7 +91,7 @@ var PcapPageView = PageView.extend({
 			alert("You need to select a file!");
 			return;
 		}
-		this.createLiveStatusView();
+		//this.createLiveStatusView();
 		$("#fileupload").submit();
 	}
 });

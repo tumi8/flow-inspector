@@ -335,6 +335,7 @@ def pcap_stats(fileName):
 
 @post('/pcap')
 def pcap_upload():
+	print request
 	data = request.files.get('data')
 	response.content_type = "application/json"
 
@@ -362,9 +363,8 @@ def pcap_life_feed():
 		f = open(runningFile)
 		line = f.readline()
 		line = line.rstrip('\n')
-		if pcapProcessor and line == "running":
+		if line == "running":
 			isRunning = True
-		print isRunning
 	except:
 		# if file does not exist or if we observe any error, 
 		# we assume that the pcap-process is no longer running
