@@ -114,6 +114,10 @@ class IP6OptsHeader(IP6ExtensionHeader):
         options = []
         
         index = 0
+
+	# TODO: This will break if our snaplen is not big enough
+	# until we fix this problem, we are not parsing extension headers ... #nasty
+	return
         
         while (index < self.length - 2):
             opt_type = ord(self.data[index])

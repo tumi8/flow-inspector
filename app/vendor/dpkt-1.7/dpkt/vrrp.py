@@ -34,7 +34,7 @@ class VRRP(dpkt.Packet):
         for off in range(0, 4 * self.count, 4):
             l.append(self.data[off:off+4])
         self.addrs = l
-        self.auth = self.data[off+4:]
+        #self.auth = self.data[off+4:]
         self.data = ''
 
     def __len__(self):
