@@ -21,6 +21,7 @@ var PcapStatsView = Backbone.View.extend({
 		if (w <= 0) {
 			return;
 		}
+		$(this.el).append("<h2>Statistics</h2>");
 
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")

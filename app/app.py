@@ -338,9 +338,6 @@ def pcap_upload():
 	data = request.files.get('data')
 	response.content_type = "application/json"
 
-	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', '-', '-o', config.pcap_output_dir, '-g', config.gnuplot_path ]
-	p = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
-
 	raw = data.value
 	filename = data.filename
 
@@ -359,6 +356,20 @@ def pcap_upload():
 @get('/pcap/live-feed')
 def pcap_life_feed():
 	lifeFile = os.path.join(config.pcap_output_dir, "analysis-output.txt")
+	runningFile = os.path.join(config.pcap_output_dir, "running_file.txt")
+	isRunning = False
+	try: 
+		f = open(runningFile)
+		line = f.readline()
+		line = line.rstrip('\n')
+		if pcapProcessor and line == "running":
+			isRunning = True
+		print isRunning
+	except:
+		# if file does not exist or if we observe any error, 
+		# we assume that the pcap-process is no longer running
+		pass
+
 	result = []
 	try:
 		f = open(lifeFile)
@@ -368,8 +379,8 @@ def pcap_life_feed():
 			lineNum += 1
 	except:
 		# no failure handling necessary
-		return {}
-	return { "results": result }
+		return { "running" : isRunning }
+	return { "running": isRunning, "results": result }
 
 
 if __name__ == "__main__":

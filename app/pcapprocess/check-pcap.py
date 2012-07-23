@@ -307,24 +307,8 @@ def dump_pcap_conns_with_gaps(gapConnections, inputFile):
 ############################# main 
 		
 
-if __name__ == "__main__":
-	parser = OptionParser("usage: %prog [options]")
-	parser.add_option('-i', '--input', dest="inputFile",
-			  help = "input pcap file (required)")
-	parser.add_option('-o', '--outputDir', dest="outputDir",
-			  help = "output directory (required). Attention: All previous results in that directory will be overwritten!")
-	parser.add_option('-f', '--filter', dest="pcapFilter",
-			  help = "pcap filter (not implemented yet. please filter your file with tcpdump :()")
-	parser.add_option('-m', '--max-gap', dest="maxGap", default=300, type="float",
-			  help = "maximum gap between packets in seconds (default = 300 seconds)")
-	parser.add_option('-p', '--min-throughput', dest="minThroughput", default = 10000001, type="float",
-			  help = "minimum throughput")
-	parser.add_option('-l', '--min-len', dest="minLenThroughput", type="int", default="1000000",
-			  help = "min number of bytes for connections to be considered for throughput dumping")
-	parser.add_option('-g', '--gnuplot-path', dest="gnuplot_path", default="/usr/bin/gnuplot",
-			  help="path to gnuplot executable")
 
-	(options, args) = parser.parse_args()
+def main(options):
 	if options.inputFile == None:
 		print "ERROR: Did not get an input pcap file!"
 		parser.print_help()
@@ -486,5 +470,35 @@ if __name__ == "__main__":
 
 	#print "Identified connections with long gaps. Now dumping pcap files that contain those connections. This can take a while ..."
 	#dump_pcap_conns_with_gaps(gapConnections, options.inputFile)
-			
+
+if __name__ == "__main__":
+	parser = OptionParser("usage: %prog [options]")
+	parser.add_option('-i', '--input', dest="inputFile",
+			  help = "input pcap file (required)")
+	parser.add_option('-o', '--outputDir', dest="outputDir",
+			  help = "output directory (required). Attention: All previous results in that directory will be overwritten!")
+	parser.add_option('-f', '--filter', dest="pcapFilter",
+			  help = "pcap filter (not implemented yet. please filter your file with tcpdump :()")
+	parser.add_option('-m', '--max-gap', dest="maxGap", default=300, type="float",
+			  help = "maximum gap between packets in seconds (default = 300 seconds)")
+	parser.add_option('-p', '--min-throughput', dest="minThroughput", default = 10000001, type="float",
+			  help = "minimum throughput")
+	parser.add_option('-l', '--min-len', dest="minLenThroughput", type="int", default="1000000",
+			  help = "min number of bytes for connections to be considered for throughput dumping")
+	parser.add_option('-g', '--gnuplot-path', dest="gnuplot_path", default="/usr/bin/gnuplot",
+			  help="path to gnuplot executable")
+
+	(options, args) = parser.parse_args()
+
+	runningFilename = os.path.join(options.outputDir, "running_file.txt");
+	runFile = open(runningFilename, 'w+')
+	runFile.write("running\n")
+	runFile.close()
+
+	try:
+		main(options)
+	finally:
+        	runFile = open(runningFilename, 'w+')
+		runFile.write("finished\n")
+		runFile.close()
 

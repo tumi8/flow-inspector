@@ -234,7 +234,9 @@ var PCAPLiveLines = Backbone.Collection.extend({
 	initialize : function(models, options) {
 	},
 	url : "/pcap/live-feed",
+	isRunning : true, 
 	parse : function(response) {
+		this.isRunning = response.running;
 		return response.results;
 	},
 	add: function(models, options) {

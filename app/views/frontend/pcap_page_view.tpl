@@ -20,9 +20,8 @@
 						<span>Start upload</span>
 				</a>
 			</form>
-			<h2>Statistics</h2>
 
-			<div class="pcap-live-stats">
+			<div class="pcap-live-stats"/>
 
 			<div class="stats-images"/>
 

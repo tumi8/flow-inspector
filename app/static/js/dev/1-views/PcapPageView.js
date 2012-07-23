@@ -9,9 +9,10 @@ var PcapStatusLineView = Backbone.View.extend({
 
 // A rendering of a collection of status lines.
 var PcapStatusLinesView = Backbone.View.extend({
-	tagName: "ul",
 	className : "pcap-status-lines",
+	tagName: "ul",
 	initialize: function(options) {
+		$(this.el).prepend("<h2>Live PCAP Analysis statistics</h2>");
 		this.collection.bind("add", function(model) {
 							var pcapStatusLineView = new PcapStatusLineView({model: model});
 							$(this.el).append(pcapStatusLineView.render().el);
@@ -31,30 +32,52 @@ var PcapPageView = PageView.extend({
 		this.template = _.template($("#pcap-page-template").html());
 		this.loaderTemplate = _.template($("#loader-template").html());
 
-		this.pcapAnalysisStatus = false;
-
-
+		this.statsImages = new PcapStatsView();
+		this.statusModel = null;
+		this.createLiveStatusView();
+	},
+	createLiveStatusView : function() {
 		pcapStatusModel = new PCAPLiveLines([]);
-		var updateLiveLines = function() {
-			this.pcapStatusModel.fetch({add: true});
-			setTimeout(updateLiveLines, 2000);
-		};
-		updateLiveLines();
-
+		this.statusModel = pcapStatusModel;
 		if (!this.pcapStatusView) {
 			this.pcapStatusView = new PcapStatusLinesView({collection: pcapStatusModel});
 		}
 
-		this.statsImages = new PcapStatsView();
+		var that = this;
+		var updateLiveLines = function() {
+			that.statusModel.fetch({add: true});
+			if (!that.statusModel.isRunning) {
+				// if the pcap file is fully processed, we should
+				// move remove the live status view;
+				delete that.statusModel;
+				delete that.pcapStatusView;
+				that.statusModel = null;
+				that.pcapStatusView = null;
+				that.render();
+				return ;
+			}
+			that.render();
+			setTimeout(updateLiveLines, 2000);
+		};
+		updateLiveLines();
+		
 	},
 	render: function() {
 		$(this.el).html(this.template());
 
-		$(".pcap-live-stats", this.el).append(this.pcapStatusView.el);
-		$(".stats-images", this.el).append(this.statsImages.el);
-
-		this.statsImages.render();
-		this.pcapStatusView.render();
+		// We show either the pcapanalysis status or the final images
+		if (this.pcapStatusView) {
+			if (this.statusModel && this.statusModel.isRunning) {
+				$(".pcap-live-stats", this.el).append(this.pcapStatusView.el);
+				this.pcapStatusView.render();
+			} else {
+				$(".stats-images", this.el).append(this.statsImages.el);
+				this.statsImages.render();
+			}
+		} else {
+			$(".stats-images", this.el).append(this.statsImages.el);
+			this.statsImages.render();
+		}
 
 		return this;
 	},
@@ -68,9 +91,7 @@ var PcapPageView = PageView.extend({
 			alert("You need to select a file!");
 			return;
 		}
-		if (this.pcapStatusView) {
-		}
-		this.statsImages.showPcapAnalysisStatus();
+		this.createLiveStatusView();
 		$("#fileupload").submit();
 	}
 });
