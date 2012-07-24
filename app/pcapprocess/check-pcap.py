@@ -3,6 +3,7 @@
 import sys, os, struct 
 import subprocess
 from optparse import OptionParser
+import pymongo
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'dpkt-1.7'))
@@ -114,7 +115,7 @@ class SequenceNumberAnalyzer:
 			self.servSeq = tcpSegment.seq + segPayloadLen
 
 class ConnectionRecord:
-	def __init__(self, connString, ts, src, dst, sPort, dPort, proto):
+	def __init__(self, connString, ts, src, dst, sPort, dPort, proto, pString):
 		self.firstTs = ts;
 		self.lastTs = ts;
 		self.connString = connString
@@ -124,6 +125,7 @@ class ConnectionRecord:
 		self.sPort = sPort
 		self.dPort = dPort
 		self.proto = proto
+		self.pString = pString
 
 		self.numPkts = 0
 		self.numBytes = 0
@@ -187,20 +189,9 @@ class ConnectionRecord:
 		# sanity check performed. write hte packet
 		self.writer.writepkt(buf, ts)
 
-	def dump_stat(self, fd):
-		# desired conn string len
-		lenStr = 55
-
-		fd.write(self.connString)
-		for i in range(0, lenStr - len(self.connString)):
-			fd.write(" ")
-		fmtString = "\tPkts: %6d\tBytes: %10d\tMax Gap: %6f\tAvg Gap: %6f\tMedian Gap: %6f\tAvg Throughput: %6f" % (self.numPkts, self.numBytes, self.maxDiff, self.avgDiff, self.calcMedianDiff(), self.calcAvgThroughput())
-		fd.write(fmtString)
-		if self.seqAnalyzer:
-			fmtString = "\tSeqCliServ: %5d\tSecServCli: %5d" % (self.seqAnalyzer.unexpectCliServ, self.seqAnalyzer.unexpectServCli)
-			fd.write(fmtString)
-
-		fd.write("\n")
+	def dump_stat(self, collection):
+		doc = { "firstTs": self.firstTs, "lastTs": self.lastTs, "src": binary_to_str(self.src), "dst": binary_to_str(self.dst), "sPort": self.sPort, "dPort": self.dPort, "proto": self.pString, "pkts": self.numPkts, "bytes": self.numBytes, "maxDiff": self.maxDiff, "avgDiff": self.avgDiff, "medianDiff": self.calcMedianDiff(), "avgThroughput": self.calcAvgThroughput() }
+		collection.save(doc)
 
 ##################### functions
 
@@ -308,17 +299,8 @@ def dump_pcap_conns_with_gaps(gapConnections, inputFile):
 		
 
 
-def main(options):
-	if options.inputFile == None:
-		print "ERROR: Did not get an input pcap file!"
-		parser.print_help()
-		sys.exit(-1)
+def main(options, collections):
 
-	if options.outputDir == None:
-		print "ERROR: Did not get an output directory!"
-		parser.print_help()
-		sys.exit(-1)
-	
 	# open pcap file
 	if options.inputFile != "-":
 		f = open(options.inputFile)
@@ -333,13 +315,7 @@ def main(options):
 	if not os.access(options.outputDir, os.R_OK | os.W_OK):
 		os.makedirs(options.outputDir)
 
-	# create statistics file
-	gapFilename = os.path.join(options.outputDir, "stat-gap.txt")
-	allFilename = os.path.join(options.outputDir, "all-flows.txt")
-	throughputFilename = os.path.join(options.outputDir, "low-throughput.txt")
-	gapFile = open(gapFilename, 'w+')
-	allFile = open(allFilename, 'w+')
-	throughputFile = open(throughputFilename, 'w+')
+	(flowCollection, lowThroughput, withGaps) = collections
 
 	progressOutput = Unbuffered(open(os.path.join(options.outputDir, "analysis-output.txt"), 'w+'))
 
@@ -429,7 +405,7 @@ def main(options):
 					pString = "ICMP"
 				myConn = "%s:%d <-> %s:%d (%s)" % (binary_to_str(srcIP), srcPort, binary_to_str(dstIP), dstPort, pString)
 				#print "New Connection: ", myConn
-				connections[id] = ConnectionRecord(myConn, ts, srcIP, dstIP, srcPort, dstPort, proto)
+				connections[id] = ConnectionRecord(myConn, ts, srcIP, dstIP, srcPort, dstPort, proto, pString)
 				connections[id].packet_seen(ts, buf, eth)
 
 
@@ -460,13 +436,13 @@ def main(options):
 	for c in connections:
 		conn = connections[c]
 		if conn.maxDiff > options.maxGap:
-			conn.dump_stat(gapFile)
+			conn.dump_stat(withGaps)
 			#conn.createWriter(os.path.join(options.outputDir, conn.connString + ".pcap"), pcapFile.snaplen);
 			gapConnections[c] = conn
-		conn.dump_stat(allFile)
+		conn.dump_stat(flowCollection)
 		if conn.numBytes >= options.minLenThroughput:
 			if conn.calcAvgThroughput() < options.minThroughput:
-				conn.dump_stat(throughputFile)
+				conn.dump_stat(lowThroughput)
 
 	#print "Identified connections with long gaps. Now dumping pcap files that contain those connections. This can take a while ..."
 	#dump_pcap_conns_with_gaps(gapConnections, options.inputFile)
@@ -490,13 +466,38 @@ if __name__ == "__main__":
 
 	(options, args) = parser.parse_args()
 
+	if options.inputFile == None:
+		print "ERROR: Did not get an input pcap file!"
+		parser.print_help()
+		sys.exit(-1)
+
+	if options.outputDir == None:
+		print "ERROR: Did not get an output directory!"
+		parser.print_help()
+		sys.exit(-1)
+	
+	# try to connect to mongodb
+	try:
+	        dst_conn = pymongo.Connection("127.0.0.1", 27017)
+	except pymongo.errors.AutoReconnect, e:
+		print >> sys.stderr, "Could not connect to MongoDB database!"
+		sys.exit(1)
+	# delete old results and create new collections
+	dst_conn.drop_database("pcap")
+	dst_db = dst_conn["pcap"]
+	flowCollection = dst_db["all_flows"]
+	lowThroughput = dst_db["low_throughput"]
+	withGaps = dst_db["with_gaps"]
+	
+	# open file for status output
 	runningFilename = os.path.join(options.outputDir, "running_file.txt");
 	runFile = open(runningFilename, 'w+')
 	runFile.write("running\n")
 	runFile.close()
 
+
 	try:
-		main(options)
+		main(options, (flowCollection, lowThroughput, withGaps))
 	finally:
         	runFile = open(runningFilename, 'w+')
 		runFile.write("finished\n")
