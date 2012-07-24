@@ -1,15 +1,24 @@
 var AppState = Backbone.Model.extend({
-    defaults: {
-    	page: "overview"
-    }
+	defaults: {
+		page: "overview"
+	}
 });
 
 var Flow = Backbone.Model.extend({
-    parse: function(json) {
-    	// convert unix timestamp to JS Date
-    	json.bucket = new Date(json.bucket * 1000);
-    	return json;
-    }
+	parse: function(json) {
+		// convert unix timestamp to JS Date
+		json.bucket = new Date(json.bucket * 1000);
+		return json;
+	}
+});
+
+var PcapFlow = Backbone.Model.extend({
+	parse: function(json) {
+		// convert unix timestamp to JS Date
+		json.firstTs = new Date(json.firstTs * 1000);
+		json.lastTs = new Date(json.lastTs * 1000);
+		return json;
+	}
 });
 
 var BucketChartModel = Backbone.Model.extend({
@@ -24,6 +33,7 @@ var OverviewModel = Backbone.Model.extend({
 		value: "flows"
 	}
 });
+
 
 var DonutChartModel = Backbone.Model.extend({
 	defaults: {
@@ -57,6 +67,16 @@ var GraphModel = Backbone.Model.extend({
 		filterPortsType: "inclusive"
 	}
 });
+
+var FlowTableModel = Backbone.Model.extend({
+	defaults: {
+		flowLimit: 255,
+		filterPorts: "",
+		filterPortsType: "inclusive",
+		value: ""
+	}
+});
+
 
 var EdgeBundleModel = Backbone.Model.extend({
 	defaults: {
@@ -210,6 +230,7 @@ var Flows = CachedCollection.extend({
     }
 });
 
+
 var IndexQuery = CachedCollection.extend({
     cache_timeout: 60*10,
     model: IndexEntry,
@@ -223,6 +244,31 @@ var IndexQuery = CachedCollection.extend({
     	return response.results;
     }
 });
+
+var PcapFlows = CachedCollection.extend({
+	cache_timeout: 60*10,
+	model: PcapFlow,
+	url: function() {
+		return "/pcap/query/" + this.value;
+	},
+	initialize: function(models, options) {
+		if (options) {
+			this.value = options.value;
+		} else {
+			this.value = "allFlows";
+		}
+		this.dataTypes = [];
+	},
+	parse: function(response) {
+		response.results.forEach(function(d) {
+			// convert unix timestamp to JS Date
+			d.firstTs = new Date(d.firstTs * 1000);
+			d.lastTs  = new Date(d.lastTs * 1000);
+		});
+		return response.results;
+	}
+});
+
 
 var PCAPImages = Backbone.Collection.extend({
 	model: PCAPImage,
@@ -249,3 +295,6 @@ var PCAPLiveLines = Backbone.Collection.extend({
 		return Backbone.Collection.prototype.add.call(this, newModels, options);
 	}
 });
+
+
+

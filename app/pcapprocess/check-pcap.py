@@ -499,6 +499,12 @@ if __name__ == "__main__":
 	try:
 		main(options, (flowCollection, lowThroughput, withGaps))
 	finally:
+		# create indexes
+		for col in (flowCollection, lowThroughput, withGaps):
+			col.create_index("firstTs")
+			col.create_index("pkts")
+			col.create_index("bytes")
+
         	runFile = open(runningFilename, 'w+')
 		runFile.write("finished\n")
 		runFile.close()

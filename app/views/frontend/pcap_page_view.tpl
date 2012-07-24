@@ -27,9 +27,9 @@
 
 			<h2>Detailed OverView</h2>
                         <ul class="pills pcap-stat-value">
-                                <li data-value="all"><a href="javascript:void(0)">All Flows</a></li>
-                                <li data-value="gaps"><a href="javascript:void(0)">Flows with Gaps</a></li>
-                                <li data-value="low-throughput"><a href="javascript:void(0)">Flows with low throughput</a></li>
+                                <li data-value="allFlows"><a href="javascript:void(0)">All Flows</a></li>
+                                <li data-value="withGaps"><a href="javascript:void(0)">Flows with Gaps</a></li>
+                                <li data-value="lowThroughput"><a href="javascript:void(0)">Flows with low throughput</a></li>
                         </ul>
 			<div class="pcap-stats"/>
 		</div>

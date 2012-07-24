@@ -37,11 +37,17 @@ COL_DST_IP = "dstIP"
 COL_SRC_PORT = "srcPort"
 COL_DST_PORT = "dstPort"
 
+PCAP_DB_ALL = "all_flows"
+PCAP_DB_GAP = "with_gaps"
+PCAP_DB_LOWTHROUGHPUT = "low_throughput"
+
 # set template path
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 
 # MongoDB
-db = pymongo.Connection(config.db_host, config.db_port)[config.db_name]
+db_conn = pymongo.Connection(config.db_host, config.db_port)
+db = db_conn[config.db_name]
+pcapDB = db_conn["pcap"]
 
 pcapProcessor = None
 
@@ -66,7 +72,46 @@ def get_bucket_size(start_time, end_time, resolution):
 		num_slots = (max_bucket["bucket"]-min_bucket["bucket"]) / s + 1
 		if num_slots <= resolution:
 			return s
+
+def extract_mongo_query_params():
+	# construct query
+	limit = 0
+	if "limit" in request.GET:
+		try:
+			limit = int(request.GET["limit"])
+		except ValueError:
+			raise HTTPError(output="Param limit has to be an integer.")
 		
+		if limit < 0:
+			limit = 0
+			
+	fields = None
+	if "fields" in request.GET:
+		fields = request.GET["fields"].strip()
+		fields = map(lambda v: v.strip(), fields.split(","))
+		
+	sort = None
+	if "sort" in request.GET:
+		sort = request.GET["sort"].strip()
+		sort = map(lambda v: v.strip(), sort.split(","))
+		for i in range(0, len(sort)):
+			field = sort[i].split(" ")
+			order = pymongo.ASCENDING
+			if field[-1].lower() == "asc":
+				field.pop()
+			elif field[-1].lower() == "desc":
+				order = pymongo.DESCENDING
+				field.pop()
+			
+			field = " ".join(field)
+			sort[i] = (field, order)
+			
+	count = False
+	if "count" in request.GET:
+		count = True
+
+	return (fields, sort, limit, count)
+			
 @get("/")
 @get("/dashboard")
 @get("/dashboard/:##")
@@ -263,42 +308,8 @@ def api_bucket_query():
 @get("/api/index/:name")
 @get("/api/index/:name/")
 def api_index(name):
-	# construct query
-	limit = 0
-	if "limit" in request.GET:
-		try:
-			limit = int(request.GET["limit"])
-		except ValueError:
-			raise HTTPError(output="Param limit has to be an integer.")
-		
-		if limit < 0:
-			limit = 0
-			
-	fields = None
-	if "fields" in request.GET:
-		fields = request.GET["fields"].strip()
-		fields = map(lambda v: v.strip(), fields.split(","))
-		
-	sort = None
-	if "sort" in request.GET:
-		sort = request.GET["sort"].strip()
-		sort = map(lambda v: v.strip(), sort.split(","))
-		for i in range(0, len(sort)):
-			field = sort[i].split(" ")
-			order = pymongo.ASCENDING
-			if field[-1].lower() == "asc":
-				field.pop()
-			elif field[-1].lower() == "desc":
-				order = pymongo.DESCENDING
-				field.pop()
-			
-			field = " ".join(field)
-			sort[i] = (field, order)
-			
-	count = False
-	if "count" in request.GET:
-		count = True
-	
+	(fields, sort, limit, count) = extract_mongo_query_params()
+
 	collection = None
 	if name == "nodes":
 		collection = db[DB_INDEX_NODES]
@@ -353,6 +364,37 @@ def pcap_upload():
 	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', saveFilename, '-o', config.pcap_output_dir, '-g', config.gnuplot_path ]
 	pcapProcessor = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
 	redirect('/pcap')
+
+@get('/pcap/query/:name#.+#')
+def pcap_query(name):
+	(fields, sort, limit, count) = extract_mongo_query_params()
+
+	collection = None
+	if name == "allFlows":
+		collection = pcapDB[PCAP_DB_ALL]
+	elif name == "withGaps":
+		collection = pcapDB[PCAP_DB_GAP]
+	elif name == "lowThroughput":
+		collection = pcapDB[PCAP_DB_LOWTHROUGHPUT]
+		
+	if collection == None:
+		raise HTTPError(404, "Index name not known.")
+		
+	cursor = collection.find(fields=fields).batch_size(1000)
+	if sort:
+		cursor.sort(sort)
+	if limit:
+		cursor.limit(limit)
+		
+	if count:
+		result = cursor.count() 
+	else:
+		result = []
+		for row in cursor:
+			del row["_id"]
+			result.append(row)
+	
+	return { "results": result }
 
 @get('/pcap/live-feed')
 def pcap_life_feed():

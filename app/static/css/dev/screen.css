@@ -465,8 +465,11 @@ body {
 	height: 800px;
 	width: 100%;
 }
-
 .pcapstatsview {
 	height: 800px;
 }
-
+/*
+.flowtableview {
+	height: 800px;
+}
+*/

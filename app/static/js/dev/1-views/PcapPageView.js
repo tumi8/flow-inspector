@@ -26,7 +26,8 @@ var PcapStatusLinesView = Backbone.View.extend({
 
 var PcapPageView = PageView.extend({
 	events: {
-		"click a.submit" : "clickSubmit"
+		"click a.submit" : "clickSubmit",
+		"click .pcap-stat-value a": "clickFlowGroupValue"
 	},
 	initialize: function() {
 		this.template = _.template($("#pcap-page-template").html());
@@ -35,6 +36,77 @@ var PcapPageView = PageView.extend({
 		this.statsImages = new PcapStatsView();
 		this.statusModel = null;
 		this.createLiveStatusView();
+
+		this.flowTableModel = new FlowTableModel();
+		this.flowTableModel.bind("change:value", this.changeFlowGroupValue, this);
+
+		this.pcapFlows = new PcapFlows();
+		this.pcapFlows.bind("reset", this.render, this);
+
+		this.flowTableView = new FlowTableView({model:this.flowTableModel, flows: this.pcapFlows});
+
+	},
+	render: function() {
+		$(this.el).html(this.template());
+
+		this.loader = $(this.loaderTemplate());
+
+		
+		if (this.flowTableModel &&  this.flowTableModel.get("value") != "") {
+			$(".pcap-stat-value li[data-value='" + this.flowTableModel.get("value") + "']", this.el)
+			.addClass("active");
+		}
+
+		// We show either the pcapanalysis status or the final images
+		if (this.pcapStatusView) {
+			if (this.statusModel && this.statusModel.isRunning) {
+				$(".pcap-live-stats", this.el).append(this.pcapStatusView.el);
+				this.pcapStatusView.render();
+			} else {
+				$(".stats-images", this.el).append(this.statsImages.el);
+				this.statsImages.render();
+			}
+		} else {
+			$(".stats-images", this.el).append(this.statsImages.el);
+			this.statsImages.render();
+		}
+		if (this.flowTableView) {
+			$(".pcap-stats", this.el).append(this.flowTableView.el);
+		}
+
+		return this;
+	},
+	remove: function() {
+		$(this.el).remove();
+		return this;
+	},
+	clickSubmit : function() {
+		// check if filename has been given
+		if ($("#data").val() == "") {
+			alert("You need to select a file!");
+			return;
+		}
+		//this.createLiveStatusView();
+		$("#fileupload").submit();
+	},
+	clickFlowGroupValue: function(e) {
+		var target = $(e.target).parent();
+		this.pcapFlows.value = target.data("value");
+		this.flowTableModel.set({value: target.data("value")});
+	},
+	changeFlowGroupValue: function(model, value) {
+		$(".pcap-stat-value li", this.el).removeClass("active");
+		$(".pcap-stat-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+		this.fetchFlows(value);
+	},
+	fetchFlows: function(value) {
+		this.pcapFlows.dataTypes = [ "firstTs", "lastTs" ,"src","dst","sPort","dPort","proto","pkts","bytes","maxDiff","medianDiff","avgThroughput" ]
+		var data = {
+			"fields": "firstTs,lastTs,src,dst,sPort,dPort,proto,pkts,bytes,maxDiff,medianDiff,avgThroughput",
+			"limit": 100
+		};
+		this.pcapFlows.fetch({data: data});
 	},
 	createLiveStatusView : function() {
 		pcapStatusModel = new PCAPLiveLines([]);
@@ -57,41 +129,8 @@ var PcapPageView = PageView.extend({
 				return ;
 			}
 			that.render();
-			setTimeout(updateLiveLines, 2000);
+			setTimeout(updateLiveLines, 100);
 		};
 		updateLiveLines();
-		
-	},
-	render: function() {
-		$(this.el).html(this.template());
-
-		// We show either the pcapanalysis status or the final images
-		if (this.pcapStatusView) {
-			if (this.statusModel && this.statusModel.isRunning) {
-				$(".pcap-live-stats", this.el).append(this.pcapStatusView.el);
-				this.pcapStatusView.render();
-			} else {
-				$(".stats-images", this.el).append(this.statsImages.el);
-				this.statsImages.render();
-			}
-		} else {
-			$(".stats-images", this.el).append(this.statsImages.el);
-			this.statsImages.render();
-		}
-
-		return this;
-	},
-	remove: function() {
-		$(this.el).remove();
-		return this;
-	},
-	clickSubmit : function() {
-		// check if filename has been given
-		if ($("#data").val() == "") {
-			alert("You need to select a file!");
-			return;
-		}
-		//this.createLiveStatusView();
-		$("#fileupload").submit();
 	}
 });
