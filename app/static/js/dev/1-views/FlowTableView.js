@@ -45,7 +45,12 @@ var FlowTableView = Backbone.View.extend({
 		var cells = rows.selectAll("td")
 				.data(function(row) {
 					return that.flows.dataTypes.map(function(type) {
-						return {type: type, value: row.attributes[type]};
+						var v = row.attributes[type];
+						if (type == "firstTs" || type == "lastTs") {
+							 var tmp = new Date(v);
+							 v = tmp.toString('HH:MM');
+						}
+						return {type: type, value: v};
 					});
 				})
 				.enter()
