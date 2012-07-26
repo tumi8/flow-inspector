@@ -54,6 +54,8 @@ body {
 
 /* Containers */
 
+.container {width: 1200px; }
+
 .container .content {
 	background-color: #fff;
 	border-radius: 0 0 6px 6px;
