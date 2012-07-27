@@ -7,6 +7,15 @@ host = "0.0.0.0"
 port = 8080
 debug = True
 
+# Original Flow DB (mysql, postrgres, oracle)
+#----------------------------------------------------------------
+flowDBHost="127.0.0.1"
+flowDBPort=3306
+flowDBUser="username"
+flowDBPassword="password"
+flowDBName="flows"
+
+
 # MongoDB
 #----------------------------------------------------------------
 db_host = "127.0.0.1"
