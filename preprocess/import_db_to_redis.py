@@ -9,17 +9,40 @@ Author: Mario Volke
 """
 
 import sys
+import os.path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+
 import math
 import time
 import argparse
 import datetime
 import redis
 import json
-import psycopg2
-import MySQLdb
-import _mysql_exceptions
 
-IGNORE_COLUMNS = ["firstSwitchedMillis", "lastSwitchedMillis"]
+import config
+
+######### functions
+
+def getFirstTable(tables, firstTimestamp):
+	if firstTimestamp == 0:
+		return tables
+	
+	timeObj = datetime.datetime.utcfromtimestamp(firstTimestamp)
+	if timeObj.minute < 30:
+		halfHour = 0
+	else:
+		halfHour = 1
+	firstTableName = "h_%0.4d%0.2d%0.2d_%0.2d_%0.1d" % (timeObj.year, timeObj.month, timeObj.day, timeObj.hour, halfHour)
+	tables.sort()
+
+	try:
+		idx = tables.index(firstTableName) 
+	except:
+		# no such table in list
+		return []
+	return tables[idx:-1]
+
+ 
 
 # width defines bar width
 # percent defines current percentage
@@ -34,17 +57,25 @@ def progress(width, percent):
 		sys.stdout.write("\n")
 	sys.stdout.flush()
 
+
+######### main
+
+
+IGNORE_COLUMNS = ["firstSwitchedMillis", "lastSwitchedMillis"]
+
 parser = argparse.ArgumentParser(description="Import IPFIX flows from MySQL or PostgreSQL Vermont format into the Redis buffer for preprocessing")
-parser.add_argument("--src-host", nargs="?", default="127.0.0.1", help="MySQL or PostgreSQL host")
-parser.add_argument("--src-port", nargs="?", type=int, help="MySQL or PostgreSQL port")
-parser.add_argument("--src-user", nargs="?", default="root", help="MySQL or PostgreSQL user")
-parser.add_argument("--src-password", nargs="?", default="", help="MySQL or PostgreSQL password")
-parser.add_argument("--src-database", nargs="?", default="flows", help="MySQL or PostgreSQL database name")
+parser.add_argument("--src-host", nargs="?", default=config.flowDBHost, help="MySQL or PostgreSQL host")
+parser.add_argument("--src-port", nargs="?", default=config.flowDBPort, type=int, help="MySQL or PostgreSQL port")
+parser.add_argument("--src-user", nargs="?", default=config.flowDBUser, help="MySQL or PostgreSQL user")
+parser.add_argument("--src-password", nargs="?", default=config.flowDBPassword, help="MySQL or PostgreSQL password")
+parser.add_argument("--src-database", nargs="?", default=config.flowDBName, help="MySQL or PostgreSQL database name")
 parser.add_argument("--dst-host", nargs="?", default="127.0.0.1", help="Redis host")
 parser.add_argument("--dst-port", nargs="?", default=6379, type=int, help="Redis port")
 parser.add_argument("--dst-database", nargs="?", default=0, type=int, help="Redis database")
 parser.add_argument("--max-queue", nargs="?", type=int, default=100000, help="The maximum queue length before the import will sleep.")
 parser.add_argument("--clear-queue", nargs="?", type=bool, default=False, const=True, help="Whether to clear the queue before importing the flows.")
+parser.add_argument("--continuous-update", nargs="?", type=bool, default=True, const=True, help="Whether the database import should stop after it reaches the end of the database, or whether it should continue to get new flows")
+parser.add_argument("--start-time", nargs="?", type=int,  default=0, const=True, help="Defines the offset in unix time at which flow importing into mongo should start. This is handy for large flow-database where we do not want to import the complete database. Default: 0 (import all tables)")
 
 args = parser.parse_args()
 
@@ -52,6 +83,8 @@ REDIS_QUEUE_KEY = "entry:queue"
 
 # check if is there a MySQL or a PostgreSQL database
 try:
+	print "Trying postgresql database ..."
+	import psycopg2
 	TYPE = "postgresql"
 	dns = dict(
 		database = args.src_database, 
@@ -60,10 +93,16 @@ try:
 		password = args.src_password
 	)
 	if args.src_port is not None:
-		dns.port = args.src_port
+		dns['port'] = args.src_port
 	conn = psycopg2.connect(**dns)
-except psycopg2.OperationalError, e:
+	print "Successfully connected to postgresql db ..."
+except Exception, e:
 	try:
+		import MySQLdb
+		import _mysql_exceptions
+
+		print "Failed to connect to postgresql db. Reason: ", e
+		print "Trying mysql instead ..."
 		TYPE = "mysql"
 		dns = dict(
 			db = args.src_database, 
@@ -72,16 +111,17 @@ except psycopg2.OperationalError, e:
 			passwd = args.src_password
 		)
 		if args.src_port is not None:
-			dns.port = args.src_port
+			dns["port"] = args.src_port
 		conn = MySQLdb.connect(**dns)
-	except _mysql_exceptions.OperationalError, e:
-		print >> sys.stderr, "Could not connect to source database!"
+		print "Successfully connected to mysql database!"
+	except Exception, e:
+		print >> sys.stderr, "Could not connect to source database:", e
 		sys.exit(1)
 
 try:
 	r = redis.Redis(host=args.dst_host, port=args.dst_port, db=args.dst_database)
 except e:
-	print >> sys.stderr, "Could not connect to Redis database!"
+	print >> sys.stderr, "Could not connect to Redis database: ", e
 	sys.exit(1)
 	
 if args.clear_queue:
@@ -98,6 +138,12 @@ c.execute("""SELECT table_name from information_schema.tables
 	(args.src_database))
 tables = c.fetchall()
 
+# get the table names in list format
+tables = map(lambda x: x[0], list(tables))
+# get the tables that contain the flows starting with args.start_time
+tables = getFirstTable(tables, args.start_time)
+
+
 # THIS IS MYSQL SPECIFIC
 #c.execute("SHOW TABLES LIKE 'h\\_%'")
 #tables = c.fetchall()
@@ -106,7 +152,7 @@ count = 0
 for i, table in enumerate(tables):
 	progress(100, i/len(tables)*100)
 	
-	c.execute("SELECT * FROM " + table[0] + " ORDER BY firstSwitched ASC")
+	c.execute("SELECT * FROM " + table + " WHERE firstSwitched >= " + str(args.start_time) + " ORDER BY firstSwitched ASC")
 	
 	for row in c:
 		obj = dict()
