@@ -40,7 +40,7 @@ def getFirstTable(tables, firstTimestamp):
 	except:
 		# no such table in list
 		return []
-	return tables[idx:-1]
+	return tables[idx:len(tables)]
 
  
 
@@ -74,7 +74,7 @@ parser.add_argument("--dst-port", nargs="?", default=6379, type=int, help="Redis
 parser.add_argument("--dst-database", nargs="?", default=0, type=int, help="Redis database")
 parser.add_argument("--max-queue", nargs="?", type=int, default=100000, help="The maximum queue length before the import will sleep.")
 parser.add_argument("--clear-queue", nargs="?", type=bool, default=False, const=True, help="Whether to clear the queue before importing the flows.")
-parser.add_argument("--continuous-update", nargs="?", type=bool, default=True, const=True, help="Whether the database import should stop after it reaches the end of the database, or whether it should continue to get new flows")
+parser.add_argument("--continuous-update", nargs="?", type=bool, default=False, const=True, help="Whether the database import should stop after it reaches the end of the database, or whether it should continue to get new flows")
 parser.add_argument("--start-time", nargs="?", type=int,  default=0, const=True, help="Defines the offset in unix time at which flow importing into mongo should start. This is handy for large flow-database where we do not want to import the complete database. Default: 0 (import all tables)")
 
 args = parser.parse_args()
@@ -132,41 +132,77 @@ c = conn.cursor()
 startTime = datetime.datetime.now()
 print "%s: connected to source and destination database" % (startTime)
 
-# get all flow tables
-c.execute("""SELECT table_name from information_schema.tables 
-	WHERE table_schema=%s AND table_type='BASE TABLE' AND table_name LIKE 'h\\_%%' ORDER BY table_name ASC""", 
-	(args.src_database))
-tables = c.fetchall()
-
-# get the table names in list format
-tables = map(lambda x: x[0], list(tables))
-# get the tables that contain the flows starting with args.start_time
-tables = getFirstTable(tables, args.start_time)
-
-
-# THIS IS MYSQL SPECIFIC
-#c.execute("SHOW TABLES LIKE 'h\\_%'")
-#tables = c.fetchall()
-
+print "Starting to import flows beginning from ", datetime.datetime.utcfromtimestamp(args.start_time)
+lastTable = None
 count = 0
-for i, table in enumerate(tables):
-	progress(100, i/len(tables)*100)
+while True:
+	# get all flow tables
+	c.execute("""SELECT table_name from information_schema.tables 
+		WHERE table_schema=%s AND table_type='BASE TABLE' AND table_name LIKE 'h\\_%%' ORDER BY table_name ASC""", 
+		(args.src_database))
+	tables = c.fetchall()
+
+	# get the table names in list format
+	tables = map(lambda x: x[0], list(tables))
+	# get the tables that contain the flows starting with args.start_time
+	tables = getFirstTable(tables, args.start_time)
+
+
+	# THIS IS MYSQL SPECIFIC
+	#c.execute("SHOW TABLES LIKE 'h\\_%'")
+	#tables = c.fetchall()
+
+	if args.continuous_update:
+		# TODO: this is a bit hacky. since we do not know flow timeouts and do not (yet) have unique identifiers
+		# for flows in our database, we cannot know if we have already imported flows (we cannot used firstSwitched 
+		# as an indicator since life inserts into the database are not ordered by firstSwitched
+		# we therefore use the arbitary value of a delay of the three latest tables that we are not going to 
+		# include into the mongodb. hence, we have a one hour delay when importing flows
+		# FIXME: remove this hack as soon as we have unique flow identifiers
+		if len(tables) > 3:
+			tables = tables[0:-3]
+		else:
+			tables = []
+
+	# do not import from tables that we already imported
+	if lastTable != None:
+		try:
+			idx = tables.index(lastTable)
+			if len(tables) >= idx:
+				# we have no new data. sleep two minutes and try again
+				time.sleep(120)
+				continue
+			else:
+				# delete the tables that we already imported from list of tables to import
+				tables = tables[idx:-1]
+		except:
+			raise Exception("Logic error: We already consumed table \"%s\". But we cannot find it in the list of available tables!" % (lastTable))
 	
-	c.execute("SELECT * FROM " + table + " WHERE firstSwitched >= " + str(args.start_time) + " ORDER BY firstSwitched ASC")
+	for i, table in enumerate(tables):
+		lastTable = table
+		if not args.continuous_update: 
+			progress(100, i/len(tables)*100)
+
+		print "Importing table ", table, "..."
 	
-	for row in c:
-		obj = dict()
-		for j, col in enumerate(c.description):
-			if col[0] not in IGNORE_COLUMNS:
-				obj[col[0]] = row[j]
+		c.execute("SELECT * FROM " + table + " WHERE firstSwitched >= " + str(args.start_time) + " ORDER BY firstSwitched ASC")
+	
+		for row in c:
+			obj = dict()
+			for j, col in enumerate(c.description):
+				if col[0] not in IGNORE_COLUMNS:
+					obj[col[0]] = row[j]
 		
-		queue_length = r.rpush(REDIS_QUEUE_KEY, json.dumps(obj))
-		while queue_length > args.max_queue:
-			print "Max queue length reached, importing paused..."
-			time.sleep(10)
-			queue_length = r.llen(REDIS_QUEUE_KEY)
+			queue_length = r.rpush(REDIS_QUEUE_KEY, json.dumps(obj))
+			while queue_length > args.max_queue:
+				print "Max queue length reached, importing paused..."
+				time.sleep(10)
+				queue_length = r.llen(REDIS_QUEUE_KEY)
 			
-		count += 1
+			count += 1
+	if not args.continuous_update:
+		break
+		
 
 progress(100, 100)
 
