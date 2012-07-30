@@ -19,6 +19,7 @@ import datetime
 import redis
 import json
 
+import common
 import config
 
 ######### functions
@@ -61,7 +62,6 @@ def progress(width, percent):
 ######### main
 
 
-IGNORE_COLUMNS = ["firstSwitchedMillis", "lastSwitchedMillis"]
 
 parser = argparse.ArgumentParser(description="Import IPFIX flows from MySQL or PostgreSQL Vermont format into the Redis buffer for preprocessing")
 parser.add_argument("--src-host", nargs="?", default=config.flowDBHost, help="MySQL or PostgreSQL host")
@@ -79,7 +79,6 @@ parser.add_argument("--start-time", nargs="?", type=int,  default=0, const=True,
 
 args = parser.parse_args()
 
-REDIS_QUEUE_KEY = "entry:queue"
 
 # check if is there a MySQL or a PostgreSQL database
 try:
@@ -190,14 +189,14 @@ while True:
 		for row in c:
 			obj = dict()
 			for j, col in enumerate(c.description):
-				if col[0] not in IGNORE_COLUMNS:
+				if col[0] not in common.IGNORE_COLUMNS:
 					obj[col[0]] = row[j]
 		
-			queue_length = r.rpush(REDIS_QUEUE_KEY, json.dumps(obj))
+			queue_length = r.rpush(common.REDIS_QUEUE_KEY, json.dumps(obj))
 			while queue_length > args.max_queue:
 				print "Max queue length reached, importing paused..."
 				time.sleep(10)
-				queue_length = r.llen(REDIS_QUEUE_KEY)
+				queue_length = r.llen(common.REDIS_QUEUE_KEY)
 			
 			count += 1
 	if not args.continuous_update:
@@ -208,7 +207,7 @@ progress(100, 100)
 
 # Append termination flag to queue
 # The preprocessing daemon will terminate with this flag.
-r.rpush(REDIS_QUEUE_KEY, "END")
+r.rpush(common.REDIS_QUEUE_KEY, "END")
 
 endTime = datetime.datetime.now()
 print "%s: imported %i flows in %s" % (endTime, count, endTime - startTime)

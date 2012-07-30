@@ -27,9 +27,10 @@ import bson
 import xml.dom.minidom
 from collections import deque
 
+import common
 import config
 
-parser = argparse.ArgumentParser(description="Import IPFIX flows from MySQL or PostgreSQL Vermont format into MongoDB.")
+parser = argparse.ArgumentParser(description="Import IPFIX flows from Redis cache into MongoDB.")
 parser.add_argument("--src-host", nargs="?", default="127.0.0.1", help="Redis host")
 parser.add_argument("--src-port", nargs="?", default=6379, type=int, help="Redis port")
 parser.add_argument("--src-database", nargs="?", default=0, type=int, help="Redis database")
@@ -40,34 +41,7 @@ parser.add_argument("--clear-database", nargs="?", type=bool, default=False, con
 
 args = parser.parse_args()
 
-# Print output every ... in seconds
-OUTPUT_INTERVAL = 10
 
-# flow time interval column names
-COL_FIRST_SWITCHED = "firstSwitched"
-COL_LAST_SWITCHED = "lastSwitched"
-# column names of IP addresses
-COL_SRC_IP = "srcIP"
-COL_DST_IP = "dstIP"
-# column names of ports and protocol
-COL_SRC_PORT = "srcPort"
-COL_DST_PORT = "dstPort"
-COL_PROTO = "proto"
-
-# the collection prefix to use for flows
-DB_FLOW_PREFIX = "flows_"
-# the collection prefix to use for completely aggregated flows
-DB_FLOW_AGGR_PREFIX = "flows_aggr_"
-# the collection to use for the node index
-DB_INDEX_NODES = "index_nodes"
-# the collection to use for the port index
-DB_INDEX_PORTS = "index_ports"
-
-# the xml file containing known port numbers
-PORTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'config', 'service-names-port-numbers.xml')
-
-REDIS_QUEUE_KEY = "entry:queue"
-	
 # Class to handle flows
 class FlowHandler:
 	def __init__(self, bucket_interval, collection, aggr_sum, aggr_values=[], filter_ports=None, cache_size=0):
@@ -123,19 +97,19 @@ class FlowHandler:
 		for s in self.aggr_sum:
 			carry[s] = 0
 			emitted[s] = 0
-		bucket = self.get_bucket(flow[COL_FIRST_SWITCHED], self.bucket_interval)
-		while bucket <= flow[COL_LAST_SWITCHED]:
+		bucket = self.get_bucket(flow[common.COL_FIRST_SWITCHED], self.bucket_interval)
+		while bucket <= flow[common.COL_LAST_SWITCHED]:
 		
 			self.num_slices += 1
 		
 			nextBucket = bucket + self.bucket_interval;
 			bucketStart = bucket
-			if bucketStart < flow[COL_FIRST_SWITCHED]:
-				bucketStart = flow[COL_FIRST_SWITCHED]
+			if bucketStart < flow[common.COL_FIRST_SWITCHED]:
+				bucketStart = flow[common.COL_FIRST_SWITCHED]
 			bucketEnd = nextBucket - 1
-			if bucketEnd > flow[COL_LAST_SWITCHED]:
-				bucketEnd = flow[COL_LAST_SWITCHED]
-			intervalFactor = (bucketEnd - bucketStart + 1) / float(flow[COL_LAST_SWITCHED] - flow[COL_FIRST_SWITCHED] + 1)
+			if bucketEnd > flow[common.COL_LAST_SWITCHED]:
+				bucketEnd = flow[common.COL_LAST_SWITCHED]
+			intervalFactor = (bucketEnd - bucketStart + 1) / float(flow[common.COL_LAST_SWITCHED] - flow[common.COL_FIRST_SWITCHED] + 1)
 			
 			key = self.get_id(bucket, flow)	
 			
@@ -153,11 +127,11 @@ class FlowHandler:
 				# set unknown ports to None
 				if self.filter_ports:
 					for v in self.aggr_values:
-						if v == COL_SRC_PORT or v == COL_DST_PORT:
+						if v == common.COL_SRC_PORT or v == common.COL_DST_PORT:
 							set_value = None
 							value = flow.get(v, None)
 							if value != None and value in self.filter_ports:
-								proto = int(flow.get(COL_PROTO, -1))
+								proto = int(flow.get(common.COL_PROTO, -1))
 								if proto == -1 or proto in self.filter_ports[value]:
 									set_value = value
 							doc["$set"][v] = set_value
@@ -176,7 +150,7 @@ class FlowHandler:
 					self.cache[key] = doc
 					self.cache_queue.append(key)
 			
-			if nextBucket > flow[COL_LAST_SWITCHED]:
+			if nextBucket > flow[common.COL_LAST_SWITCHED]:
 				for s in self.aggr_sum:
 					assert flow.get(s, 0) - emitted[s] >= 0
 					doc["$inc"][s] += flow.get(s, 0) - emitted[s]
@@ -248,7 +222,7 @@ def update_node_index(obj, collection, aggr_sum):
 	doc["$inc"]["src.flows"] = 1
 	
 	# insert if not exists, else update sums
-	collection.update({ "_id": obj[COL_SRC_IP] }, doc, True)
+	collection.update({ "_id": obj[common.COL_SRC_IP] }, doc, True)
 	
 	# update destination node
 	doc = { "$inc": {} }
@@ -260,7 +234,7 @@ def update_node_index(obj, collection, aggr_sum):
 	doc["$inc"]["dst.flows"] = 1
 	
 	# insert if not exists, else update sums
-	collection.update({ "_id": obj[COL_DST_IP] }, doc, True)
+	collection.update({ "_id": obj[common.COL_DST_IP] }, doc, True)
 	
 def update_port_index(obj, collection, aggr_sum, filter_ports):
 	"""Update the port index collection in MongoDB with the current flow.
@@ -282,10 +256,10 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 	doc["$inc"]["src.flows"] = 1
 	
 	# set unknown ports to None
-	port = obj.get(COL_SRC_PORT, None)
+	port = obj.get(common.COL_SRC_PORT, None)
 	if filter_ports and port != None:
 		if port in filter_ports:
-			proto = int(obj.get(COL_PROTO, -1))
+			proto = int(obj.get(common.COL_PROTO, -1))
 			if proto >= 0 and not proto in filter_ports[port]:
 				port = None
 		else:
@@ -304,10 +278,10 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 	doc["$inc"]["dst.flows"] = 1
 	
 	# set unknown ports to None
-	port = obj.get(COL_DST_PORT, None)
+	port = obj.get(common.COL_DST_PORT, None)
 	if filter_ports and port != None:
 		if port in filter_ports:
-			proto = int(obj.get(COL_PROTO, -1))
+			proto = int(obj.get(common.COL_PROTO, -1))
 			if proto >= 0 and not proto in filter_ports[port]:
 				port = None
 		else:
@@ -318,11 +292,11 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 
 output_flows = 0
 def print_output():
-	global OUTPUT_INTERVAL, output_flows, timer
+	global output_flows, timer
 	print "%s: Processed %i flows within last %i seconds (%.2f flows/s)." % (
-		datetime.datetime.now(), output_flows, OUTPUT_INTERVAL, output_flows / float(OUTPUT_INTERVAL))
+		datetime.datetime.now(), output_flows, common.OUTPUT_INTERVAL, output_flows / float(common.OUTPUT_INTERVAL))
 	output_flows = 0
-	timer = threading.Timer(OUTPUT_INTERVAL, print_output)
+	timer = threading.Timer(common.OUTPUT_INTERVAL, print_output)
 	timer.start()
 	
 print "%s: Init..." % (datetime.datetime.now())
@@ -345,13 +319,13 @@ if args.clear_database:
 	dst_conn.drop_database(args.dst_database)
 	
 dst_db = dst_conn[args.dst_database]
-node_index_collection = dst_db[DB_INDEX_NODES]
-port_index_collection = dst_db[DB_INDEX_PORTS]
+node_index_collection = dst_db[common.DB_INDEX_NODES]
+port_index_collection = dst_db[common.DB_INDEX_PORTS]
 	
 # read ports for special filtering
 known_ports = None
 if config.flow_filter_unknown_ports:
-	f = open(PORTS_FILE, "r")
+	f = open(common.PORTS_FILE, "r")
 	dom = xml.dom.minidom.parse(f)
 	f.close()
 	
@@ -396,7 +370,7 @@ handlers = []
 for s in config.flow_bucket_sizes:
 	handlers.append(FlowHandler(
 		s,
-		dst_db[DB_FLOW_PREFIX + str(s)],
+		dst_db[common.DB_FLOW_PREFIX + str(s)],
 		config.flow_aggr_sums,
 		config.flow_aggr_values,
 		known_ports,
@@ -405,7 +379,7 @@ for s in config.flow_bucket_sizes:
 for s in config.flow_bucket_sizes:
 	handlers.append(FlowHandler(
 		s,
-		dst_db[DB_FLOW_AGGR_PREFIX + str(s)],
+		dst_db[common.DB_FLOW_AGGR_PREFIX + str(s)],
 		config.flow_aggr_sums,
 		[],
 		None,
@@ -419,14 +393,14 @@ for handler in handlers:
 print "%s: Preprocessing started." % (datetime.datetime.now())
 print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())
 
-timer = threading.Timer(OUTPUT_INTERVAL, print_output)
+timer = threading.Timer(common.OUTPUT_INTERVAL, print_output)
 timer.start()
 
 # Daemon loop
 while True:
 	try:
 		# this redis call blocks until there is a new entry in the queue
-		obj = r.blpop(REDIS_QUEUE_KEY, 0)
+		obj = r.blpop(common.REDIS_QUEUE_KEY, 0)
 		obj = obj[1]
 		
 		# Terminate if this object is the END flag
@@ -436,8 +410,8 @@ while True:
 			
 		try:
 			obj = json.loads(obj)
-			obj[COL_FIRST_SWITCHED] = int(obj[COL_FIRST_SWITCHED])
-			obj[COL_LAST_SWITCHED] = int(obj[COL_LAST_SWITCHED])
+			obj[common.COL_FIRST_SWITCHED] = int(obj[common.COL_FIRST_SWITCHED])
+			obj[common.COL_LAST_SWITCHED] = int(obj[common.COL_LAST_SWITCHED])
 			for s in config.flow_aggr_sums:
 				obj[s] = int(obj[s])
 		except ValueError, e:
