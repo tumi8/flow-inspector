@@ -193,103 +193,25 @@ class FlowHandler:
 		print "%s report:" % (self.collection.name)
 		print "-----------------------------------"
 		print "Flows processed: %i" % (self.num_flows)
-		print "Slices overall: %i (avg. %.2f per flow)" % (self.num_slices, self.num_slices / float(self.num_flows))
+		if self.num_flows == 0:
+			avg_per_flow = 0
+		else:
+			avg_per_flow = self.num_slices / float(self.num_flows)
+		print "Slices overall: %i (avg. %.2f per flow)" % (self.num_slices, avg_per_flow)
 		print "Database requests: %i" % (self.db_requests)
 		
 		if self.cache != None:
-			print "Cache hit ratio: %.2f%%" % (self.cache_hits / float(self.cache_hits + self.cache_misses) * 100)
+			if self.cache_hits == 0:
+				hitratio = 0
+			else:
+				hitratio = self.cache_hits / float(self.cache_hits + self.cache_misses) * 100
+			print "Cache hit ratio: %.2f%%" % (hitratio)
+
 		else:
 			print "Cache deactivated"
 			
 		print ""
 		
-def update_node_index(obj, collection, aggr_sum):
-	"""Update the node index collection in MongoDB with the current flow.
-	
-	:Parameters:
-	 - `obj`: A dictionary containing a flow.
-	 - `collection`: A pymongo collection to insert the documents.
-	 - `aggr_sum`: A list of keys which will be sliced and summed up.
-	"""
-	
-	# update source node
-	doc = { "$inc": {} }
-	
-	for s in aggr_sum:
-		doc["$inc"][s] = obj.get(s, 0)
-		doc["$inc"]["src." + s] = obj.get(s, 0)
-	doc["$inc"]["flows"] = 1
-	doc["$inc"]["src.flows"] = 1
-	
-	# insert if not exists, else update sums
-	collection.update({ "_id": obj[common.COL_SRC_IP] }, doc, True)
-	
-	# update destination node
-	doc = { "$inc": {} }
-	
-	for s in aggr_sum:
-		doc["$inc"][s] = obj.get(s, 0)
-		doc["$inc"]["dst." + s] = obj.get(s, 0)
-	doc["$inc"]["flows"] = 1
-	doc["$inc"]["dst.flows"] = 1
-	
-	# insert if not exists, else update sums
-	collection.update({ "_id": obj[common.COL_DST_IP] }, doc, True)
-	
-def update_port_index(obj, collection, aggr_sum, filter_ports):
-	"""Update the port index collection in MongoDB with the current flow.
-	
-	:Parameters:
-	 - `obj`: A dictionary containing a flow.
-	 - `collection`: A pymongo collection to insert the documents.
-	 - `aggr_sum`: A list of keys which will be sliced and summed up.
-	 - `filter_ports`: A dictionary of ports and protocols to remove unknown ports
-	"""
-	
-	# update source port
-	doc = { "$inc": {} }
-	
-	for s in aggr_sum:
-		doc["$inc"][s] = obj.get(s, 0)
-		doc["$inc"]["src." + s] = obj.get(s, 0)
-	doc["$inc"]["flows"] = 1
-	doc["$inc"]["src.flows"] = 1
-	
-	# set unknown ports to None
-	port = obj.get(common.COL_SRC_PORT, None)
-	if filter_ports and port != None:
-		if port in filter_ports:
-			proto = int(obj.get(common.COL_PROTO, -1))
-			if proto >= 0 and not proto in filter_ports[port]:
-				port = None
-		else:
-			port = None
-	
-	# insert if not exists, else update sums
-	collection.update({ "_id": port }, doc, True)
-	
-	# update destination port
-	doc = { "$inc": {} }
-	
-	for s in aggr_sum:
-		doc["$inc"][s] = obj.get(s, 0)
-		doc["$inc"]["dst." + s] = obj.get(s, 0)
-	doc["$inc"]["flows"] = 1
-	doc["$inc"]["dst.flows"] = 1
-	
-	# set unknown ports to None
-	port = obj.get(common.COL_DST_PORT, None)
-	if filter_ports and port != None:
-		if port in filter_ports:
-			proto = int(obj.get(common.COL_PROTO, -1))
-			if proto >= 0 and not proto in filter_ports[port]:
-				port = None
-		else:
-			port = None
-	
-	# insert if not exists, else update sums
-	collection.update({ "_id": port }, doc, True)
-
 output_flows = 0
 def print_output():
 	global output_flows, timer
@@ -322,48 +244,7 @@ dst_db = dst_conn[args.dst_database]
 node_index_collection = dst_db[common.DB_INDEX_NODES]
 port_index_collection = dst_db[common.DB_INDEX_PORTS]
 	
-# read ports for special filtering
-known_ports = None
-if config.flow_filter_unknown_ports:
-	f = open(common.PORTS_FILE, "r")
-	dom = xml.dom.minidom.parse(f)
-	f.close()
-	
-	def getDomText(node):
-		rc = []
-		for n in node.childNodes:
-			if n.nodeType == node.TEXT_NODE:
-				rc.append(n.data)
-		return ''.join(rc)
-
-	known_ports = dict()
-	records = dom.getElementsByTagName("record")
-	for record in records:
-		description = getDomText(record.getElementsByTagName("description")[0])
-		number = record.getElementsByTagName("number")
-		if description != "Unassigned" and len(number) > 0:
-			numbers = getDomText(number[0]).split('-')
-			number = int(numbers[0])
-			number_to = int(numbers[len(numbers)-1])
-			
-			protocol = record.getElementsByTagName("protocol")
-			if len(protocol) > 0:
-				protocol = getDomText(protocol[0])
-				if protocol == "tcp":
-					protocol = 6
-				elif protocol == "udp":
-					protocol = 17
-				else:
-					protocol = 0
-			else:
-				protocol = 0
-			
-			while number <= number_to:
-				if number in known_ports:
-					known_ports[number].append(protocol)
-				else:
-					known_ports[number] = [protocol]
-				number += 1
+known_ports = common.getKnownPorts(config.flow_filter_unknown_ports)
 
 # create flow handlers
 handlers = []
@@ -417,13 +298,18 @@ while True:
 		except ValueError, e:
 			print >> sys.stderr, "Could not decode JSON object in queue!"
 			continue
+
+		# only import flow if it is newer than config.max_flow_time
+		if config.max_flow_age != 0 and obj[common.COL_FIRST_SWITCHED] < (time.mktime(datetime.datetime.utcfromtimestamp(time.time()).timetuple()) - config.max_flow_age):
+			print "Flow is too old to be imported into mongodb. Skipping flow ..."
+			continue
 	
 		# Bucket slicing
 		for handler in handlers:
 			handler.handleFlow(obj)
 			
-		update_node_index(obj, node_index_collection, config.flow_aggr_sums)
-		update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports)
+		common.update_node_index(obj, node_index_collection, config.flow_aggr_sums, common.INDEX_ADD)
+		common.update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports, common.INDEX_ADD)
 			
 		output_flows += 1
 		

@@ -35,7 +35,7 @@ flow_aggr_sums = ["pkts", "bytes"]
 # Special treatment for ports:
 # Only consider known port numbers, set the others to null
 # before aggregation.
-flow_filter_unknown_ports = True
+flow_filter_unknown_ports = False
 
 # Preprocessor settings
 #----------------------------------------------------------------
@@ -44,8 +44,18 @@ flow_filter_unknown_ports = True
 pre_cache_size = 10000
 # cache size for aggregated collections per bucket size
 pre_cache_size_aggr = 5
+
+
+# Cleanup process settings
+#----------------------------------------------------------------
+# Important: preprocessor will not import any flows that are older
+# (as in firstSwitched) than the default keep time if this value is 
+# non zero.
+max_flow_age = 60*60*24*7
  
+
 # PCAP processor settings
+#----------------------------------------------------------------
 pcap_output_dir = '/opt/data/pcap_output/'
 gnuplot_path='/usr/bin/gnuplot'
 

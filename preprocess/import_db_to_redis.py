@@ -124,7 +124,7 @@ except e:
 	sys.exit(1)
 	
 if args.clear_queue:
-	r.delete(REDIS_QUEUE_KEY)
+	r.delete(common.REDIS_QUEUE_KEY)
 	
 c = conn.cursor()
 
