@@ -35,6 +35,21 @@ PORTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'config', 'service-na
 
 REDIS_QUEUE_KEY = "entry:queue"
 
+# Oracle is a professional environment. We therefore need to perform
+# some special mappings for table column names: Oracle is case sensitive
+# and does not cope with anything that is not upper case *sigh*
+COLUMNMAP = {
+        "SRCIP" : "srcIP",
+        "DSTIP" : "dstIP",
+        "SRCPORT" : "srcPort",
+        "DSTPORT" : "dstPort",
+        "PROTO" : "proto",
+        "BYTES" : "bytes",
+        "PKTS"  : "pkts",
+        "FIRSTSWITCHED" : "firstSwitched",
+        "LASTSWITCHED" : "lastSwitched"
+}
+
 
 
 def update_node_index(obj, collection, aggr_sum, operation):
@@ -174,7 +189,7 @@ def update_port_index(obj, collection, aggr_sum, filter_ports, operation):
 def getKnownPorts(flow_filter_unknown_ports):
 	known_ports = None
 	if flow_filter_unknown_ports:
-		f = open(common.PORTS_FILE, "r")
+		f = open(PORTS_FILE, "r")
 		dom = xml.dom.minidom.parse(f)
 		f.close()
 	

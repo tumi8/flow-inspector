@@ -24,7 +24,7 @@ import config
 
 ######### functions
 
-def getFirstTable(tables, firstTimestamp):
+def getFirstTable(tables, firstTimestamp, TYPE):
 	if firstTimestamp == 0:
 		return tables
 	
@@ -34,7 +34,10 @@ def getFirstTable(tables, firstTimestamp):
 	else:
 		halfHour = 1
 	firstTableName = "h_%0.4d%0.2d%0.2d_%0.2d_%0.1d" % (timeObj.year, timeObj.month, timeObj.day, timeObj.hour, halfHour)
-	tables.sort()
+	if TYPE == "oracle":
+		tables = sorted(tables, compareTables)
+	else:
+		tables.sort()
 
 	try:
 		idx = tables.index(firstTableName) 
@@ -57,6 +60,12 @@ def progress(width, percent):
 	if percent >= 100:
 		sys.stdout.write("\n")
 	sys.stdout.flush()
+
+def compareTables(a, b):
+	compsA = a.split('_')
+	compsB = b.split('_')
+	return cmp(int(compsA[1]), int(compsB[1])) or cmp(int(compsA[2]), int(compsB[2])) or cmp(int(compsA[3]), int(compsB[3]))
+
 
 
 ######### main
@@ -94,14 +103,16 @@ try:
 	if args.src_port is not None:
 		dns['port'] = args.src_port
 	conn = psycopg2.connect(**dns)
+	c = conn.cursor()
+
 	print "Successfully connected to postgresql db ..."
 except Exception, e:
 	try:
+		print "Failed to connect to postgresql db. Reason: ", e
+		print "Trying mysql instead ..."
 		import MySQLdb
 		import _mysql_exceptions
 
-		print "Failed to connect to postgresql db. Reason: ", e
-		print "Trying mysql instead ..."
 		TYPE = "mysql"
 		dns = dict(
 			db = args.src_database, 
@@ -112,10 +123,21 @@ except Exception, e:
 		if args.src_port is not None:
 			dns["port"] = args.src_port
 		conn = MySQLdb.connect(**dns)
+		c = conn.cursor()
 		print "Successfully connected to mysql database!"
 	except Exception, e:
-		print >> sys.stderr, "Could not connect to source database:", e
-		sys.exit(1)
+		try:
+			print "Failed to connect to mysql database db. Reason: ", e 
+			print "Trying oracle instead ..."
+			import cx_Oracle
+			connection_string = args.src_user + "/" + args.src_password + "@" + args.src_host + ":" + str(args.src_port) + "/" + args.src_database
+			conn = cx_Oracle.Connection(connection_string)
+			c = cx_Oracle.Cursor(conn)
+			TYPE = "oracle"
+		except Exception, e:
+			print >> sys.stderr, "Could not connect to source database:", e
+			sys.exit(1)
+	
 
 try:
 	r = redis.Redis(host=args.dst_host, port=args.dst_port, db=args.dst_database)
@@ -126,7 +148,6 @@ except e:
 if args.clear_queue:
 	r.delete(common.REDIS_QUEUE_KEY)
 	
-c = conn.cursor()
 
 startTime = datetime.datetime.now()
 print "%s: connected to source and destination database" % (startTime)
@@ -136,20 +157,18 @@ lastTable = None
 count = 0
 while True:
 	# get all flow tables
-	c.execute("""SELECT table_name from information_schema.tables 
-		WHERE table_schema=%s AND table_type='BASE TABLE' AND table_name LIKE 'h\\_%%' ORDER BY table_name ASC""", 
-		(args.src_database))
+	if TYPE == "oracle":
+		c.execute("""SELECT * FROM user_objects WHERE object_type = 'TABLE' AND object_name LIKE 'H_%'""")
+	else:
+		c.execute("""SELECT table_name from information_schema.tables 
+			WHERE table_schema=%s AND table_type='BASE TABLE' AND table_name LIKE 'h\\_%%' ORDER BY table_name ASC""", (args.src_database))
+	print "Getting all table names ..."
 	tables = c.fetchall()
 
 	# get the table names in list format
 	tables = map(lambda x: x[0], list(tables))
 	# get the tables that contain the flows starting with args.start_time
-	tables = getFirstTable(tables, args.start_time)
-
-
-	# THIS IS MYSQL SPECIFIC
-	#c.execute("SHOW TABLES LIKE 'h\\_%'")
-	#tables = c.fetchall()
+	tables = getFirstTable(tables, args.start_time, TYPE)
 
 	if args.continuous_update:
 		# TODO: this is a bit hacky. since we do not know flow timeouts and do not (yet) have unique identifiers
@@ -176,6 +195,8 @@ while True:
 				tables = tables[idx:-1]
 		except:
 			raise Exception("Logic error: We already consumed table \"%s\". But we cannot find it in the list of available tables!" % (lastTable))
+
+	print "Consuming %u new tables ..." % (len(tables))
 	
 	for i, table in enumerate(tables):
 		lastTable = table
@@ -184,13 +205,17 @@ while True:
 
 		print "Importing table ", table, "..."
 	
-		c.execute("SELECT * FROM " + table + " WHERE firstSwitched >= " + str(args.start_time) + " ORDER BY firstSwitched ASC")
+		c.execute("SELECT * FROM " + table + " WHERE FIRSTSWITCHED >= " + str(args.start_time) + " ORDER BY FIRSTSWITCHED ASC")
 	
 		for row in c:
 			obj = dict()
 			for j, col in enumerate(c.description):
 				if col[0] not in common.IGNORE_COLUMNS:
-					obj[col[0]] = row[j]
+					if TYPE == "oracle" and col[0] in common.COLUMNMAP:
+						obj[common.COLUMNMAP[col[0]]] = row[j]
+					else:
+						obj[col[0]] = row[j]
+						
 		
 			queue_length = r.rpush(common.REDIS_QUEUE_KEY, json.dumps(obj))
 			while queue_length > args.max_queue:
