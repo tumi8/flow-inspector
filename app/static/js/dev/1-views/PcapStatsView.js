@@ -32,11 +32,11 @@ var PcapStatsView = Backbone.View.extend({
 		this.throughPutImg = this.svg.append("svg:g");
 
 		this.svg.append("svg:image")
-			.attr("xlink:href", "/api/pcap/images/pps.png")
+			.attr("xlink:href", "/api/pcap/images/pps.svg")
 			.attr("width", w)
 			.attr("height", h/2);
 		this.svg.append("svg:image")
-			.attr("xlink:href", "/api/pcap/images/tp.png")
+			.attr("xlink:href", "/api/pcap/images/tp.svg")
 			.attr("y", h/2)
 			.attr("width", w)
 			.attr("height", h/2);
