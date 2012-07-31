@@ -224,7 +224,9 @@ while True:
 				queue_length = r.llen(common.REDIS_QUEUE_KEY)
 			
 			count += 1
-	if not args.continuous_update:
+	if args.continuous_update:
+		time.sleep(600)
+	else:
 		break
 		
 
