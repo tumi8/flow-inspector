@@ -85,7 +85,7 @@ def extract_mongo_query_params():
 		if limit < 0:
 			limit = 0
 			
-	fields = None
+	fields = []
 	if "fields" in request.GET:
 		fields = request.GET["fields"].strip()
 		fields = map(lambda v: v.strip(), fields.split(","))
@@ -153,27 +153,6 @@ def index():
 def api_bucket_query():
 	(fields, sort, limit, count) = extract_mongo_query_params()
 
-	# get proper collection
-	collection = None
-	isPcap = False
-	if "pcapType" in request.GET:
-		isPcap = True
-		name = request.GET["pcapType"]
-		if name == "allFlows":
-			collection = pcapDB[PCAP_DB_ALL]
-		elif name == "withGaps":
-			collection = pcapDB[PCAP_DB_GAP]
-		elif name == "lowThroughput":
-			collection = pcapDB[PCAP_DB_LOWTHROUGHPUT]
-		if collection == None:
-			raise HTTPError(404, "Index name not known.")
-	else:
-		if len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0:
-			collection = db[DB_FLOW_PREFIX + str(bucket_size)]
-		else:
-			# use preaggregated collection
-			collection = db[DB_FLOW_AGGR_PREFIX + str(bucket_size)]
-
 	# get query params
 	start_bucket = 0
 	if "start_bucket" in request.GET:
@@ -224,11 +203,7 @@ def api_bucket_query():
 	if "biflow" in request.GET:
 		biflow = True
 		
-	# only stated fields will be available, all others will be aggregated toghether	
-	# filter for known aggregation values
-	if not isPcap:
-		fields = [v for v in fields if v in config.flow_aggr_values]
-		
+	
 	# port filter
 	include_ports = []
 	if "include_ports" in request.GET:
@@ -259,7 +234,34 @@ def api_bucket_query():
 	# get buckets and aggregate
 	if bucket_size == None:
 		bucket_size = get_bucket_size(start_bucket, end_bucket, resolution)
-	
+
+	# get proper collection
+	collection = None
+	isPcap = False
+	if "pcapType" in request.GET:
+		isPcap = True
+		name = request.GET["pcapType"]
+		if name == "allFlows":
+			collection = pcapDB[PCAP_DB_ALL]
+		elif name == "withGaps":
+			collection = pcapDB[PCAP_DB_GAP]
+		elif name == "lowThroughput":
+			collection = pcapDB[PCAP_DB_LOWTHROUGHPUT]
+		if collection == None:
+			raise HTTPError(404, "Index name not known.")
+	else:
+		if len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0:
+			collection = db[DB_FLOW_PREFIX + str(bucket_size)]
+		else:
+			# use preaggregated collection
+			collection = db[DB_FLOW_AGGR_PREFIX + str(bucket_size)]
+
+
+	# only stated fields will be available, all others will be aggregated toghether	
+	# filter for known aggregation values
+	if not isPcap:
+		fields = [v for v in fields if v in config.flow_aggr_values]
+		
 	spec = {}
 	if start_bucket > 0 or end_bucket < sys.maxint:
 		spec["bucket"] = {}
