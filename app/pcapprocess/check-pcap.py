@@ -190,7 +190,7 @@ class ConnectionRecord:
 		self.writer.writepkt(buf, ts)
 
 	def dump_stat(self, collection):
-		doc = { "firstTs": self.firstTs, "lastTs": self.lastTs, "src": binary_to_str(self.src), "dst": binary_to_str(self.dst), "sPort": self.sPort, "dPort": self.dPort, "proto": self.pString, "pkts": self.numPkts, "bytes": self.numBytes, "maxDiff": self.maxDiff, "avgDiff": self.avgDiff, "medianDiff": self.calcMedianDiff(), "avgThroughput": self.calcAvgThroughput() }
+		doc = { "firstSwitched": self.firstTs, "lastSwitched": self.lastTs, "srcIP": binary_to_str(self.src), "dstIP": binary_to_str(self.dst), "srcPort": self.sPort, "dstPort": self.dPort, "proto": self.pString, "pkts": self.numPkts, "bytes": self.numBytes, "maxDiff": self.maxDiff, "avgDiff": self.avgDiff, "medianDiff": self.calcMedianDiff(), "avgThroughput": self.calcAvgThroughput() }
 		collection.save(doc)
 
 ##################### functions
