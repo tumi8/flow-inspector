@@ -151,6 +151,8 @@ def index():
 @get("/api/bucket/query")
 @get("/api/bucket/query/")
 def api_bucket_query():
+	(fields, sort, limit, count) = extract_mongo_query_params()
+
 	# get proper collection
 	collection = None
 	isPcap = False
@@ -223,13 +225,9 @@ def api_bucket_query():
 		biflow = True
 		
 	# only stated fields will be available, all others will be aggregated toghether	
-	fields = []
-	if "fields" in request.GET:
-		fields = request.GET["fields"].strip()
-		fields = map(lambda v: v.strip(), fields.split(","))
-		# filter for known aggregation values
-		if not isPcap:
-			fields = [v for v in fields if v in config.flow_aggr_values]
+	# filter for known aggregation values
+	if not isPcap:
+		fields = [v for v in fields if v in config.flow_aggr_values]
 		
 	# port filter
 	include_ports = []
@@ -247,7 +245,17 @@ def api_bucket_query():
 			exclude_ports = map(lambda v: int(v.strip()), exclude_ports.split(","))
 		except ValueError:
 			raise HTTPError(output="Ports have to be integers.")
-		
+	# ip filter
+	include_ips = []
+	if "include_ips" in request.GET:
+		include_ips = request.GET["include_ips"].strip()
+		include_ips = map(lambda v: v.strip(), include_ips.split(","))
+
+	exclude_ips = []
+	if "exclude_ips" in request.GET:
+		exclude_ips = request.GET["exclude_ips"].strip()
+		exclude_ips = map(lambda v: v.strip(), exclude_ips.split(","))
+	
 	# get buckets and aggregate
 	if bucket_size == None:
 		bucket_size = get_bucket_size(start_bucket, end_bucket, resolution)
@@ -268,10 +276,24 @@ def api_bucket_query():
 		spec[COL_SRC_PORT] = { "$nin": exclude_ports }
 		spec[COL_DST_PORT] = { "$nin": exclude_ports }
 	
+	if len(include_ips) > 0:
+		spec["$or"] = [
+			{ COL_SRC_IP : { "$in": include_ips } },
+			{ COL_DST_IP : { "$in": include_ips } }
+		]
+
+	if len(exclude_ips) > 0:
+		spec[COL_SRC_IP] = { "$in": exclude_ips } 
+		spec[COL_DST_IP] = { "$in": exclude_ips } 
+		
 	query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
-	print "Spec: ", spec
-	print "query: ", query_fields
-	cursor = collection.find(spec, fields=query_fields).sort("bucket", pymongo.ASCENDING).batch_size(1000)
+	cursor = collection.find(spec, fields=query_fields).batch_size(1000)
+	if sort:
+		cursor.sort("bucket", sort)
+	else:
+		cursor.sort("bucket", pymongo.ASCENDING)
+	if limit:
+		cursor.limit(limit)
 
 	buckets = []
 	if (len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0) and not isPcap:
