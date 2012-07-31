@@ -109,7 +109,7 @@ var QueryPageView = PageView.extend({
 		}
 
 		var maxLines = $("#maxLines").val();
-		if (maxLines == "" || isNan(maxLines)) {
+		if (maxLines == "" || isNaN(maxLines)) {
 			alert("You need to define a maximum number of lines to show!");
 			return ;
 		}

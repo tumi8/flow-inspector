@@ -51,13 +51,19 @@
 			<tr>
 				<td>Maximum number of entries to show:</td> 
 				<td>
-					<input type="text"  id="maxEntries" VALUE="10">
+					<input type="text"  id="maxEntries" VALUE="">
 				</td> 
 			</tr> 
 			<tr bgcolor="#ffffff" ALIGN="LEFT">
 				<td>IP address / subnet</td> 
 				<td>
 					  <input type="text" id="ipFilter" VALUE="">
+				</td>
+			</tr> 
+			<tr bgcolor="#ffffff" ALIGN="LEFT">
+				<td>Port</td> 
+				<td>
+					  <input type="text" id="portFilter" VALUE="">
 				</td>
 			</tr> 
 			</table>

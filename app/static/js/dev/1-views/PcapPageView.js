@@ -27,7 +27,8 @@ var PcapStatusLinesView = Backbone.View.extend({
 var PcapPageView = PageView.extend({
 	events: {
 		"click a.submit" : "clickSubmit",
-		"click .pcap-stat-value a": "clickFlowGroupValue"
+		"click .pcap-stat-value a": "clickFlowGroupValue",
+		"click a.apply" : "clickApplyFilter"
 	},
 	initialize: function() {
 		this.template = _.template($("#pcap-page-template").html());
@@ -45,6 +46,7 @@ var PcapPageView = PageView.extend({
 
 		this.flowTableView = new FlowTableView({model:this.flowTableModel, flows: this.pcapFlows});
 
+		this.filterLimit = 10;
 	},
 	render: function() {
 		$(this.el).html(this.template());
@@ -73,6 +75,9 @@ var PcapPageView = PageView.extend({
 		if (this.flowTableView) {
 			$(".pcap-stats", this.el).append(this.flowTableView.el);
 		}
+		$("#maxEntries").val(this.filterLimit);
+		$("#ipFilter").val(this.filterIPAddressSubnet);
+		$("#portFilter").val(this.filterPort);
 
 		return this;
 	},
@@ -91,7 +96,6 @@ var PcapPageView = PageView.extend({
 	},
 	clickFlowGroupValue: function(e) {
 		var target = $(e.target).parent();
-		this.pcapFlows.value = target.data("value");
 		this.flowTableModel.set({value: target.data("value")});
 	},
 	changeFlowGroupValue: function(model, value) {
@@ -101,11 +105,19 @@ var PcapPageView = PageView.extend({
 		this.fetchFlows(value);
 	},
 	fetchFlows: function(value) {
-		this.pcapFlows.dataTypes = [ "firstTs", "lastTs" ,"src","dst","sPort","dPort","proto","pkts","bytes","maxDiff","medianDiff","avgThroughput" ]
+		this.pcapFlows.dataTypes = [ "firstSwitched", "lastSwitched" ,"srcIP","dstIP","srcPort","dstPort","proto","pkts","bytes","maxDiff","medianDiff","avgThroughput" ]
 		var data = {
-			"fields": "firstTs,lastTs,src,dst,sPort,dPort,proto,pkts,bytes,maxDiff,medianDiff,avgThroughput",
-			"limit": 100
+			"fields": "firstSwitched,lastSwitched,srcIP,dstIP,srcPort,dstPort,proto,pkts,bytes,maxDiff,medianDiff,avgThroughput",
+			"pcapType": this.flowTableModel.get("value"),
+			"limit": this.filterLimit
 		};
+		if (this.filterIPAddressSubnet) {
+			var filterIP = this.filterIPAddressSubnet.split("/")[0]
+			data["include_ips"] =  filterIP;
+		}
+		if (this.filterPort) {
+			data["include_ports"] = this.filterPort;
+		}
 		this.pcapFlows.fetch({data: data});
 	},
 	createLiveStatusView : function() {
@@ -132,5 +144,35 @@ var PcapPageView = PageView.extend({
 			setTimeout(updateLiveLines, 100);
 		};
 		updateLiveLines();
+	},
+	clickApplyFilter: function() {
+		var maxLines = $("#maxEntries").val();
+		var ipAddressSubnet = $("#ipFilter").val();
+		var port = $("#portFilter").val();
+		
+		if (isNaN(maxLines)) {
+			alert("Maximum number of entries must be a number!");
+			return;
+		}
+		this.filterLimit = maxLines;
+
+		if (ipAddressSubnet != "" && !FlowInspector.isIPValid(ipAddressSubnet)) {
+			alert("Filter IP/subnet is not a valid!");
+			return;
+		}
+		this.filterIPAddressSubnet = ipAddressSubnet;
+
+		if (port != "") {
+			port = parseInt(port);
+			if (isNaN(port) || port < 0 || port > 65535) {
+				alert("No valid port in filter list!");
+				return;
+			}
+			this.filterPort = port;
+		} else {
+			this.filterPort = null;
+		}
+		
+		this.fetchFlows();
 	}
 });

@@ -85,3 +85,36 @@ FlowInspector.hilbertRot = function(n, x, y, rx, ry) {
     }
     return { x: x, y: y };
 };
+
+FlowInspector.isIPValid = function(ipaddr)  {
+	// remove any spaces
+	ipaddr = ipaddr.replace( /\s/g, "");
+	// check for ipv4 address and optional subnet mask
+	var re = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(\/\d{1,2})?$/;
+
+	if (re.test(ipaddr)) {
+		var  mask, parts;
+		// get address and subnet mask
+		parts = ipaddr.split("/");
+		ipaddr = parts[0];
+
+		if (parts[1] != "") {
+			// if mask has been given, check if it is a valid mask
+			mask = parseInt(parts[1], 10);
+			if (mask == NaN || mask < 0 || mask > 32) {
+				 // not a valid subnet mask
+				return false;
+			}
+		}
+		// check if address is valid
+		parts = ipaddr.split(".");
+		for (var i = 0; i < parts.length; ++i) {
+			var num = parseInt(parts[i]);
+			if (parts[i] == NaN || parts[i] < 0 || parts[i] > 255) {
+				return false
+			}	
+		}
+		return true;
+        }
+	return false;
+}
