@@ -417,10 +417,6 @@ def api_index(name):
 def server_static(path):
 	return static_file(path, root=os.path.join(os.path.dirname(__file__), "static"))
 
-@get("/api/pcap/images/:fileName#.+#")
-def pcap_stats(fileName):
-	return static_file(fileName, root=config.pcap_output_dir)
-
 @post('/pcap')
 def pcap_upload():
 	print request
