@@ -315,13 +315,13 @@ def main(options, collections):
 	if not os.access(options.outputDir, os.R_OK | os.W_OK):
 		os.makedirs(options.outputDir)
 
-	(flowCollection, lowThroughput, withGaps) = collections
+	(flowCollection, lowThroughput, withGaps, pcapStats) = collections
 
 	progressOutput = Unbuffered(open(os.path.join(options.outputDir, "analysis-output.txt"), 'w+'))
 
-	bwStatsFilename = os.path.join(options.outputDir, "throughput.txt") 
-	bwStats = open(bwStatsFilename, 'w+')
-	bwStats.write('timestamp\tpkts\tthroughput\ttcp:pkts\ttcp:throughput\tudp:pkts\tudp:throughput\tother:pkts\tother:throughput\n')
+#	bwStatsFilename = os.path.join(options.outputDir, "throughput.txt") 
+#	bwStats = open(bwStatsFilename, 'w+')
+#	bwStats.write('timestamp\tpkts\tthroughput\ttcp:pkts\ttcp:throughput\tudp:pkts\tudp:throughput\tother:pkts\tother:throughput\n')
 	
 	progressOutput.write("starting to read packets ...\n")
 	unsupported = 0
@@ -342,7 +342,18 @@ def main(options, collections):
 			if lastSec == 0:
 				lastSec = ts
 			if int(ts) > lastSec:
-				bwStats.write("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n" % (lastSec, allPkts, allBytes * 8, tcpPkts, tcpBytes * 8, udpPkts, udpBytes * 8, otherPkts, otherBytes * 8))
+				doc = {
+					"second": lastSec,
+					"allPkts": allPkts,
+					"allBytes": allBytes,
+					"tcpPkts": tcpPkts,
+					"tcpBytes": tcpBytes,
+					"udpPkts": udpPkts,
+					"udpBytes": udpBytes,
+					"otherPkts": otherPkts,
+					"otherBytes": otherBytes
+				}
+				pcapStats.save(doc)
 				lastSec = ts
 				allPkts = allBytes = tcpPkts = tcpBytes = udpPkts = udpBytes = otherPkts = otherBytes = 0
 	
@@ -422,11 +433,10 @@ def main(options, collections):
 	progressOutput.write("seen packets: %d\nunsupported packets (non IP, non UDP/TCP): %d\n" % (seen, unsupported))
 
 	progressOutput.write("plotting throughput graphs ...\n")
-	bwStats.close()
 	x_range = ""
 	t = ""
-	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.svg"), x_range, [2,4,6,8], options.gnuplot_path)
-    	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.svg"), x_range, [3,5,7,9], options.gnuplot_path)
+#	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.svg"), x_range, [2,4,6,8], options.gnuplot_path)
+#    	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.svg"), x_range, [3,5,7,9], options.gnuplot_path)
 	
 
 	progressOutput.write("creating statistics files ...\n")
@@ -461,8 +471,8 @@ if __name__ == "__main__":
 			  help = "minimum throughput")
 	parser.add_option('-l', '--min-len', dest="minLenThroughput", type="int", default="1000000",
 			  help = "min number of bytes for connections to be considered for throughput dumping")
-	parser.add_option('-g', '--gnuplot-path', dest="gnuplot_path", default="/usr/bin/gnuplot",
-			  help="path to gnuplot executable")
+#	parser.add_option('-g', '--gnuplot-path', dest="gnuplot_path", default="/usr/bin/gnuplot",
+#			  help="path to gnuplot executable")
 
 	(options, args) = parser.parse_args()
 
@@ -488,6 +498,7 @@ if __name__ == "__main__":
 	flowCollection = dst_db["all_flows"]
 	lowThroughput = dst_db["low_throughput"]
 	withGaps = dst_db["with_gaps"]
+	pcapStats = dst_db["pcap_stats"]
 	
 	# open file for status output
 	runningFilename = os.path.join(options.outputDir, "running_file.txt");
@@ -497,7 +508,9 @@ if __name__ == "__main__":
 
 
 	try:
-		main(options, (flowCollection, lowThroughput, withGaps))
+		main(options, (flowCollection, lowThroughput, withGaps, pcapStats))
+	except Exception, e:
+		print e
 	finally:
 		# create indexes
 		for col in (flowCollection, lowThroughput, withGaps):
