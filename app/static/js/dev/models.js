@@ -249,21 +249,13 @@ var PcapFlows = CachedCollection.extend({
 	cache_timeout: 60*10,
 	model: PcapFlow,
 	url: function() {
-		return "/pcap/query/" + this.value;
-	},
-	initialize: function(models, options) {
-		if (options) {
-			this.value = options.value;
-		} else {
-			this.value = "allFlows";
-		}
-		this.dataTypes = [];
+		return "/api/bucket/query/";
 	},
 	parse: function(response) {
 		response.results.forEach(function(d) {
 			// convert unix timestamp to JS Date
-			d.firstTs = new Date(d.firstTs * 1000);
-			d.lastTs  = new Date(d.lastTs * 1000);
+			d.firstSwitched = new Date(d.firstSwitched * 1000);
+			d.lastSwitched  = new Date(d.lastSwitched  * 1000);
 		});
 		return response.results;
 	}

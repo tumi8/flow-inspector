@@ -151,6 +151,27 @@ def index():
 @get("/api/bucket/query")
 @get("/api/bucket/query/")
 def api_bucket_query():
+	# get proper collection
+	collection = None
+	isPcap = False
+	if "pcapType" in request.GET:
+		isPcap = True
+		name = request.GET["pcapType"]
+		if name == "allFlows":
+			collection = pcapDB[PCAP_DB_ALL]
+		elif name == "withGaps":
+			collection = pcapDB[PCAP_DB_GAP]
+		elif name == "lowThroughput":
+			collection = pcapDB[PCAP_DB_LOWTHROUGHPUT]
+		if collection == None:
+			raise HTTPError(404, "Index name not known.")
+	else:
+		if len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0:
+			collection = db[DB_FLOW_PREFIX + str(bucket_size)]
+		else:
+			# use preaggregated collection
+			collection = db[DB_FLOW_AGGR_PREFIX + str(bucket_size)]
+
 	# get query params
 	start_bucket = 0
 	if "start_bucket" in request.GET:
@@ -207,7 +228,8 @@ def api_bucket_query():
 		fields = request.GET["fields"].strip()
 		fields = map(lambda v: v.strip(), fields.split(","))
 		# filter for known aggregation values
-		fields = [v for v in fields if v in config.flow_aggr_values]
+		if not isPcap:
+			fields = [v for v in fields if v in config.flow_aggr_values]
 		
 	# port filter
 	include_ports = []
@@ -230,12 +252,6 @@ def api_bucket_query():
 	if bucket_size == None:
 		bucket_size = get_bucket_size(start_bucket, end_bucket, resolution)
 	
-	if len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0:
-		collection = db[DB_FLOW_PREFIX + str(bucket_size)]
-	else:
-		# use preaggregated collection
-		collection = db[DB_FLOW_AGGR_PREFIX + str(bucket_size)]
-		
 	spec = {}
 	if start_bucket > 0 or end_bucket < sys.maxint:
 		spec["bucket"] = {}
@@ -253,10 +269,12 @@ def api_bucket_query():
 		spec[COL_DST_PORT] = { "$nin": exclude_ports }
 	
 	query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
+	print "Spec: ", spec
+	print "query: ", query_fields
 	cursor = collection.find(spec, fields=query_fields).sort("bucket", pymongo.ASCENDING).batch_size(1000)
 
 	buckets = []
-	if len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0:
+	if (len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0) and not isPcap:
 		current_bucket = -1
 		aggr_buckets = {}
 		for doc in cursor:
@@ -318,6 +336,41 @@ def api_index(name):
 		
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
+
+	# only stated fields will be available, all others will be aggregated toghether	
+	fields = []
+	if "fields" in request.GET:
+		fields = request.GET["fields"].strip()
+		fields = map(lambda v: v.strip(), fields.split(","))
+		# filter for known aggregation values
+		fields = [v for v in fields if v in config.flow_aggr_values]
+		
+	# port filter
+	include_ports = []
+	if "include_ports" in request.GET:
+		include_ports = request.GET["include_ports"].strip()
+		try:
+			include_ports = map(lambda v: int(v.strip()), include_ports.split(","))
+		except ValueError:
+			raise HTTPError(output="Ports have to be integers.")
+			
+	exclude_ports = []
+	if "exclude_ports" in request.GET:
+		exclude_ports = request.GET["exclude_ports"].strip()
+		try:
+			exclude_ports = map(lambda v: int(v.strip()), exclude_ports.split(","))
+		except ValueError:
+			raise HTTPError(output="Ports have to be integers.")
+		
+	spec = {}
+	if len(include_ports) > 0:
+		spec["$or"] = [
+			{ COL_SRC_PORT: { "$in": include_ports } },
+			{ COL_DST_PORT: { "$in": include_ports } }
+		]
+	if len(exclude_ports) > 0:
+		spec[COL_SRC_PORT] = { "$nin": exclude_ports }
+		spec[COL_DST_PORT] = { "$nin": exclude_ports }
 		
 	cursor = collection.find(fields=fields).batch_size(1000)
 	if sort:
@@ -364,37 +417,6 @@ def pcap_upload():
 	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', saveFilename, '-o', config.pcap_output_dir, '-g', config.gnuplot_path ]
 	pcapProcessor = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
 	redirect('/pcap')
-
-@get('/pcap/query/:name#.+#')
-def pcap_query(name):
-	(fields, sort, limit, count) = extract_mongo_query_params()
-
-	collection = None
-	if name == "allFlows":
-		collection = pcapDB[PCAP_DB_ALL]
-	elif name == "withGaps":
-		collection = pcapDB[PCAP_DB_GAP]
-	elif name == "lowThroughput":
-		collection = pcapDB[PCAP_DB_LOWTHROUGHPUT]
-		
-	if collection == None:
-		raise HTTPError(404, "Index name not known.")
-		
-	cursor = collection.find(fields=fields).batch_size(1000)
-	if sort:
-		cursor.sort(sort)
-	if limit:
-		cursor.limit(limit)
-		
-	if count:
-		result = cursor.count() 
-	else:
-		result = []
-		for row in cursor:
-			del row["_id"]
-			result.append(row)
-	
-	return { "results": result }
 
 @get('/pcap/live-feed')
 def pcap_life_feed():
