@@ -64,7 +64,7 @@ def progress(width, percent):
 def compareTables(a, b):
 	compsA = a.split('_')
 	compsB = b.split('_')
-	return cmp(int(compsA[1]), int(compsB[1])) or cmp(int(compsA[2]), int(compsB[2])) or cmp(int(compsA[3]), int(compsB[3]))
+	return -cmp(int(compsA[1]), int(compsB[1])) or cmp(int(compsA[2]), int(compsB[2])) or cmp(int(compsA[3]), int(compsB[3]))
 
 
 
