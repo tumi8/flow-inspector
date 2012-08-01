@@ -40,11 +40,31 @@ class SequenceNumberAnalyzer:
 		self.unexpectServCli = 0
 
 		self.SYNSeen = False
+		self.lastSYNSeen = 0
+		self.lastSYNACKSeen = 0
 		self.SYNACKSeen = False
 
 		self.SYNFromServ = False
 
-	def nextPacket(self, ipPacket):
+		self.cliRSTSeen = False
+		self.servRSTSeen = False
+		
+		self.cliFINSeen = False
+		self.servFINSeen = False
+
+	def isRunning(self):
+		# try to estimate if a TCP connection can still expect more packets
+		if self.servRSTSeen or self.cliRSTSeen:
+			print self.connString + " self.servRSTSeen: " + str(self.servRSTSeen), " self.cliRSTSeen: " + str(self.cliRSTSeen)
+			return False
+		if self.servFINSeen and self.cliFINSeen:
+			print self.connString + " self.servFINSeen: " + str(self.servFINSeen), " self.cliFINSeen: " + str(self.cliFINSeen)
+			return False
+
+		# be conservative (we need to think about this one here ... TODO, FIXME)
+		return True
+
+	def nextPacket(self, ipPacket, timestamp):
 		if type(ipPacket.data) != dpkt.tcp.TCP:
 			print "SequenceNumberAnalyzer got non TCP packet!"
 			return
@@ -57,13 +77,31 @@ class SequenceNumberAnalyzer:
 			if tcpSegment.flags & dpkt.tcp.TH_SYN:
 				if self.SYNSeen == False:
 					self.SYNSeen = True
+					self.lastSYNSeen = timestamp
 					self.cliSeq = tcpSegment.seq + 1
 					#print "Seen SYN for ", self.connString
 				else:
-					print "Duplicate SYN in " + self.connString
+					print "Duplicate SYN in " + self.connString + ". Old ts: " + str(self.lastSYNSeen) + ", new ts: " + str(timestamp)
 					if self.cliSeq != tcpSegment.seq + 1:
 						print "\tduplicate SYN has different sequence number. Old: %d | New: %d" % (self.cliSeq - 1, tcpSegment.seq)
 				return
+
+			# check for RST and FIN flags
+			if tcpSegment.flags & dpkt.tcp.TH_RST:
+				if self.cliFINSeen:
+					#print "Reset from client after FIN in " + self.connString
+					pass
+				else:
+					print "Reset from client without FIN in " + self.connString + " at " + str(timestamp)
+				self.cliRSTSeen = True
+
+			if tcpSegment.flags & dpkt.tcp.TH_FIN:
+				if self.cliFINSeen:
+					print "Duplicate FIN from client in " + self.connString + " at " + str(timestamp)
+				else:
+					#print "FIN from client seen in " + self.connString
+					pass
+				self.cliFINSeen = True
 
 			# normal packet. 
 			#print "Stats: ", ipPacket.len, ipPacket.hl * 4, tcpSegment.off * 4, "(", self.connString, ")"
@@ -92,17 +130,40 @@ class SequenceNumberAnalyzer:
 			# received packet from server to client	
 			if tcpSegment.flags & dpkt.tcp.TH_SYN:
 				if not tcpSegment.flags & dpkt.tcp.TH_ACK:
-					print "Weird: Got SYN from server in " + self.connString
+					print "Weird: Got SYN from server in " + self.connString + " at " + str(ts)
 					self.SYNFromServ = True
 				else:
 					# syn ack
 					if self.SYNACKSeen:
-						print "Duplicate SYN/ACK in " + self.connString
+						print "Duplicate SYN/ACK in " + self.connString + ". Old ts: " + str(self.lastSYNACKSeen) + ", new ts: " + str(timestamp)
+						self.lastSYNACKSeen = timestamp
+ 
 						if self.servSeq != tcpSegment.seq + 1:
 							print "\tduplicate SYN/ACK has different sequence number. Old: %d | New: %d" % (self.servSeq - 1, tcpSegment.seq)
+					else:
+						self.SYNACKSeen = True
 							
 					self.servSeq = tcpSegment.seq + 1
 				return
+
+			# check for RST and FIN flags
+			if tcpSegment.flags & dpkt.tcp.TH_RST:
+				if self.servFINSeen:
+					#print "Reset from server after FIN in " + self.connString
+					pass
+				else:
+					print "Reset from server without FIN in " + self.connString + " at " + str(timestamp)
+					pass
+				self.servRSTSeen = True
+
+			if tcpSegment.flags & dpkt.tcp.TH_FIN:
+				if self.servFINSeen:
+					print "Duplicate FIN from server in " + self.connString + " at " + str(timestamp)
+				else:
+					#print "FIN from server seen in " + self.connString
+					pass
+				self.servFINSeen = True
+
 			# normal packet
 			segPayloadLen = ipPacket.len - (ipPacket.hl * 4 + tcpSegment.off * 4)
 			if self.servSeq == 0:
@@ -160,7 +221,7 @@ class ConnectionRecord:
 		self.numBytes += eth.data.len
 
 		if self.seqAnalyzer:
-			self.seqAnalyzer.nextPacket(eth.data)
+			self.seqAnalyzer.nextPacket(eth.data, ts)
 
 	def calcAvgThroughput(self):
 		if (self.lastTs - self.firstTs) == 0:
@@ -195,67 +256,6 @@ class ConnectionRecord:
 
 ##################### functions
 
-# plot a single graph
-def plot(title, y_label, in_path, out_path, x_range="", columns=[2], gnuplot_path='/usr/bin/gnuplot'):
-    i = 0
-    plots = ""
-    for c in columns:
-        i += 1
-        plots += "'{0}' using 1:{1} w lines ls {2}, ".format(in_path, c, i)
-        #plots += "'{0}' using 1:{1} w linespoints ls {2}, ".format(in_path, c, i)
-        #plots += "'{0}' using 1:{1} w lp, ".format(in_path, c)
-        #plots += "'{0}' using 1:{1} smooth csplines, ".format(in_path, c)
-    plots = plots[:-2]
-
-    if x_range:
-        x_range = "set xrange[{0}]\n".format(x_range)
-
-    plot_generation = \
-            "set title '{0}'\n" \
-            "set xlabel 'UTC or relative time' offset 0.0,-1.0\n" \
-            "set ylabel '{1}'\n" \
-            "set key autotitle columnhead\n" \
-            "set mxtics\n" \
-            "set mytics\n" \
-            "set grid\n" \
-            "set xdata time\n" \
-            "set timefmt '%s'\n" \
-            "{2}" \
-            "set yrange[0:]\n" \
-            'set style line 80 lt 0\n' \
-            'set style line 80 lt rgb "#808080"\n' \
-            'set style line 81 lt 3  # dashed\n' \
-            'set style line 81 lt rgb "#808080" lw 0.5\n' \
-            'set grid back linestyle 81\n' \
-            'set border 3 back linestyle 80\n' \
-            'set xtics nomirror\n' \
-            'set ytics nomirror\n' \
-            'set style line 1 lt 1\n' \
-            'set style line 2 lt 1\n' \
-            'set style line 3 lt 1\n' \
-            'set style line 4 lt 1\n' \
-            'set style line 1 lt rgb "#A00000" lw 2 pt 7\n' \
-            'set style line 2 lt rgb "#00A000" lw 2 pt 9\n' \
-            'set style line 3 lt rgb "#5060D0" lw 2 pt 5\n' \
-            'set style line 4 lt rgb "#F25900" lw 2 pt 13\n' \
-            "set terminal svg\n" \
-            "set output '{3}'\n" \
-            "plot {4}".format(title, y_label, x_range, out_path, plots)
-            #"set log y\n" \
-
-#    print plot_generation
-
-    #gnuplot_path ="/opt/data/software/bin/gnuplot"  
-    #gnuplot_path ="/usr/local/bin/gnuplot"
-    #gnuplot_path ="/usr/bin/gnuplot"
-    p = subprocess.Popen([gnuplot_path], shell=False,
-                         stdin=subprocess.PIPE)
-    # for python 3 do this:
-    #p.communicate(input=bytes(plot_generation, 'utf-8'))
-    p.communicate(input=plot_generation)
-    return out_path
-
-
 
 def binary_to_str(binaddr):
 	return "%d.%d.%d.%d" % IPADDR_BINARY.unpack(binaddr)
@@ -276,24 +276,14 @@ def create_conn_id(srcIP, dstIP, srcPort, dstPort, proto):
 	return srcIP + dstIP + str(srcPort) + str(dstPort) + str(proto)
 
 
-
-def dump_pcap_conns_with_gaps(gapConnections, inputFile):
-	# re-read the pcap file and create smaller dump files with one connection
-	pcapFile = dpkt.pcap.Reader(open(inputFile))
-	read = 0
-	for ts, buf in pcapFile:
-		read += 1
-		eth = dpkt.ethernet.Ethernet(buf)
-		if type(eth.data) == dpkt.ip.IP:
-			ip_packet = eth.data
-			if type(ip_packet.data) == dpkt.tcp.TCP or type(ip_packet.data) == dpkt.udp.UDP:
-				tl = ip_packet.data
-				id = create_conn_id(ip_packet.src, ip_packet.dst, tl.sport, tl.dport, type(ip_packet.data))
-				if id in gapConnections:
-					gapConnections[id].write(ts, buf)
-
-				if read % 100000 == 0:
-					print "\tchecked ", read, " packets. Still ", seen - read, " to go..." 
+def dump_conn_to_result_db(conn, options, collections):
+	(withGaps, flowCollection, lowTrhoughput) = collections
+	if conn.maxDiff > options.maxGap:
+		conn.dump_stat(withGaps)
+	conn.dump_stat(flowCollection)
+	if conn.numBytes >= options.minLenThroughput:
+		if conn.calcAvgThroughput() < options.minThroughput:
+			conn.dump_stat(lowThroughput)
 
 ############################# main 
 		
@@ -319,10 +309,6 @@ def main(options, collections):
 
 	progressOutput = Unbuffered(open(os.path.join(options.outputDir, "analysis-output.txt"), 'w+'))
 
-#	bwStatsFilename = os.path.join(options.outputDir, "throughput.txt") 
-#	bwStats = open(bwStatsFilename, 'w+')
-#	bwStats.write('timestamp\tpkts\tthroughput\ttcp:pkts\ttcp:throughput\tudp:pkts\tudp:throughput\tother:pkts\tother:throughput\n')
-	
 	progressOutput.write("starting to read packets ...\n")
 	unsupported = 0
 	seen = 0
@@ -404,20 +390,41 @@ def main(options, collections):
 				continue
 
 			id = create_conn_id(srcIP, dstIP, srcPort, dstPort, proto)
+			create_new = True
 			if id in connections:
-				connections[id].packet_seen(ts, buf, eth)
-			else:
+				# check how old connection has already seen a timeout
+				# TODO: make timeout configurable
+				timeout = 300 # 5 minutes
+
+				conn = connections[id]
+
+				if conn.lastTs < (ts - timeout):
+					print "timeout in " + conn.connString + " after " + str(conn.numPkts) + " packets",
+					print "old: " + str(conn.lastTs) + " new: " + str(ts)
+					dump_conn_to_result_db(conn, options, (withGaps, flowCollection, lowThroughput))
+					del connections[id]
+				elif proto == dpkt.tcp.TCP:
+					# if we are not in a timeout stage, check if the connection
+					# had been shut down. 
+					# TODO should we have this instead the timeout checkings? Or instaed? Or should we have different timeouts for TCP? 
+					if not conn.seqAnalyzer.isRunning():
+						create_new = True
+						del connections[id]
+				else:
+					create_new = False				
+					
+			if create_new:
 				pString = "don't care"
 				if proto == dpkt.tcp.TCP:
 					pString = "TCP"
 				elif proto == dpkt.udp.UDP:
 					pString = "UDP"
-				elif proto == dpkt.icmp.icmp:
+				elif proto == dpkt.icmp.ICMP:
 					pString = "ICMP"
-				myConn = "%s:%d <-> %s:%d (%s)" % (binary_to_str(srcIP), srcPort, binary_to_str(dstIP), dstPort, pString)
+				myConn = "%s:%u <-> %s:%u (%s)" % (binary_to_str(srcIP), srcPort, binary_to_str(dstIP), dstPort, pString)
 				#print "New Connection: ", myConn
 				connections[id] = ConnectionRecord(myConn, ts, srcIP, dstIP, srcPort, dstPort, proto, pString)
-				connections[id].packet_seen(ts, buf, eth)
+			connections[id].packet_seen(ts, buf, eth)
 
 
 			if seen % 100000 == 0:
@@ -431,28 +438,12 @@ def main(options, collections):
 
 	
 	progressOutput.write("seen packets: %d\nunsupported packets (non IP, non UDP/TCP): %d\n" % (seen, unsupported))
-
-	progressOutput.write("plotting throughput graphs ...\n")
-	x_range = ""
-	t = ""
-#	plot(t + "pps", "packet/s", bwStatsFilename, os.path.join(options.outputDir,  "pps.svg"), x_range, [2,4,6,8], options.gnuplot_path)
-#    	plot(t + "throughput", "bit/s", bwStatsFilename, os.path.join(options.outputDir, "tp.svg"), x_range, [3,5,7,9], options.gnuplot_path)
-	
-
 	progressOutput.write("creating statistics files ...\n")
 
 	# find connections that have a maximum gap larger than the specified one
-	gapConnections = {}
 	for c in connections:
 		conn = connections[c]
-		if conn.maxDiff > options.maxGap:
-			conn.dump_stat(withGaps)
-			#conn.createWriter(os.path.join(options.outputDir, conn.connString + ".pcap"), pcapFile.snaplen);
-			gapConnections[c] = conn
-		conn.dump_stat(flowCollection)
-		if conn.numBytes >= options.minLenThroughput:
-			if conn.calcAvgThroughput() < options.minThroughput:
-				conn.dump_stat(lowThroughput)
+		dump_conn_to_result_db(conn, options, (withGaps, flowCollection, lowThroughput))
 
 	#print "Identified connections with long gaps. Now dumping pcap files that contain those connections. This can take a while ..."
 	#dump_pcap_conns_with_gaps(gapConnections, options.inputFile)
