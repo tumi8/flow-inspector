@@ -21,6 +21,9 @@ var PcapFlow = Backbone.Model.extend({
 	}
 });
 
+var PcapStatsPoint = Backbone.Model.extend({
+});
+
 var BucketChartModel = Backbone.Model.extend({
 	defaults: {
 		value: "flows"
@@ -106,7 +109,6 @@ var HivePlotModel = Backbone.Model.extend({
 
 var IndexEntry = Backbone.Model.extend({});
 
-var PCAPImage = Backbone.Model.extend({});
 var PCAPLiveLine = Backbone.Model.extend({});
 
 var CachedCollection = Backbone.Collection.extend({
@@ -261,11 +263,17 @@ var PcapFlows = CachedCollection.extend({
 	}
 });
 
-
-var PCAPImages = Backbone.Collection.extend({
-	model: PCAPImage,
-	url: "/api/pcap/images"
+var PcapStats = CachedCollection.extend({
+	cache_timeout: 60*10,
+	model: PcapStatsPoint,
+	url: function() {
+		return "/pcap/stats";
+	},
+	parse: function(response) {
+		return response.results;
+	}
 });
+
 
 var PCAPLiveLines = Backbone.Collection.extend({
 	model : PCAPLiveLine,
