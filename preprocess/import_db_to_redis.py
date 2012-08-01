@@ -25,6 +25,11 @@ import config
 ######### functions
 
 def getFirstTable(tables, firstTimestamp, TYPE):
+	"""
+		Expects a sorted list of table names (sorted by time).
+		Returns the table which contains the first flow that 
+		has a firstSwitched time of firstTimestamp
+	"""
 	if firstTimestamp == 0:
 		return tables
 	
@@ -34,11 +39,8 @@ def getFirstTable(tables, firstTimestamp, TYPE):
 	else:
 		halfHour = 1
 	firstTableName = "h_%0.4d%0.2d%0.2d_%0.2d_%0.1d" % (timeObj.year, timeObj.month, timeObj.day, timeObj.hour, halfHour)
-	if TYPE == "oracle":
-		tables = sorted(tables, compareTables)
-	else:
-		tables.sort()
 
+	print tables
 	try:
 		idx = tables.index(firstTableName) 
 	except:
@@ -167,6 +169,12 @@ while True:
 
 	# get the table names in list format
 	tables = map(lambda x: x[0], list(tables))
+
+	if TYPE == "oracle":
+		tables = sorted(tables, compareTables)
+	else:
+		tables.sort()
+
 	# get the tables that contain the flows starting with args.start_time
 	tables = getFirstTable(tables, args.start_time, TYPE)
 
