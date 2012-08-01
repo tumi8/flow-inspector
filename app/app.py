@@ -40,6 +40,7 @@ COL_DST_PORT = "dstPort"
 PCAP_DB_ALL = "all_flows"
 PCAP_DB_GAP = "with_gaps"
 PCAP_DB_LOWTHROUGHPUT = "low_throughput"
+PCAP_STATS = "pcap_stats"
 
 # set template path
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
@@ -416,6 +417,18 @@ def api_index(name):
 @get("/static/:path#.+#")
 def server_static(path):
 	return static_file(path, root=os.path.join(os.path.dirname(__file__), "static"))
+
+@get("/pcap/stats")
+def pcap_stats():
+	collection = pcapDB[PCAP_STATS]
+	cursor = collection.find().batch_size(1000)
+	cursor.sort([("second", pymongo.ASCENDING)])
+	result = []
+	for row in cursor:
+		del row["_id"]
+		result.append(row)
+	return { "results": result }
+			
 
 @post('/pcap')
 def pcap_upload():
