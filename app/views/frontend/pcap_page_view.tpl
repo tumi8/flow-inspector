@@ -23,7 +23,11 @@
 
 			<div class="pcap-live-stats"/>
 
-			<div class="stats-images"/>
+			<div class="stats-images">
+				<div id="y_axis"/>
+				<div id="packetChart"/>
+				<div id="byteChart"/>
+			</div>
 
 			<h2>Detailed Overview</h2>
                         <ul class="pills pcap-stat-value">
