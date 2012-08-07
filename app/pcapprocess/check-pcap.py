@@ -35,33 +35,27 @@ class SequenceNumberAnalyzer:
 		self.connString = connString
 		self.lastTs = 0
 
-		# next expected client sequence number
-		self.cliSeq = 0
-		# next expected server sequence number
-		self.servSeq = 0
+		self.dataFlights = []
+		self.currentFlight = None
 
-		self.unexpectCliServ = 0
-		self.unexpectServCli = 0
+		# next expected client sequence number
+		self.seq = 0
 
 		self.SYNSeen = False
 		self.lastSYNSeen = 0
 		self.lastSYNACKSeen = 0
 		self.SYNACKSeen = False
 
-		self.SYNFromServ = False
 
-		self.cliRSTSeen = False
-		self.servRSTSeen = False
-		
-		self.cliFINSeen = False
-		self.servFINSeen = False
+		self.RSTSeen = False
+		self.FINSeen = False
 
 	def isRunning(self, ts):
 		# try to estimate if a TCP connection can still expect more packets
-		if self.servRSTSeen or self.cliRSTSeen:
+		if self.RSTSeen:
 			#print self.connString + " self.servRSTSeen: " + str(self.servRSTSeen), " self.cliRSTSeen: " + str(self.cliRSTSeen)
 			return False
-		if self.servFINSeen and self.cliFINSeen and (self.lastTs - ts) > 20:
+		if self.FINSeen and (self.lastTs - ts) > 20:
 			#print self.connString + " self.servFINSeen: " + str(self.servFINSeen), " self.cliFINSeen: " + str(self.cliFINSeen)
 			return False
 
@@ -80,118 +74,83 @@ class SequenceNumberAnalyzer:
 		srcPort = tcpSegment.sport
 		dstPort = tcpSegment.dport
 
-
-		if src == self.cli and srcPort == self.cliPort:
-			# received packet from client to server
-			if tcpSegment.flags & dpkt.tcp.TH_SYN:
-				if tcpSegment.flags & dpkt.tcp.TH_ACK:
-					print "Weird: Got a SYN/ACK from the client!"
-					return
-				if self.SYNSeen == False:
-					self.SYNSeen = True
-					self.lastSYNSeen = timestamp
-					self.cliSeq = tcpSegment.seq + 1
-					print "Seen client SYN in ", self.connString
-				else:
-					print "Duplicate SYN in " + self.connString + ". Old ts: " + str(self.lastSYNSeen) + ", new ts: " + str(timestamp)
-					if self.cliSeq != tcpSegment.seq + 1:
-						print "\tduplicate SYN has different sequence number. Old: %d | New: %d" % (self.cliSeq - 1, tcpSegment.seq)
-				return
-
-			# check for RST and FIN flags
-			if tcpSegment.flags & dpkt.tcp.TH_RST:
-				if self.cliFINSeen:
-					print "Reset from client after FIN in " + self.connString
-					pass
-				else:
-					print "Reset from client without FIN in " + self.connString + " at " + str(timestamp)
-					pass
-				self.cliRSTSeen = True
-
-			if tcpSegment.flags & dpkt.tcp.TH_FIN:
-				if self.cliFINSeen:
-					print "Duplicate FIN from client in " + self.connString + " at " + str(timestamp)
-					pass
-				else:
-					print "FIN from client seen in " + self.connString
-					pass
-				self.cliFINSeen = True
-
-			# normal packet. 
-			#print "Stats: ", ipPacket.len, ipPacket.hl * 4, tcpSegment.off * 4, "(", self.connString, ")"
-			segPayloadLen = ipPacket.len - (ipPacket.hl * 4 + tcpSegment.off * 4)
-			if segPayloadLen == 0:
-				# fin packets add one to the sequence number
-				if tcpSegment.flags & dpkt.tcp.TH_FIN:
-					segPayloadLen = 1
-
-			# check if we received a SYN
-			if self.cliSeq == 0:
-				#print "In %s: Expected seq: %d. Got seq: %d, Diff: %d, Payload len: %d" % (self.connString, self.cliSeq, tcpSegment.seq, self.cliSeq - tcpSegment.seq, segPayloadLen)
-				self.cliSeq = tcpSegment.seq + segPayloadLen
-				return
-
-			if self.cliSeq != tcpSegment.seq:
-				#print "In %s: Expected seq: %d. Got seq: %d, Diff: %d, Payload len: %d" % (self.connString, self.cliSeq, tcpSegment.seq, self.cliSeq - tcpSegment.seq, segPayloadLen)
-				self.unexpectCliServ += 1
+		if tcpSegment.flags & dpkt.tcp.TH_SYN:
+			if tcpSegment.flags & dpkt.tcp.TH_ACK:
+				print "SYN/ACK seen in " + self.connString
+				if self.SYNACKSeen:
+					print "Duplicate SYN/ACK in " + self.connSTring + ".Old ts: " + str(self.lastSYNACKSeen) + ", new ts: " + str(timestamp)
+				self.SYNACKSeen = True
+				self.lastSYNACKSeen = timestamp
 			else:
-				#print "In %s: Good     seq: %d, Got seq: %d, Diff: %d, Payload len: %d" % (self.connString, self.cliSeq, tcpSegment.seq, self.cliSeq - tcpSegment.seq, segPayloadLen)
+				print "SYN seen in ", self.connString
+				if self.SYNSeen:
+					print "Duplicate SYN in " + self.connString + ". Old ts: " + str(self.lastSYNSeen) + ", new ts: " + str(timestamp)
+					if self.seq != tcpSegment.seq + 1:
+						print "\tduplicate SYN has different sequence number. Old: %d | New: %d" % (self.seq - 1, tcpSegment.seq)
+				self.lastSYNSeen = timestamp
+				self.seq = tcpSegment.seq + 1
+				self.SYNSeen = True
+
+		# check for RST and FIN flags
+		if tcpSegment.flags & dpkt.tcp.TH_RST:
+			if self.FINSeen:
+				print "Reset after FIN in " + self.connString
 				pass
-			self.cliSeq = tcpSegment.seq + segPayloadLen
-			#if not tcpSegment.seq == self.cliSeq
-				
-		elif src == self.serv and srcPort == self.servPort:
-			# received packet from server to client	
-			if tcpSegment.flags & dpkt.tcp.TH_SYN:
-				if not tcpSegment.flags & dpkt.tcp.TH_ACK:
-					print "Weird: Got SYN from server in " + self.connString + " at " + str(timestamp)
-					self.SYNFromServ = True
-				else:
-					# syn ack
-					if self.SYNACKSeen:
-						print "Duplicate SYN/ACK in " + self.connString + ". Old ts: " + str(self.lastSYNACKSeen) + ", new ts: " + str(timestamp)
-						self.lastSYNACKSeen = timestamp
- 
-						if self.servSeq != tcpSegment.seq + 1:
-							print "\tduplicate SYN/ACK has different sequence number. Old: %d | New: %d" % (self.servSeq - 1, tcpSegment.seq)
-					else:
-						self.SYNACKSeen = True
-							
-					self.servSeq = tcpSegment.seq + 1
-				return
+			else:
+				print "Reset without FIN in " + self.connString + " at " + str(timestamp)
+				pass
+			self.RSTSeen = True
 
-			# check for RST and FIN flags
-			if tcpSegment.flags & dpkt.tcp.TH_RST:
-				if self.servFINSeen:
-					print "Reset from server after FIN in " + self.connString
-					pass
-				else:
-					print "Reset from server without FIN in " + self.connString + " at " + str(timestamp)
-					pass
-				self.servRSTSeen = True
+		if tcpSegment.flags & dpkt.tcp.TH_FIN:
+			if self.FINSeen:
+				print "Duplicate FIN in " + self.connString + " at " + str(timestamp)
+				pass
+			else:
+				print "FIN seen in " + self.connString
+				pass
+			self.FINSeen = True
 
+		# normal packet. 
+		#print "Stats: ", ipPacket.len, ipPacket.hl * 4, tcpSegment.off * 4, "(", self.connString, ")"
+		segPayloadLen = ipPacket.len - (ipPacket.hl * 4 + tcpSegment.off * 4)
+		if segPayloadLen == 0:
+			# do we have a running flight?
+			# if so, we consider it finished
+			if self.currentFlight:
+				# finish the flight and store it
+				self.dataFlights.append(self.currentFlight)
+				self.currentFlight = None
+
+			# fin packets add one to the sequence number
 			if tcpSegment.flags & dpkt.tcp.TH_FIN:
-				if self.servFINSeen:
-					print "Duplicate FIN from server in " + self.connString + " at " + str(timestamp)
-				else:
-					print "FIN from server seen in " + self.connString
-					pass
-				self.servFINSeen = True
-
-			# normal packet
-			segPayloadLen = ipPacket.len - (ipPacket.hl * 4 + tcpSegment.off * 4)
-			if self.servSeq == 0:
-				self.servSeq = tcpSegment.seq + segPayloadLen
-				return
-
-			if self.servSeq != tcpSegment.seq:
-				self.unexpectServCli += 1
-
-			self.servSeq = tcpSegment.seq + segPayloadLen
+				segPayloadLen = 1
 		else:
-			# packet neither from client nor from server?
-			raise Exception("Logic Error: SequenzNumberAnalyzer got packet that is neither from server not client")
+			# add data to the current flight or create new flight
+			if not self.currentFlight:
+				self.currentFlight = dict()
+				self.currentFlight["start"] = timestamp
+				self.currentFlight["pkts"] = 0
+				self.currentFlight["bytes"] = 0
 
+			self.currentFlight["end"] = timestamp
+			self.currentFlight["pkts"] += 1
+			self.currentFlight["bytes"] += segPayloadLen
+
+		# check if we received a SYN
+		if self.seq == 0:
+			#print "In %s: Expected seq: %d. Got seq: %d, Diff: %d, Payload len: %d" % (self.connString, self.seq, tcpSegment.seq, self.seq - tcpSegment.seq, segPayloadLen)
+			self.seq = tcpSegment.seq + segPayloadLen
+			return
+
+		if self.seq != tcpSegment.seq:
+			#print "In %s: Expected seq: %d. Got seq: %d, Diff: %d, Payload len: %d" % (self.connString, self.seq, tcpSegment.seq, self.seq - tcpSegment.seq, segPayloadLen)
+			pass
+		else:
+			#print "In %s: Good     seq: %d, Got seq: %d, Diff: %d, Payload len: %d" % (self.connString, self.seq, tcpSegment.seq, self.seq - tcpSegment.seq, segPayloadLen)
+			pass
+		self.seq = tcpSegment.seq + segPayloadLen
+		#if not tcpSegment.seq == self.cliSeq
+			
 class ConnectionRecord:
 	def __init__(self, connString, ts, src, dst, sPort, dPort, proto, pString, id):
 		self.firstTs = ts;
@@ -245,7 +204,7 @@ class ConnectionRecord:
 	def calcAvgThroughput(self):
 		if (self.lastTs - self.firstTs) == 0:
 			return 0
-		return self.numBytes / (self.lastTs - self.firstTs) * 8;
+		return (float(self.numBytes) / float((self.lastTs - self.firstTs))) * 8.0;
 
 	def calcMedianDiff(self):
 		self.diffs.sort()
@@ -278,29 +237,69 @@ class ConnectionRecord:
 		if self.proto == dpkt.tcp.TCP:
 			doc['synSeen'] = self.seqAnalyzer.SYNSeen
 			doc['synAckSeen'] = self.seqAnalyzer.SYNACKSeen
-			doc['synFromServer'] = self.seqAnalyzer.SYNFromServ
+			if self.seqAnalyzer.currentFlight:
+				self.seqAnalyzer.dataFlights.append(self.seqAnalyzer.currentFlight)
+			doc['flights'] =  self.seqAnalyzer.dataFlights
 
 		collection.insert(doc)
 
 ##################### functions
 
+def require_new_conn(conn):
+	if conn.proto == dpkt.tcp.TCP:
+		# if we are not in a timeout stage, check if the connection
+		# had been shut down. 
+		# TODO should we have this instead the timeout checkings? Or instaed? Or should we have different timeouts for TCP? 
+		if not conn.seqAnalyzer.isRunning(ts):
+			return True
+		elif tcpSegment.flags & dpkt.tcp.TH_SYN and not tcpSegment.flags & dpkt.tcp.TH_ACK:
+			# check if we should really start a new connection on a syn
+			# see if we already have seen a syn from the client (because of asymetric routes, we might have seen the SYN/ACK before the SYN)
+			if not conn.seqAnalyzer.SYNSeen:
+				# check for the reason why we didn't see the SYN (could be lost or it could
+				# not have been seen because the monitoring started after the syn has been sent
+				# check for timeout
+				if conn.lastTs < (ts - timeout):
+					# we haven't seen a packet in a while. assume a new connection
+					print "Removing old connection because of new SYN packet ..."
+					return True
+				else:
+					# we have recently seen new packets, and did not observe a shutdown.
+					# so this is probably a late SYN due to asymetric routes
+					return False
+			else: 	
+				print "Removing old connection because of new SYN packet ..."
+				return True
+		else:
+			return False
+	elif conn.lastTs < (ts - timeout):
+		# we can only work with timeouts on the other protocols
+		print "timeout in " + conn.connString + " after " + str(conn.numPkts) + " packets",
+		print "old: " + str(conn.lastTs) + " new: " + str(ts)
+		return True
+	# in all other cases: resume the connection
+	return False
+	
 
 def binary_to_str(binaddr):
 	return "%d.%d.%d.%d" % IPADDR_BINARY.unpack(binaddr)
 
-def create_conn_id(srcIP, dstIP, srcPort, dstPort, proto):
-	# build connection identifier
-	# make biflow identifier
-	# TODO we also map two connections
-	#		ip1, p1, ip2, p2
-	#		ip1, p2, ip2, p1
-	#	onto the same identifier. this is problematic
+def create_conn_id(srcIP, dstIP, srcPort, dstPort, proto, biflow):
+	if biflow:
+		# build connection identifier
+		# make biflow identifier
+		# TODO we also map two connections
+		#		ip1, p1, ip2, p2
+		#		ip1, p2, ip2, p1
+		#	onto the same identifier. this is problematic
+	
+		# 	fix this 
+	
+		if srcIP > dstIP:
+			(srcIP, dstIP) = (dstIP, srcIP)
+		if srcPort > dstPort:
+			(srcPort, dstPort) = (dstPort, srcPort)
 
-	# 	fix this 
-	if srcIP > dstIP:
-		(srcIP, dstIP) = (dstIP, srcIP)
-	if srcPort > dstPort:
-		(srcPort, dstPort) = (dstPort, srcPort)
 	return srcIP + dstIP + str(srcPort) + str(dstPort) + str(proto)
 
 
@@ -313,18 +312,184 @@ def dump_conn_to_result_db(conn, options, collections):
 		if conn.calcAvgThroughput() < options.minThroughput:
 			conn.dump_stat(lowThroughput)
 
+
+unsupported = 0
+seen = 0
+
+lastSec = 0
+allPkts = 0
+allBytes = 0
+tcpPkts = 0
+tcpBytes = 0
+udpBytes = 0
+udpPkts = 0
+otherPkts = 0
+otherBytes = 0
+
+def processPacket(ts, buf, collections, progressOutput):
+	global unsupported, seen, lastSec, allPkts, allBytes, tcpPkts, tcpBytes, udpBytes, udpPkts, otherPkts, otherBytes, connections
+	(flowCollection, lowThroughput, withGaps, pcapStats) = collections
+	if lastSec == 0:
+		lastSec = ts
+	if int(ts) > lastSec:
+		doc = {
+			"second": int(lastSec),
+			"allPkts": allPkts,
+			"allBytes": allBytes,
+			"tcpPkts": tcpPkts,
+			"tcpBytes": tcpBytes,
+			"udpPkts": udpPkts,
+			"udpBytes": udpBytes,
+			"otherPkts": otherPkts,
+			"otherBytes": otherBytes
+		}
+		pcapStats.save(doc)
+		lastSec = ts
+		allPkts = allBytes = tcpPkts = tcpBytes = udpPkts = udpBytes = otherPkts = otherBytes = 0
+
+	seen += 1
+	eth = dpkt.ethernet.Ethernet(buf)
+	srcIP = 0
+	dstIP = 0
+	srcPort = 0
+	dstPort = 0
+	proto = ""
+
+	allPkts += 1
+	if type(eth.data) == dpkt.ip.IP:
+		allBytes += eth.data.len
+	else:
+		allBytes += 28 # we only consider standard arp over ethernet ... TODO
+
+	if type(eth.data) == dpkt.ip.IP:
+		ip_packet = eth.data
+		srcIP = ip_packet.src
+		dstIP = ip_packet.dst
+		if type(ip_packet.data) == dpkt.tcp.TCP:
+			tcp_segment = ip_packet.data
+			proto = dpkt.tcp.TCP;
+			srcPort = tcp_segment.sport
+			dstPort = tcp_segment.dport
+			tcpPkts += 1
+			tcpBytes += eth.data.len
+		elif type(ip_packet.data) == dpkt.udp.UDP:
+			udp_packet = ip_packet.data
+			srcPort = udp_packet.sport
+			dstPort = udp_packet.dport
+			proto = dpkt.udp.UDP;
+			udpPkts += 1
+			udpBytes += eth.data.len
+		else:
+			unsupported += 1
+			otherPkts += 1
+			otherBytes += eth.data.len
+			return 
+	else:
+		unsupported += 1
+		otherPkts += 1
+		if type(eth.data) == dpkt.ethernet.Ethernet:
+			otherBytes += eth.data.len
+		else: 
+			otherBytes += 28 # we consider only arp over ethernet as an exception to the reule ... TODO
+			return
+
+	id = create_conn_id(srcIP, dstIP, srcPort, dstPort, proto, biflow=False)
+	create_new = True
+#	print ts, " ",  binary_to_str(srcIP), " ", srcPort, " ", binary_to_str(dstIP), " ", dstPort, " ", proto, " ", eth.data.len,
+	if proto == dpkt.tcp.TCP:
+		tcpSegment = ip_packet.data
+#		if tcpSegment.flags & dpkt.tcp.TH_SYN:
+#			print " SYN ",
+#		if tcpSegment.flags & dpkt.tcp.TH_ACK:
+#			print " ACK ",
+#		if tcpSegment.flags & dpkt.tcp.TH_RST:
+#			print " RST ",
+#		if tcpSegment.flags & dpkt.tcp.TH_FIN:
+#			print " FIN ",
+#	print ""
+
+	if id in connections:
+		# check how old connection has already seen a timeout
+		# TODO: make timeout configurable
+		timeout = 300 # 10 minutes
+
+		conn = connections[id]
+		create_new = False
+
+		if proto == dpkt.tcp.TCP:
+			if tcpSegment.flags & dpkt.tcp.TH_SYN:
+				if not conn.seqAnalyzer.isRunning(ts):
+					print conn.connString, " is no longer running ..."
+					create_new = True
+				else:
+					# TODO: check if we see a syn or syn/ack retransmit here ...
+					print "Seen new SYN on existing connection without proper shutdown in " + conn.connString
+					create_new = True
+		else:
+			if conn.lastTs < (ts - timeout):
+				# we can only work with timeouts on the other protocols
+       				print "timeout in " + conn.connString + " after " + str(conn.numPkts) + " packets",
+				print "old: " + str(conn.lastTs) + " new: " + str(ts)
+				create_new = True
+
+
+		# create_new = require_new_conn(conn)
+		if create_new:
+			dump_conn_to_result_db(conn, options, (withGaps, flowCollection, lowThroughput))
+			del connections[id]
+			
+	if create_new:
+		# if we are to create a new connection record, make sure that if we see a SYN or SYN/ACK
+		# packet, we make the appropriate end point server or client (due to asymetric routes, 
+		# we can end up seeing the SYN/ACK packet before the SYN
+		#if tcpSegment.flags & dpkt.tcp.TH_SYN and tcpSegment.flags & dpkt.tcp.TH_ACK:
+		#	print "First packet on new connection is SYN/ACK ..."
+			# swap client/server
+		#	srcIP, dstIP = dstIP, srcIP
+		#	srcPort, dstPort = dstPort, srcPort
+
+		pString = "don't care"
+		if proto == dpkt.tcp.TCP:
+			pString = "TCP"
+		elif proto == dpkt.udp.UDP:
+			pString = "UDP"
+		elif proto == dpkt.icmp.ICMP:
+			pString = "ICMP"
+		myConn = "%s:%u <-> %s:%u (%s)" % (binary_to_str(srcIP), srcPort, binary_to_str(dstIP), dstPort, pString)
+		#print "created " + myConn
+		#print "New Connection: ", myConn
+		connections[id] = ConnectionRecord(myConn, ts, srcIP, dstIP, srcPort, dstPort, proto, pString, id)
+
+	connections[id].packet_seen(ts, buf, eth)
+
+	if seen % 100000 == 0:
+		progressOutput.write("\tread " + str(seen) + " packets ...\n")
+	
+
+
 ############################# main 
 		
 
 
-def main(options, collections):
+def main(options, args, collections):
+	global unsupported, seen, lastSec, allPkts, allBytes, tcpPkts, tcpBytes, udpBytes, udpPkts, otherPkts, otherBytes, connections
 
-	# open pcap file
-	if options.inputFile != "-":
-		f = open(options.inputFile)
+	# open pcap files
+	files = []
+	if len(args) == 1 and args[0] == '-':
+		files.append(sys.stdin)
 	else:
-		f = sys.stdin
-	pcapFile = dpkt.pcap.Reader(f)
+		for file in args:
+			print "Opening file \"%s\" for reading ..." % (file)
+			f = open(file, 'r')
+			files.append(f)
+
+
+	pcapFiles = {}
+	for f in files:
+		pcapFiles[iter(dpkt.pcap.Reader(f))] = None
+
+
 	if options.pcapFilter != None:
 		print "Setting pcap filter: ", options.pcapFilter
 		pcapFile.setfilter(options.pcapFilter)
@@ -333,185 +498,42 @@ def main(options, collections):
 	if not os.access(options.outputDir, os.R_OK | os.W_OK):
 		os.makedirs(options.outputDir)
 
-	(flowCollection, lowThroughput, withGaps, pcapStats) = collections
 
 	progressOutput = Unbuffered(open(os.path.join(options.outputDir, "analysis-output.txt"), 'w+'))
 
 	progressOutput.write("starting to read packets ...\n")
-	unsupported = 0
-	seen = 0
 
-	lastSec = 0
-	allPkts = 0
-	allBytes = 0
-	tcpPkts = 0
-	tcpBytes = 0
-	udpBytes = 0
-	udpPkts = 0
-	otherPkts = 0
-	otherBytes = 0
-
-	try:
-		for ts, buf in pcapFile:
-			if lastSec == 0:
-				lastSec = ts
-			if int(ts) > lastSec:
-				doc = {
-					"second": int(lastSec),
-					"allPkts": allPkts,
-					"allBytes": allBytes,
-					"tcpPkts": tcpPkts,
-					"tcpBytes": tcpBytes,
-					"udpPkts": udpPkts,
-					"udpBytes": udpBytes,
-					"otherPkts": otherPkts,
-					"otherBytes": otherBytes
-				}
-				pcapStats.save(doc)
-				lastSec = ts
-				allPkts = allBytes = tcpPkts = tcpBytes = udpPkts = udpBytes = otherPkts = otherBytes = 0
 	
-			seen += 1
-			eth = dpkt.ethernet.Ethernet(buf)
-			srcIP = 0
-			dstIP = 0
-			srcPort = 0
-			dstPort = 0
-			proto = ""
-
-			allPkts += 1
-			if type(eth.data) == dpkt.ip.IP:
-				allBytes += eth.data.len
-			else:
-				allBytes += 28 # we only consider standard arp over ethernet ... TODO
-
-			if type(eth.data) == dpkt.ip.IP:
-				ip_packet = eth.data
-				srcIP = ip_packet.src
-				dstIP = ip_packet.dst
-				if type(ip_packet.data) == dpkt.tcp.TCP:
-					tcp_segment = ip_packet.data
-					proto = dpkt.tcp.TCP;
-					srcPort = tcp_segment.sport
-					dstPort = tcp_segment.dport
-					tcpPkts += 1
-					tcpBytes += eth.data.len
-				elif type(ip_packet.data) == dpkt.udp.UDP:
-					udp_packet = ip_packet.data
-					srcPort = udp_packet.sport
-					dstPort = udp_packet.dport
-					proto = dpkt.udp.UDP;
-					udpPkts += 1
-					udpBytes += eth.data.len
-				else:
-					unsupported += 1
-					otherPkts += 1
-					otherBytes += eth.data.len
-					continue
-			else:
-				unsupported += 1
-				otherPkts += 1
-				if type(eth.data) == dpkt.ethernet.Ethernet:
-					otherBytes += eth.data.len
-				else: 
-					otherBytes += 28 # we consider only arp over ethernet as an exception to the reule ... TODO
-				continue
-
-			id = create_conn_id(srcIP, dstIP, srcPort, dstPort, proto)
-			create_new = True
-			print ts, " ",  binary_to_str(srcIP), " ", srcPort, " ", binary_to_str(dstIP), " ", dstPort, " ", proto, " ", eth.data.len,
-			if proto == dpkt.tcp.TCP:
-				tcpSegment = ip_packet.data
-				if tcpSegment.flags & dpkt.tcp.TH_SYN:
-					print " SYN ",
-				if tcpSegment.flags & dpkt.tcp.TH_ACK:
-					print " ACK ",
-				if tcpSegment.flags & dpkt.tcp.TH_RST:
-					print " RST ",
-				if tcpSegment.flags & dpkt.tcp.TH_FIN:
-					print " FIN ",
-			print ""
-
-
-			if id in connections:
-				# check how old connection has already seen a timeout
-				# TODO: make timeout configurable
-				timeout = 300 # 10 minutes
-
-				conn = connections[id]
-
-				if proto == dpkt.tcp.TCP:
-					# if we are not in a timeout stage, check if the connection
-					# had been shut down. 
-					# TODO should we have this instead the timeout checkings? Or instaed? Or should we have different timeouts for TCP? 
-					if not conn.seqAnalyzer.isRunning(ts):
-						dump_conn_to_result_db(conn, options, (withGaps, flowCollection, lowThroughput))
-						del connections[id]
-					elif tcpSegment.flags & dpkt.tcp.TH_SYN and not tcpSegment.flags & dpkt.tcp.TH_ACK:
-						# check if we should really start a new connection on a syn
-						# see if we already have seen a syn from the client (because of asymetric routes, we might have seen the SYN/ACK before the SYN)
-						if not conn.seqAnalyzer.SYNSeen:
-							# check for the reason why we didn't see the SYN (could be lost or it could
-							# not have been seen because the monitoring started after the syn has been sent
-							# check for timeout
-							if conn.lastTs < (ts - timeout):
-								# we haven't seen a packet in a while. assume a new connection
-								print "Removing old connection because of new SYN packet ..."
-								dump_conn_to_result_db(conn, options, (withGaps, flowCollection, lowThroughput))
-								del connections[id]
-							else:
-								# we have recently seen new packets, and did not observe a shutdown.
-								# so this is probably a late SYN due to asymetric routes
-								create_new = False
-						else: 	
-							print "Removing old connection because of new SYN packet ..."
-							dump_conn_to_result_db(conn, options, (withGaps, flowCollection, lowThroughput))
-							del connections[id]
-					else:
-						create_new = False
-				elif conn.lastTs < (ts - timeout):
-					# we can only work with timeouts on the other protocols
-					print "timeout in " + conn.connString + " after " + str(conn.numPkts) + " packets",
-					print "old: " + str(conn.lastTs) + " new: " + str(ts)
-					dump_conn_to_result_db(conn, options, (withGaps, flowCollection, lowThroughput))
-					del connections[id]
-				else:
-					create_new = False				
-					
-			if create_new:
-				# if we are to create a new connection record, make sure that if we see a SYN or SYN/ACK
-				# packet, we make the appropriate end point server or client (due to asymetric routes, 
-				# we can end up seeing the SYN/ACK packet before the SYN
-				if tcpSegment.flags & dpkt.tcp.TH_SYN and tcpSegment.flags & dpkt.tcp.TH_ACK:
-					print "First packet on new connection is SYN/ACK ..."
-					# swap client/server
-					srcIP, dstIP = dstIP, srcIP
-					srcPort, dstPort = dstPort, srcPort
-
-				pString = "don't care"
-				if proto == dpkt.tcp.TCP:
-					pString = "TCP"
-				elif proto == dpkt.udp.UDP:
-					pString = "UDP"
-				elif proto == dpkt.icmp.ICMP:
-					pString = "ICMP"
-				myConn = "%s:%u <-> %s:%u (%s)" % (binary_to_str(srcIP), srcPort, binary_to_str(dstIP), dstPort, pString)
-				#print "created " + myConn
-				#print "New Connection: ", myConn
-				connections[id] = ConnectionRecord(myConn, ts, srcIP, dstIP, srcPort, dstPort, proto, pString, id)
-
-			connections[id].packet_seen(ts, buf, eth)
-
-
-			if seen % 100000 == 0:
-				progressOutput.write("\tread " + str(seen) + " packets ...\n")
-	except Exception as inst:
-		# end of file or bad file ending
-		# ignore and continue
-		progressOutput.write("Caught exception: %s\n" % (inst))
-		import traceback
-		traceback.print_exc(file=progressOutput)
-
+	while len(pcapFiles) > 0:
+		# read one packet from each pcap file. process the packet with the 
+		# smallest timestamp
+		for pcapFile in pcapFiles:
+			if pcapFiles[pcapFile] == None:
+				# read a new packet
+				try:
+					(ts, buf) = pcapFile.next()
+					pcapFiles[pcapFile] = (ts, buf)
+				except Exception as inst:
+					print >> sys.stderr, "Could not read more from %s: %s" % (pcapFile, inst)
+					del pcapFiles[pcapFile]
+					break
+		if len(pcapFiles) == 0:
+			continue
+		# we now have one packet from each file
+		# pick the one with the oldest timestamp and process the packet
+		oldestTs = 0
+		oldestBuf = 0
+		oldestPcap = None
+		for file in pcapFiles:
+			(ts, buf) = pcapFiles[file]
+			if oldestTs == 0 or oldestTs > ts:
+				oldestTs = ts
+				oldestBuf = buf
+				oldestPcap = file
+		
+		processPacket(oldestTs, oldestBuf, collections, progressOutput)
+		# processed packet, remove it from the cache
+		pcapFiles[oldestPcap] = None
 	
 	progressOutput.write("seen packets: %d\nunsupported packets (non IP, non UDP/TCP): %d\n" % (seen, unsupported))
 	progressOutput.write("creating statistics files ...\n")
@@ -526,8 +548,6 @@ def main(options, collections):
 
 if __name__ == "__main__":
 	parser = OptionParser("usage: %prog [options]")
-	parser.add_option('-i', '--input', dest="inputFile",
-			  help = "input pcap file (required)")
 	parser.add_option('-o', '--outputDir', dest="outputDir",
 			  help = "output directory (required). Attention: All previous results in that directory will be overwritten!")
 	parser.add_option('-f', '--filter', dest="pcapFilter",
@@ -543,10 +563,6 @@ if __name__ == "__main__":
 
 	(options, args) = parser.parse_args()
 
-	if options.inputFile == None:
-		print "ERROR: Did not get an input pcap file!"
-		parser.print_help()
-		sys.exit(-1)
 
 	if options.outputDir == None:
 		print "ERROR: Did not get an output directory!"
@@ -575,7 +591,7 @@ if __name__ == "__main__":
 
 
 	try:
-		main(options, (flowCollection, lowThroughput, withGaps, pcapStats))
+		main(options, args, (flowCollection, lowThroughput, withGaps, pcapStats))
 	except Exception, e:
 		print e
 	finally:

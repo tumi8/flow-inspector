@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cat $1 | sed -e 's/,/ /g' | sort -nk $2 | less
