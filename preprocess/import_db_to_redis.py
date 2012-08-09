@@ -87,60 +87,71 @@ parser.add_argument("--max-queue", nargs="?", type=int, default=100000, help="Th
 parser.add_argument("--clear-queue", nargs="?", type=bool, default=False, const=True, help="Whether to clear the queue before importing the flows.")
 parser.add_argument("--continuous-update", nargs="?", type=bool, default=False, const=True, help="Whether the database import should stop after it reaches the end of the database, or whether it should continue to get new flows")
 parser.add_argument("--start-time", nargs="?", type=int,  default=0, const=True, help="Defines the offset in unix time at which flow importing into mongo should start. This is handy for large flow-database where we do not want to import the complete database. Default: 0 (import all tables)")
+parser.add_argument("--from-temporary", nargs="?", type=bool, default=False, const=True, help="Import flows that have been generated with app/pcapprocess/check-pcap.py")
 
 args = parser.parse_args()
 
 
-# check if is there a MySQL or a PostgreSQL database
-try:
-	print "Trying postgresql database ..."
-	import psycopg2
-	TYPE = "postgresql"
-	dns = dict(
-		database = args.src_database, 
-		host = args.src_host,
-		user = args.src_user,
-		password = args.src_password
-	)
-	if args.src_port is not None:
-		dns['port'] = args.src_port
-	conn = psycopg2.connect(**dns)
-	c = conn.cursor()
-
-	print "Successfully connected to postgresql db ..."
-except Exception, e:
+if args.from_temporary:
 	try:
-		print "Failed to connect to postgresql db. Reason: ", e
-		print "Trying mysql instead ..."
-		import MySQLdb
-		import _mysql_exceptions
-
-		TYPE = "mysql"
+		import pymongo
+		conn = pymongo.Connection(args.src_host, args.src_port)
+		srcDB = conn['pcap']
+		connections = srcDB['all_flows']
+		TYPE = "mongodb"
+	except Exception as inst:
+		print "Could not connect to mongo db: ", inst
+		sys.exit(-1)
+else:
+	# check if is there a MySQL or a PostgreSQL database
+	try:
+		print "Trying postgresql database ..."
+		import psycopg2
+		TYPE = "postgresql"
 		dns = dict(
-			db = args.src_database, 
+			database = args.src_database, 
 			host = args.src_host,
 			user = args.src_user,
-			passwd = args.src_password
+			password = args.src_password
 		)
 		if args.src_port is not None:
-			dns["port"] = args.src_port
-		conn = MySQLdb.connect(**dns)
+			dns['port'] = args.src_port
+		conn = psycopg2.connect(**dns)
 		c = conn.cursor()
-		print "Successfully connected to mysql database!"
+
+		print "Successfully connected to postgresql db ..."
 	except Exception, e:
 		try:
-			print "Failed to connect to mysql database db. Reason: ", e 
-			print "Trying oracle instead ..."
-			import cx_Oracle
-			connection_string = args.src_user + "/" + args.src_password + "@" + args.src_host + ":" + str(args.src_port) + "/" + args.src_database
-			conn = cx_Oracle.Connection(connection_string)
-			c = cx_Oracle.Cursor(conn)
-			TYPE = "oracle"
-		except Exception, e:
-			print >> sys.stderr, "Could not connect to source database:", e
-			sys.exit(1)
+			print "Failed to connect to postgresql db. Reason: ", e
+			print "Trying mysql instead ..."
+			import MySQLdb
+			import _mysql_exceptions
 	
-
+			TYPE = "mysql"
+			dns = dict(
+				db = args.src_database, 
+				host = args.src_host,
+				user = args.src_user,
+				passwd = args.src_password
+			)
+			if args.src_port is not None:
+				dns["port"] = args.src_port
+			conn = MySQLdb.connect(**dns)
+			c = conn.cursor()
+			print "Successfully connected to mysql database!"
+		except Exception, e:
+			try:
+				print "Failed to connect to mysql database db. Reason: ", e 
+				print "Trying oracle instead ..."
+				import cx_Oracle
+				connection_string = args.src_user + "/" + args.src_password + "@" + args.src_host + ":" + str(args.src_port) + "/" + args.src_database
+				conn = cx_Oracle.Connection(connection_string)
+				c = cx_Oracle.Cursor(conn)
+				TYPE = "oracle"
+			except Exception, e:
+				print >> sys.stderr, "Could not connect to source database:", e
+				sys.exit(1)
+		
 try:
 	r = redis.Redis(host=args.dst_host, port=args.dst_port, db=args.dst_database)
 except e:
@@ -157,6 +168,37 @@ print "%s: connected to source and destination database" % (startTime)
 print "Starting to import flows beginning from ", datetime.datetime.utcfromtimestamp(args.start_time)
 lastTable = None
 count = 0
+
+if TYPE == "mongodb":
+	import socket
+	import struct
+	# we don't need anything
+	conns = connections.find()
+	for conn in conns:
+		count += 1
+		del conn["_id"]
+		if "flights" in conn:
+			del conn["flights"]
+		# convert ip string to integers
+		conn["srcIP"] = struct.unpack('!L',socket.inet_aton(conn["srcIP"]))[0]
+		conn["dstIP"] = struct.unpack('!L',socket.inet_aton(conn["dstIP"]))[0]
+		conn["firstSwitched"] = int(conn["firstSwitched"])
+		conn["lastSwitched"] = int(conn["lastSwitched"])
+
+		queue_length = r.rpush(common.REDIS_QUEUE_KEY, json.dumps(conn))
+		while queue_length > args.max_queue:
+			print "Max queue length reached, importing paused..."
+			time.sleep(10)
+			queue_length = r.llen(common.REDIS_QUEUE_KEY)
+
+	# Append termination flag to queue
+	# The preprocessing daemon will terminate with this flag.
+	r.rpush(common.REDIS_QUEUE_KEY, "END")
+
+	endTime = datetime.datetime.now()
+	print "%s: imported %i flows in %s" % (endTime, count, endTime - startTime)
+	sys.exit(0)
+
 while True:
 	# get all flow tables
 	if TYPE == "oracle":
