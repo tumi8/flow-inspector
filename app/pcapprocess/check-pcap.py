@@ -46,7 +46,6 @@ class SequenceNumberAnalyzer:
 		self.lastSYNACKSeen = 0
 		self.SYNACKSeen = False
 
-
 		self.RSTSeen = False
 		self.FINSeen = False
 
@@ -169,6 +168,8 @@ class ConnectionRecord:
 		self.numPkts = 0
 		self.numBytes = 0
 
+		self.pktInfo = []
+
 		self.maxDiff = 0;
 		self.diffs = [];
 		self.avgDiff = 0;
@@ -197,6 +198,8 @@ class ConnectionRecord:
 		self.lastTs = ts
 		self.numPkts += 1
 		self.numBytes += eth.data.len
+
+		#self.pktInfo.append({"ts": ts, "len": eth.data.len})
 
 		if self.seqAnalyzer:
 			self.seqAnalyzer.nextPacket(eth.data, ts)
@@ -233,6 +236,8 @@ class ConnectionRecord:
 		firstTs = round(self.firstTs, 6)
 		lastTs = round(self.lastTs, 6)
 		doc = { "_id": bson.binary.Binary(str(self.firstTs) + self.id), "firstSwitched": firstTs, "lastSwitched": lastTs, "srcIP": binary_to_str(self.src), "dstIP": binary_to_str(self.dst), "srcPort": self.sPort, "dstPort": self.dPort, "proto": self.pString, "pkts": self.numPkts, "bytes": self.numBytes, "maxDiff": round(self.maxDiff, 6), "avgDiff": round(self.avgDiff, 6), "medianDiff": round(self.calcMedianDiff(), 6), "avgThroughput": round(self.calcAvgThroughput(), 6) }
+
+		#doc['pktInfo' ] = self.pktInfo
 
 		if self.proto == dpkt.tcp.TCP:
 			doc['synSeen'] = self.seqAnalyzer.SYNSeen
