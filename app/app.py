@@ -86,7 +86,7 @@ def extract_mongo_query_params():
 		if limit < 0:
 			limit = 0
 			
-	fields = []
+	fields = None
 	if "fields" in request.GET:
 		fields = request.GET["fields"].strip()
 		fields = map(lambda v: v.strip(), fields.split(","))
@@ -153,6 +153,7 @@ def index():
 @get("/api/bucket/query/")
 def api_bucket_query():
 	(fields, sort, limit, count) = extract_mongo_query_params()
+
 
 	# get query params
 	start_bucket = 0
@@ -251,7 +252,7 @@ def api_bucket_query():
 		if collection == None:
 			raise HTTPError(404, "Index name not known.")
 	else:
-		if len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0:
+		if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
 			collection = db[DB_FLOW_PREFIX + str(bucket_size)]
 		else:
 			# use preaggregated collection
@@ -260,7 +261,7 @@ def api_bucket_query():
 
 	# only stated fields will be available, all others will be aggregated toghether	
 	# filter for known aggregation values
-	if not isPcap:
+	if not isPcap and fields != None:
 		fields = [v for v in fields if v in config.flow_aggr_values]
 		
 	spec = {}
@@ -288,8 +289,12 @@ def api_bucket_query():
 	if len(exclude_ips) > 0:
 		spec[COL_SRC_IP] = { "$in": exclude_ips } 
 		spec[COL_DST_IP] = { "$in": exclude_ips } 
+
+	if fields != None:
+		query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
+	else:
+		query_fields = ["bucket", "flows"] + config.flow_aggr_sums
 		
-	query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
 	cursor = collection.find(spec, fields=query_fields).batch_size(1000)
 	if sort:
 		cursor.sort("bucket", sort)
@@ -299,7 +304,7 @@ def api_bucket_query():
 		cursor.limit(limit)
 
 	buckets = []
-	if (len(fields) > 0 or len(include_ports) > 0 or len(exclude_ports) > 0) and not isPcap:
+	if ((fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0) and not isPcap:
 		current_bucket = -1
 		aggr_buckets = {}
 		for doc in cursor:
@@ -352,7 +357,9 @@ def api_bucket_query():
 @get("/api/index/:name/")
 def api_index(name):
 	(fields, sort, limit, count) = extract_mongo_query_params()
-
+	if fields != None:
+		fields = [v for v in fields if v in config.flow_aggr_values]
+	
 	collection = None
 	if name == "nodes":
 		collection = db[DB_INDEX_NODES]
@@ -363,7 +370,7 @@ def api_index(name):
 		raise HTTPError(404, "Index name not known.")
 
 	# only stated fields will be available, all others will be aggregated toghether	
-	fields = []
+	fields = None 
 	if "fields" in request.GET:
 		fields = request.GET["fields"].strip()
 		fields = map(lambda v: v.strip(), fields.split(","))
@@ -396,7 +403,8 @@ def api_index(name):
 	if len(exclude_ports) > 0:
 		spec[COL_SRC_PORT] = { "$nin": exclude_ports }
 		spec[COL_DST_PORT] = { "$nin": exclude_ports }
-		
+
+
 	cursor = collection.find(fields=fields).batch_size(1000)
 	if sort:
 		cursor.sort(sort)
