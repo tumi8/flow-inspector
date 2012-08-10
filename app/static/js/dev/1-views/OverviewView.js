@@ -41,7 +41,7 @@ var OverviewView = Backbone.View.extend({
 		});
 
 		// take the first 10 elements
-		var num_elements = 10
+		var num_elements = 15
 		var data = data.slice(0, num_elements);
 
 
@@ -74,7 +74,7 @@ var OverviewView = Backbone.View.extend({
 					.attr("class", "yAxis");
 
 
-		var offset = d3.select('text.yAxis').node().getComputedTextLength() + 5;
+		var offset = d3.select('text.yAxis').node().getComputedTextLength() + 15;
 		var x = d3.scale.linear().range([0, w - offset]);
 		x.domain([0, max_value]);
 
