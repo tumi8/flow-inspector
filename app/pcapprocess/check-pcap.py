@@ -47,6 +47,8 @@ class SequenceNumberAnalyzer:
 		self.SYNACKSeen = False
 
 		self.RSTSeen = False
+		self.lastRSTSeen = 0
+		self.lastFINSeen = 0
 		self.FINSeen = False
 
 	def isRunning(self, ts):
@@ -99,6 +101,7 @@ class SequenceNumberAnalyzer:
 				print "Reset without FIN in " + self.connString + " at " + str(timestamp)
 				pass
 			self.RSTSeen = True
+			self.lastRSTSeen = timestamp
 
 		if tcpSegment.flags & dpkt.tcp.TH_FIN:
 			if self.FINSeen:
@@ -108,6 +111,7 @@ class SequenceNumberAnalyzer:
 				print "FIN seen in " + self.connString
 				pass
 			self.FINSeen = True
+			self.lastFINSeen = timestamp
 
 		# normal packet. 
 		#print "Stats: ", ipPacket.len, ipPacket.hl * 4, tcpSegment.off * 4, "(", self.connString, ")"
@@ -242,6 +246,10 @@ class ConnectionRecord:
 		if self.proto == dpkt.tcp.TCP:
 			doc['synSeen'] = self.seqAnalyzer.SYNSeen
 			doc['synAckSeen'] = self.seqAnalyzer.SYNACKSeen
+			doc['finSeen'] = self.seqAnalyzer.FINSeen
+			doc['finSeenTs'] = self.seqAnalyzer.lastFINSeen
+			doc['rstSeen'] = self.seqAnalyzer.RSTSeen
+			doc['rstSeenTs'] = self.seqAnalyzer.lastRSTSeen
 			if self.seqAnalyzer.currentFlight:
 				self.seqAnalyzer.dataFlights.append(self.seqAnalyzer.currentFlight)
 			doc['flights'] =  self.seqAnalyzer.dataFlights
@@ -602,7 +610,7 @@ if __name__ == "__main__":
 	finally:
 		# create indexes
 		for col in (flowCollection, lowThroughput, withGaps):
-			col.create_index("firstTs")
+			col.create_index("firstSwitched")
 			col.create_index("pkts")
 			col.create_index("bytes")
 

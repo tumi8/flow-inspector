@@ -48,7 +48,7 @@ def plot_ports(title, y_label, in_path, out_path, x_range="", columns=[2, 3], gn
 	return do_plot(plot_generation, gnuplot_path, out_path)
 
 
-def plot_hosts(title, y_label, in_path, out_path, x_range="", columns=[2, 3], gnuplot_path='/usr/local/bin/gnuplot'):
+def plot_hosts(title, y_label, in_path, out_path, x_range="", columns=[2, 3], gnuplot_path='/usr/local/bin/gnuplot', imgType="svg"):
 	i = 0
 	plots = ""
 	for c in columns:
@@ -68,9 +68,9 @@ def plot_hosts(title, y_label, in_path, out_path, x_range="", columns=[2, 3], gn
 		"set nokey\n" \
 		"set grid\n" \
 		"{2}" \
-		"set terminal svg size 1800, 1200\n" \
+		"set terminal {5} size 1800, 1200\n" \
 		"set output '{3}'\n" \
-		"plot {4}".format(title, y_label, x_range, out_path, plots)
+		"plot {4}".format(title, y_label, x_range, out_path, plots, imgType)
 		#"set log y\n" \
 	
 	return do_plot(plot_generation, gnuplot_path, out_path)
@@ -118,7 +118,7 @@ def plot_general(title, y_label, in_path, out_path, x_range="", columns=[2], gnu
 		'set style line 2 lt rgb "#00A000" lw 2 pt 9\n' \
        		'set style line 3 lt rgb "#5060D0" lw 2 pt 5\n' \
 		'set style line 4 lt rgb "#F25900" lw 2 pt 13\n' \
-		"set terminal {5} size 2200, 800 enhanced font '/usr/share/fonts/truetype/adf/GilliusADF-Regular.otf'\n" \
+		"set terminal {5} size 2200, 1200 enhanced font '/usr/share/fonts/truetype/adf/GilliusADF-Regular.otf'\n" \
 		"set output '{3}'\n" \
 		"plot {4}".format(title, y_label, x_range, out_path, plots, imgType)
 		#"set log y\n" \
@@ -135,8 +135,8 @@ outputDir = "svgs"
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="Import IPFIX flows from Redis cache into MongoDB.")
-	parser.add_argument("--host", nargs="?", default=config.db_host, help="MongoDB host")
-	parser.add_argument("--port", nargs="?", default=config.db_port, type=int, help="MongoDB port")
+	parser.add_argument("--db_host", nargs="?", default=config.db_host, help="MongoDB host")
+	parser.add_argument("--db_port", nargs="?", default=config.db_port, type=int, help="MongoDB port")
 	parser.add_argument("ip", nargs=1, help="IP Address")
 
 	args = parser.parse_args()
@@ -144,7 +144,7 @@ if __name__ == "__main__":
 
 	# init pymongo connection
 	try:
-		dst_conn = pymongo.Connection(args.host, args.port)
+		dst_conn = pymongo.Connection(args.db_host, args.db_port)
 	except pymongo.errors.AutoReconnect, e:
 		print >> sys.stderr, "Could not connect to MongoDB database!"
 		sys.exit(1)
@@ -165,7 +165,7 @@ if __name__ == "__main__":
 	print filter
 	#filter["synFromServer"] = True
 
-	flows = flowCollection.find(filter)
+	flows = flowCollection.find(filter).sort("firstSwitched", pymongo.ASCENDING)
 	flights = None
 
 	connFilename = os.path.join(outputDir, "conns-%s.dat" % (analysisIP))
@@ -179,7 +179,13 @@ if __name__ == "__main__":
 	pktFilename = os.path.join(outputDir, "pkts-%s.dat" % (analysisIP))
 	pktFile = open(pktFilename, 'w+')
 
-	concurrentConns = 0
+	connectionStartTimes = []
+	connectionEndTimes = []
+	rstSent = dict()
+	rstReceived = dict()
+	finSent = dict()
+	finReceived = dict()
+	finRstInterval = 300
 
 	print "Iterating through flows ..."
 	for flow in flows:
@@ -200,19 +206,50 @@ if __name__ == "__main__":
 			else:
 				flights = flow[field]
 
+		connectionStartTimes.append(flow["firstSwitched"])
+		connectionEndTimes.append(flow["lastSwitched"])
+
+		# record packet information
 		#for pkt in flow["pktInfo"]:
 		#	pktFile.write("%f %u\n" % (pkt["ts"], pkt["len"]))
+	
+		# calculate concurrent-conns
 
+		# get data for conn-statistics
 		if srcIP == args.ip[0]:
 			sourceIP = srcIP
 			sourcePort = srcPort
 			connectedIP = dstIP
 			destinationPort = dstPort
+			if flow['finSeen']:
+				ts = int(flow['finSeenTs']) / finRstInterval * finRstInterval
+				if ts in finSent:
+					finSent[ts] += 1
+				else:
+					finSent[ts] = 1
+			if flow['rstSeen']:
+				ts = int(flow['rstSeenTs']) / finRstInterval * finRstInterval
+				if ts in rstSent:
+					rstSent[ts] += 1
+				else:
+					rstSent[ts] = 1
 		else:
 			sourceIP = dstIP
 			sourcePort = dstPort
 			connectedIP = srcIP
 			destinationPort = srcPort
+			if flow['finSeen']:
+				ts = int(flow['finSeenTs']) / finRstInterval * finRstInterval
+				if ts in finReceived:
+					finReceived[ts] += 1
+				else:
+					finReceived[ts] = 1
+			if flow['rstSeen']:
+				ts = int(flow['rstSeenTs']) / finRstInterval * finRstInterval
+				if ts in rstReceived:
+					rstReceived[ts] += 1
+				else:
+					rstReceived[ts] = 1
 
 		if sourcePort in portsDict:
 			(local, remote) = portsDict[sourcePort]
@@ -236,6 +273,7 @@ if __name__ == "__main__":
 			connFile.write("%u %f %f\n" % (connectionCounter, flow["firstSwitched"], flow["lastSwitched"]))
 			connections += 1
 
+		# flight-specific code 
 		if len(flights) > 200000:
 			filename = os.path.join(outputDir, "%s:%u_%s:%u_%s.dat" % (srcIP, srcPort, dstIP, dstPort, proto))
 			f = open(filename, 'w+')
@@ -250,12 +288,81 @@ if __name__ == "__main__":
 
 	pktFile.close()
 	plot_general("Packets", "Packet size", pktFilename, pktFilename + ".png", columns = [2], plotType="points")
-
-	#os.unlink(pktFilename)
+	os.unlink(pktFilename)
 
 	connFile.close()
-	plot_hosts("Connection durations", "conn time", connFilename, connFilename + ".svg")
+	plot_hosts("Connection durations", "conn time", connFilename, connFilename + ".png",imgType="png")
 	os.unlink(connFilename)
+
+	# record and plot concurrent connections
+	print "Generating concurrent connections ..."
+	connectionStartTimes.sort(reverse=True)
+	connectionEndTimes.sort(reverse=True)
+
+	concurrentConnsFilename = os.path.join(outputDir, "concurrentConns-%s.dat" % (analysisIP))
+	concurrentConns = open(concurrentConnsFilename, 'w+')
+	concurrentConns.write("time\tConcurrent Connections\n")
+
+	start = 0
+	end = 0
+	concurrentConnections = 0
+	while len(connectionStartTimes) > 0 or len(connectionEndTimes) > 0:
+		dataTime = 0
+
+		if (len(connectionStartTimes) > 0 and start == 0) or len(connectionEndTimes) == 0:
+			start = connectionStartTimes.pop()
+		if (len(connectionEndTimes) > 0 and end == 0) or len(connectionStartTimes) == 0:
+			end = connectionEndTimes.pop()
+		if (start < end) or (end == 0 and start != 0):
+			concurrentConnections += 1
+			dataTime = start
+			start = 0
+		elif start > end or (start == 0 and end != 0):
+			concurrentConnections -= 1
+			dataTime = end
+			end = 0
+		else: 
+			# both have the same time stamp
+			dataTime = start
+			start = 0
+			end = 0
+		if dataTime != 0:
+			concurrentConns.write("%f\t%d\n" % (dataTime, concurrentConnections))
+		#print len(connectionStartTimes), " ", len(connectionEndTimes)
+	concurrentConns.close()
+	plot_general("Concurrent Connections", "Concurrent Connections", concurrentConnsFilename, concurrentConnsFilename + ".png")
+	os.unlink(concurrentConnsFilename)
+
+	# plot FIN/RSTs over time
+	finRstFilename = os.path.join(outputDir, "finRst-%s.dat" % (analysisIP))
+	finRstFile = open(finRstFilename, 'w+')
+	finRstFile.write("timestamp\tfinSent\trstSent\tfinReceived\trstReceived\n")
+	minTs = min(finSent.keys() + rstSent.keys() + finReceived.keys() + rstReceived.keys())
+	maxTs = max(finSent.keys() + rstSent.keys() + finReceived.keys() + rstReceived.keys())
+	for ts in range(minTs, maxTs, finRstInterval):
+		finRstFile.write(str(ts))
+		if ts in finSent:
+			finRstFile.write("\t%u" % finSent[ts])
+		else:
+			finRstFile.write("\t0")
+		if ts in rstSent:
+			finRstFile.write("\t%u" % rstSent[ts])
+		else:
+			finRstFile.write("\t0")
+		if ts in finReceived:
+			finRstFile.write("\t%u" % finReceived[ts])
+		else:
+			finRstFile.write("\t0")
+		if ts in rstReceived:
+			finRstFile.write("\t%u" % rstReceived[ts])
+		else:
+			finRstFile.write("\t0")
+		finRstFile.write("\n")
+	finRstFile.close()
+	plot_general("FIN- and RST packets over time", "FIN/RST packets", finRstFilename, finRstFilename + ".png", imgType="png", columns=[2,3,4,5], plotType="lines")
+	os.unlink(finRstFilename)
+		
+
 
 	# write the ports stuff
 	print "Generating ports information ..."
