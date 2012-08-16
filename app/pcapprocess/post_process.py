@@ -138,6 +138,7 @@ if __name__ == "__main__":
 	parser.add_argument("--db_host", nargs="?", default=config.db_host, help="MongoDB host")
 	parser.add_argument("--db_port", nargs="?", default=config.db_port, type=int, help="MongoDB port")
 	parser.add_argument("ip", nargs=1, help="IP Address")
+	parser.add_argument("port", nargs="?", type=int, help="Port")
 
 	args = parser.parse_args()
 
@@ -152,23 +153,49 @@ if __name__ == "__main__":
 	pcapDB = dst_conn["pcap"]
 	flowCollection = pcapDB["all_flows"]
 
+	analysisFileExtension = args.ip[0]
 	analysisIP = args.ip[0]
+	if args.port:
+		analysisPort = args.port
+	else:
+		analysisPort = None
 
-	# create filter
-	filter = {}
-	#filter[] = "130.176.17.140"
-	filter["$or"] = [
+	print analysisPort
+
+	# create filter on ip address
+	ipFilter = {}
+	ipFilter["$or"] = [
 		{ "srcIP": {"$regex": analysisIP }}, 
 		{ "dstIP": {"$regex": analysisIP }}
 	]
 
+	# check if we have a port. If so, build a filter that 
+	# matches on ip and port
+	filter = {}
+	if analysisPort != None:
+		analysisFileExtension += "-" + str(analysisPort)
+
+		portFilter = {}
+		portFilter["$or"] = [
+			{ "dstPort" : analysisPort },
+			{ "srcPort" : analysisPort }
+		]
+
+
+		filter["$and"] = [
+			ipFilter,
+			portFilter
+			
+		]
+	else:
+		filter = ipFilter
+
 	print filter
-	#filter["synFromServer"] = True
 
 	flows = flowCollection.find(filter).sort("firstSwitched", pymongo.ASCENDING)
 	flights = None
 
-	connFilename = os.path.join(outputDir, "conns-%s.dat" % (analysisIP))
+	connFilename = os.path.join(outputDir, "conns-%s.dat" % (analysisFileExtension))
 	connFile = open(connFilename, "w+")
 	connIDs = dict()
 	connections = 0
@@ -176,7 +203,7 @@ if __name__ == "__main__":
 
 	portsDict = dict()
 
-	pktFilename = os.path.join(outputDir, "pkts-%s.dat" % (analysisIP))
+	pktFilename = os.path.join(outputDir, "pkts-%s.dat" % (analysisFileExtension))
 	pktFile = open(pktFilename, 'w+')
 
 	connectionStartTimes = []
@@ -216,7 +243,7 @@ if __name__ == "__main__":
 		# calculate concurrent-conns
 
 		# get data for conn-statistics
-		if srcIP == args.ip[0]:
+		if srcIP == analysisIP:
 			sourceIP = srcIP
 			sourcePort = srcPort
 			connectedIP = dstIP
@@ -299,7 +326,7 @@ if __name__ == "__main__":
 	connectionStartTimes.sort(reverse=True)
 	connectionEndTimes.sort(reverse=True)
 
-	concurrentConnsFilename = os.path.join(outputDir, "concurrentConns-%s.dat" % (analysisIP))
+	concurrentConnsFilename = os.path.join(outputDir, "concurrentConns-%s.dat" % (analysisFileExtension))
 	concurrentConns = open(concurrentConnsFilename, 'w+')
 	concurrentConns.write("time\tConcurrent Connections\n")
 
@@ -334,7 +361,7 @@ if __name__ == "__main__":
 	os.unlink(concurrentConnsFilename)
 
 	# plot FIN/RSTs over time
-	finRstFilename = os.path.join(outputDir, "finRst-%s.dat" % (analysisIP))
+	finRstFilename = os.path.join(outputDir, "finRst-%s.dat" % (analysisFileExtension))
 	finRstFile = open(finRstFilename, 'w+')
 	finRstFile.write("timestamp\tfinSent\trstSent\tfinReceived\trstReceived\n")
 	minTs = min(finSent.keys() + rstSent.keys() + finReceived.keys() + rstReceived.keys())
@@ -367,7 +394,7 @@ if __name__ == "__main__":
 	# write the ports stuff
 	print "Generating ports information ..."
 
-	portsFilename = os.path.join(outputDir, "ports-%s.dat" % (analysisIP))
+	portsFilename = os.path.join(outputDir, "ports-%s.dat" % (analysisFileExtension))
 	portsFile = open(portsFilename, 'w+')
 	portsFile.write("Port\tLocal\tRemote\n")
 
