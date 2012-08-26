@@ -118,3 +118,66 @@ FlowInspector.isIPValid = function(ipaddr)  {
         }
 	return false;
 }
+
+FlowInspector.getTitleFormat = function(value) {
+	if(value === "pkts") {
+		return function(d) { 
+			var val = 0;
+			// if get is a function, call it, otherwise take d's value
+			if (typeof d.get == 'function') {
+				val = d.get(value);
+			} else {
+				val = d;
+			}
+			var factor = 1;
+			var unit = "";
+			if (val >= 1000*1000) {
+				factor = 1000 * 1000;
+				unit = "m";
+			} else if (val >= 1000) {
+				factor = 1000;
+				unit = "k";
+			}
+			return Math.floor(val/factor)+unit; };
+	}
+	if(value === "bytes") {
+		return function(d) { 
+			var val = 0;
+			// if get is a function, call it, otherwise take d's value
+			if (typeof d.get == 'function') {
+				val = d.get(value);
+			} else {
+				val = d;
+			}
+			var factor = 1;
+			var unit = "B"
+			// bigger than terrabyte
+			if (val > 1000*1000*1000*1000) {
+				factor = 1000*1000*1000*1000;
+				unit = "TB";
+			} else if (val > 1000*1000*1000) {
+				factor = 1000*1000*1000;
+				unit = "GB";
+			} else if (val > 1000*1000) {
+				factor = 1000*1000;
+				unit = "MB";
+			} else if (val > 1000) {
+				factor = 1000;
+				unit = "kB";
+			} else {
+				return (d3.format("f"))(val) + unit;
+			}
+
+			return (d3.format(".2f"))(val/factor) + unit; };
+	}
+	return function(d) { 
+		var val = 0;
+		// if get is a function, call it, otherwise take d's value
+		if (typeof d.get == 'function') {
+			val = d.get(value);
+		} else {
+			val = d;
+		}
+		return Math.floor(val) + " flows" };
+}
+

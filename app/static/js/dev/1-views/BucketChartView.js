@@ -31,7 +31,7 @@ var BucketChartView = Backbone.View.extend({
     		bucket_size = this.flows.bucket_size,
     		xAxis = this.getXAxis(h, x),
     		yAxis = this.getYAxis(y),
-    		titleFormat = this.getTitleFormat();
+    		titleFormat = FlowInspector.getTitleFormat(this.model.get("value"));
     		
     	// check if container was removed from DOM	
     	if(w <= 0) {
@@ -125,7 +125,7 @@ var BucketChartView = Backbone.View.extend({
     		bucket_size = this.flows.bucket_size,
     		xAxis = this.getXAxis(h, x),
     		yAxis = this.getYAxis(y),
-    		titleFormat = this.getTitleFormat();
+    		titleFormat = FlowInspector.getTitleFormat(this.model.get("value"));
 		
 		// Set the scale domain
     	var min_bucket = d3.min(data, function(d) { return d.get("bucket"); });
@@ -176,29 +176,19 @@ var BucketChartView = Backbone.View.extend({
     		.tickPadding(10)
     		.tickFormat(d3.time.format("%Y-%m-%d %H:%M:%S"));
     },
-    getYAxis: function(scaleY) {
+	getYAxis: function(scaleY) {
 		var axis = d3.svg.axis().scale(scaleY)
 			.orient("left")
 			.tickSize(2);
     		
-    	var value = this.model.get("value");
-    	if(value === "pkts") {
-			axis.tickFormat(function(d) { return Math.floor(d/1000)+"k"; });
+		var value = this.model.get("value");
+		if(value === "pkts") {
+			axis.tickFormat(FlowInspector.getTitleFormat(value));
 		}
 		else if(value === "bytes") {
-			axis.tickFormat(function(d) { return (d3.format(".2f"))(d/1024/1024)+" MB"; });
+			axis.tickFormat(FlowInspector.getTitleFormat(value));
 		}
 		
 		return axis;
-    },
-    getTitleFormat: function() {
-    	var value = this.model.get("value");
-    	if(value === "pkts") {
-			return function(d) { return Math.floor(d.get(value)/1000)+"k pakets"; };
-		}
-		if(value === "bytes") {
-			return function(d) { return (d3.format(".2f"))(d.get(value)/1024/1024)+" MB"; };
-		}
-		return function(d) { return Math.floor(d.get(value)) + " flows" };
-    }
+	},
 });
