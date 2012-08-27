@@ -55,7 +55,8 @@ var OverviewPageView = PageView.extend({
 	},
 	clickDonutChartValue: function(e) {
 		var target = $(e.target).parent();
-		this
+		this.nodesDonutModel.set({ value: target.data("value") });
+		this.portsDonutModel.set({ value: target.data("value") });
 	},
 	changeOverviewValue: function(model, value) {
 		$(".hostview-value li", this.el).removeClass("active");
