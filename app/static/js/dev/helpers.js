@@ -2,6 +2,12 @@ if(!FlowInspector) {
 	var FlowInspector = {};
 }
 
+// definitions
+FlowInspector.tcpColor = "rgba(255,0,0,1.0)"
+FlowInspector.udpColor = "rgba(0,255,0,1.0)"
+FlowInspector.icmpColor = "rgba(0,0,255,1.0)"
+FlowInspector.otherColor = "rgba(0,255,255,1.0)"
+
 /**
  * Transforms a 32bit IPv4 address into a human readable format
  * (e.g. 192.168.0.1)

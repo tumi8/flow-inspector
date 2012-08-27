@@ -86,23 +86,66 @@ var OverviewView = Backbone.View.extend({
 
 		var bar_enter = bar.enter().append("g")
 			.attr("class", "bar")
-			.attr("title", function(d) { return d.get(num_val) + " " + num_val; })
-			.on("mouseover", function(d) {
-				d3.select(this).selectAll("rect")
-					.attr("fill", stroke(d.get(num_val) / max_value));
-			})
-			.on("mouseout", function(d) {
-				d3.select(this).selectAll("rect")
-					.attr("fill", "rgba(0,100,205,0.2)");
-			});
+			.attr("title", FlowInspector.getTitleFormat(num_val));
+
+		$(".bar", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
+
+		// the following method aims at getting the appropriate x-offset for 
+		// the value of num_val (which can be flows, pakets, or bytes) 
+		// for the given protocol (tcp, udp, icmp, others)
+		getProtoSpecificX = function(obj, proto, num_val) {
+			var val = 1;
+			var protoObj = obj.get(proto);
+			// the value might not be set in the db. use 0 as default
+			if (protoObj) {
+				val = protoObj[num_val];
+				if (! val > 0) {
+					val = 1;
+				}
+			}
+			return x(val);
+		}
 			
 
+		// tcp bar, starts of the left side of the graph
 		bar_enter.append("rect")
+				.attr("class", "tcp")
 				.attr("x", offset)
 				.attr("y", function(d, idx) { return y(idx); })
-				.attr("width", function(d) { return x(d.get(num_val)); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "tcp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", "rgba(0,100,205,0.2)");
+				.attr("fill", FlowInspector.tcpColor);
+
+
+		// udp bar, starts after the tcp bar
+		bar_enter.append("rect")
+				.attr("class", "udp")
+				.attr("x", function(d, idx) { return offset + getProtoSpecificX(d, "tcp", num_val); } )
+				.attr("y", function(d, idx) { return y(idx); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "udp", num_val); })
+				.attr("height", barWidth)
+				.attr("fill", FlowInspector.udpColor);
+
+		// icmp bar, starts after the udp bar
+		bar_enter.append("rect")
+				.attr("class", "icmp")
+				.attr("x", function(d, idx) { return offset + getProtoSpecificX(d, "tcp", num_val) + getProtoSpecificX(d, "udp", num_val); } )
+				.attr("y", function(d, idx) { return y(idx); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "icmp", num_val); })
+				.attr("height", barWidth)
+				.attr("fill", FlowInspector.icmpColor);
+
+		// others bar, starts after the imcp bar
+		bar_enter.append("rect")
+				.attr("class", "other")
+				.attr("x", function(d, idx) { return offset + getProtoSpecificX(d, "tcp", num_val) + getProtoSpecificX(d, "udp", num_val) + getProtoSpecificX(d, "icmp", num_val) } )
+				.attr("y", function(d, idx) { return y(idx); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "other", num_val); })
+				.attr("height", barWidth)
+				.attr("fill", FlowInspector.otherColor);
 
 		bar_enter.append("line")
 			.attr("x1", function(d) { return x(d.get(num_val)) + offset; })
@@ -110,9 +153,6 @@ var OverviewView = Backbone.View.extend({
 			.attr("y1", function(d, idx) { return y(idx); })
 			.attr("y2", function(d, idx) { return y(idx) + barWidth; })
 			.attr("stroke", function(d) { return stroke(d.get(num_val) / max_value); });
-		
-
-		$(".bar", this.el).twipsy({offset: 3});
 
 		return this;
 	},

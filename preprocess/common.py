@@ -12,6 +12,13 @@ COL_SRC_PORT = "srcPort"
 COL_DST_PORT = "dstPort"
 COL_PROTO = "proto"
 
+COL_PROTO_TCP = "tcp"
+COL_PROTO_UDP = "udp"
+COL_PROTO_ICMP = "icmp"
+COL_PROTO_OTHER = "other"
+AVAILABLE_PROTOS = [ COL_PROTO_TCP, COL_PROTO_UDP, COL_PROTO_ICMP, COL_PROTO_OTHER ]
+
+
 # the collection prefix to use for flows
 DB_FLOW_PREFIX = "flows_"
 # the collection prefix to use for completely aggregated flows
@@ -20,6 +27,11 @@ DB_FLOW_AGGR_PREFIX = "flows_aggr_"
 DB_INDEX_NODES = "index_nodes"
 # the collection to use for the port index
 DB_INDEX_PORTS = "index_ports"
+
+PCAP_DB_ALL = "all_flows"
+PCAP_DB_GAP = "with_gaps"
+PCAP_DB_LOWTHROUGHPUT = "low_throughput"
+PCAP_STATS = "pcap_stats"
 
 
 INDEX_ADD = "add"
@@ -50,7 +62,18 @@ COLUMNMAP = {
         "LASTSWITCHED" : "lastSwitched"
 }
 
+def getProto(obj):
+	proto = obj.get("proto", 0)
+	if proto == 17 or proto == "UDP":
+		result = COL_PROTO_UDP
+	elif proto == 6 or proto == "TCP":
+		result = COL_PROTO_TCP
+	elif proto == 1 or proto == "ICMP":
+		result = COL_PROTO_ICMP
+	else:
+		result = COL_PROTO_OTHER
 
+	return result
 
 def update_node_index(obj, collection, aggr_sum, operation):
 	"""Update the node index collection in MongoDB with the current flow.
@@ -68,23 +91,33 @@ def update_node_index(obj, collection, aggr_sum, operation):
 	
 	# update source node
 	doc = { "$inc": {} }
-	
+
+	proto = getProto(obj)
+
 	for s in aggr_sum:
 		if operation == INDEX_ADD:
 			doc["$inc"][s] = obj.get(s, 0)
+			doc["$inc"][proto + "." + s] = obj.get(s,0)
 			doc["$inc"]["src." + s] = obj.get(s, 0)
+			doc["$inc"]["src." + proto + "." + s] = obj.get(s,0)
 		else:
 			doc["$inc"][s] = -obj.get(s, 0)
+			doc["$inc"][proto + "." + s] = -obj.get(s,0)
 			doc["$inc"]["src." + s] = -obj.get(s, 0)
+			doc["$inc"]["src." + proto + "." + s] = -obj.get(s,0)
 
 
 	if operation == INDEX_ADD:
 		doc["$inc"]["flows"] = 1
+		doc["$inc"][proto + ".flows"] = 1
 		doc["$inc"]["src.flows"] = 1
+		doc["$inc"]["src." + proto + ".flows"] = 1
 	else:
 		# remove 
 		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"]["src.flows"] = -obj.get("flows") 
+		doc["$inc"][proto + ".flows"] = -obj.get(proto + ".flows")
+		doc["$inc"]["src.flows"] = -obj.get("src.flows") 
+		doc["$inc"]["src." + proto + ".flows"] = -obj.get("src." + proto + ".flows") 
 	
 	# insert if not exists, else update sums
 	collection.update({ "_id": obj[COL_SRC_IP] }, doc, True)
@@ -95,18 +128,26 @@ def update_node_index(obj, collection, aggr_sum, operation):
 	for s in aggr_sum:
 		if operation == INDEX_ADD:
 			doc["$inc"][s] = obj.get(s, 0)
+			doc["$inc"][proto + "." + s] = obj.get(s,0)
 			doc["$inc"]["dst." + s] = obj.get(s, 0)
+			doc["$inc"]["dst." + proto + "." + s] = obj.get(s,0)
 		else:
+			doc["$inc"][proto + "." + s] = -obj.get(s,0)
 			doc["$inc"][s] = -obj.get(s, 0)
 			doc["$inc"]["dst." + s] = -obj.get(s, 0)
+			doc["$inc"]["dst." + proto + "." + s] = -obj.get(s,0)
 
 	if operation == INDEX_ADD:
 		doc["$inc"]["flows"] = 1
+		doc["$inc"][proto + ".flows"] = 1
 		doc["$inc"]["dst.flows"] = 1
+		doc["$inc"]["dst." + proto + ".flows"] = 1
 	else:
 		# remove 
 		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"]["dst.flows"] = -obj.get("flows") 
+		doc["$inc"][proto + ".flows"] = -obj.get(proto + ".flows")
+		doc["$inc"]["dst.flows"] = -obj.get("dst.flows") 
+		doc["$inc"]["dst." + proto + ".flows"] = -obj.get("dst." + proto + ".flows") 
 					
 	# insert if not exists, else update sums
 	collection.update({ "_id": obj[COL_DST_IP] }, doc, True)

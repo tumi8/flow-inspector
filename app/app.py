@@ -12,35 +12,17 @@ import os
 import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'preprocess'))
 
 import math
 import bson
 import pymongo
 import config
 import json
+import common
 
 from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error, response, redirect
 from bottle import jinja2_view as view, jinja2_template as template
-
-# the collection prefix to use for flows
-DB_FLOW_PREFIX = "flows_"
-# the collection prefix to use for completely aggregated flows
-DB_FLOW_AGGR_PREFIX = "flows_aggr_"
-# the collection to use for the node index
-DB_INDEX_NODES = "index_nodes"
-# the collection to use for the port index
-DB_INDEX_PORTS = "index_ports"
-# column names of IP addresses
-COL_SRC_IP = "srcIP"
-COL_DST_IP = "dstIP"
-# column names of ports
-COL_SRC_PORT = "srcPort"
-COL_DST_PORT = "dstPort"
-
-PCAP_DB_ALL = "all_flows"
-PCAP_DB_GAP = "with_gaps"
-PCAP_DB_LOWTHROUGHPUT = "low_throughput"
-PCAP_STATS = "pcap_stats"
 
 # set template path
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
@@ -57,7 +39,7 @@ def get_bucket_size(start_time, end_time, resolution):
 		if i == len(config.flow_bucket_sizes)-1:
 			return s
 			
-		coll = db[DB_FLOW_AGGR_PREFIX + str(s)]
+		coll = db[common.DB_FLOW_AGGR_PREFIX + str(s)]
 		min_bucket = coll.find_one(
 			{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
 			fields={ "bucket": 1, "_id": 0 }, 
@@ -154,7 +136,6 @@ def index():
 def api_bucket_query():
 	(fields, sort, limit, count) = extract_mongo_query_params()
 
-
 	# get query params
 	start_bucket = 0
 	if "start_bucket" in request.GET:
@@ -244,19 +225,19 @@ def api_bucket_query():
 		isPcap = True
 		name = request.GET["pcapType"]
 		if name == "allFlows":
-			collection = pcapDB[PCAP_DB_ALL]
+			collection = pcapDB[common.PCAP_DB_ALL]
 		elif name == "withGaps":
-			collection = pcapDB[PCAP_DB_GAP]
+			collection = pcapDB[common.PCAP_DB_GAP]
 		elif name == "lowThroughput":
-			collection = pcapDB[PCAP_DB_LOWTHROUGHPUT]
+			collection = pcapDB[common.PCAP_DB_LOWTHROUGHPUT]
 		if collection == None:
 			raise HTTPError(404, "Index name not known.")
 	else:
 		if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
-			collection = db[DB_FLOW_PREFIX + str(bucket_size)]
+			collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
 		else:
 			# use preaggregated collection
-			collection = db[DB_FLOW_AGGR_PREFIX + str(bucket_size)]
+			collection = db[common.DB_FLOW_AGGR_PREFIX + str(bucket_size)]
 
 
 	# only stated fields will be available, all others will be aggregated toghether	
@@ -273,28 +254,28 @@ def api_bucket_query():
 			spec["bucket"]["$lte"] = end_bucket
 	if len(include_ports) > 0:
 		spec["$or"] = [
-			{ COL_SRC_PORT: { "$in": include_ports } },
-			{ COL_DST_PORT: { "$in": include_ports } }
+			{ common.COL_SRC_PORT: { "$in": include_ports } },
+			{ common.COL_DST_PORT: { "$in": include_ports } }
 		]
 	if len(exclude_ports) > 0:
-		spec[COL_SRC_PORT] = { "$nin": exclude_ports }
-		spec[COL_DST_PORT] = { "$nin": exclude_ports }
+		spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
+		spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
 	
 	if len(include_ips) > 0:
 		spec["$or"] = [
-			{ COL_SRC_IP : { "$in": include_ips } },
-			{ COL_DST_IP : { "$in": include_ips } }
+			{ common.COL_SRC_IP : { "$in": include_ips } },
+			{ common.COL_DST_IP : { "$in": include_ips } }
 		]
 
 	if len(exclude_ips) > 0:
-		spec[COL_SRC_IP] = { "$in": exclude_ips } 
-		spec[COL_DST_IP] = { "$in": exclude_ips } 
+		spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
+		spec[common.COL_DST_IP] = { "$in": exclude_ips } 
 
 	if fields != None:
 		query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
 	else:
-		query_fields = ["bucket", "flows"] + config.flow_aggr_sums
-		
+		query_fields = ["bucket", "flows"] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
+
 	cursor = collection.find(spec, fields=query_fields).batch_size(1000)
 	if sort:
 		cursor.sort("bucket", sort)
@@ -315,12 +296,12 @@ def api_bucket_query():
 				current_bucket = doc["bucket"]
 				
 			# biflow?
-			if biflow and COL_SRC_IP in fields and COL_DST_IP in fields:
-				srcIP = doc.get(COL_SRC_IP, None)
-				dstIP = doc.get(COL_DST_IP, None)
+			if biflow and common.COL_SRC_IP in fields and common.COL_DST_IP in fields:
+				srcIP = doc.get(common.COL_SRC_IP, None)
+				dstIP = doc.get(common.COL_DST_IP, None)
 				if srcIP > dstIP:
-					doc[COL_SRC_IP] = dstIP
-					doc[COL_DST_IP] = srcIP
+					doc[common.COL_SRC_IP] = dstIP
+					doc[common.COL_DST_IP] = srcIP
 			
 			# construct aggregation key
 			key = str(current_bucket)
@@ -362,9 +343,9 @@ def api_index(name):
 	
 	collection = None
 	if name == "nodes":
-		collection = db[DB_INDEX_NODES]
+		collection = db[common.DB_INDEX_NODES]
 	elif name == "ports":
-		collection = db[DB_INDEX_PORTS]
+		collection = db[common.DB_INDEX_PORTS]
 		
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
@@ -397,12 +378,12 @@ def api_index(name):
 	spec = {}
 	if len(include_ports) > 0:
 		spec["$or"] = [
-			{ COL_SRC_PORT: { "$in": include_ports } },
-			{ COL_DST_PORT: { "$in": include_ports } }
+			{ common.COL_SRC_PORT: { "$in": include_ports } },
+			{ common.COL_DST_PORT: { "$in": include_ports } }
 		]
 	if len(exclude_ports) > 0:
-		spec[COL_SRC_PORT] = { "$nin": exclude_ports }
-		spec[COL_DST_PORT] = { "$nin": exclude_ports }
+		spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
+		spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
 
 
 	cursor = collection.find(fields=fields).batch_size(1000)
@@ -428,7 +409,7 @@ def server_static(path):
 
 @get("/pcap/stats")
 def pcap_stats():
-	collection = pcapDB[PCAP_STATS]
+	collection = pcapDB[common.PCAP_STATS]
 	cursor = collection.find().batch_size(1000)
 	cursor.sort([("second", pymongo.ASCENDING)])
 	result = []
@@ -440,7 +421,6 @@ def pcap_stats():
 
 @post('/pcap')
 def pcap_upload():
-	print request
 	data = request.files.get('data')
 	response.content_type = "application/json"
 
