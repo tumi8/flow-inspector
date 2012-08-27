@@ -1,11 +1,18 @@
 var OverviewPageView = PageView.extend({
     events: {
     	"click .hostview-value a": "clickHostviewValue",
-	"click .bucketview-value a": "clickBucketChartValue"
+	"click .bucketview-value a": "clickBucketChartValue",
+	"click .donut-chart-value a": "clickDonutChartValue"
     },
     initialize: function() {
     	this.template = _.template($("#overview-page-template").html());
     	
+	this.nodesDonutModel = new DonutChartModel({ index: "nodes" });
+	this.nodesDonutModel.bind("change:value", this.changeDonutChartValue, this);
+	this.nodesDonutView = new DonutChartView({ model: this.nodesDonutModel });
+
+	this.portsDonutModel = new DonutChartModel({ index: "ports" });
+	this.portsDonutView = new DonutChartView({ model: this.portsDonutModel });
 	
     	this.overviewModel = new OverviewModel();
     	this.overviewModel.bind("change:value", this.changeOverviewValue, this);
@@ -25,8 +32,13 @@ var OverviewPageView = PageView.extend({
     	$(".bucketview-value li[data-value='" + this.bucketChartModel.get("value") + "']", this.el)
     		.addClass("active");
 
+    	$(".donut-chart-value li[data-value='" + this.nodesDonutModel.get("value") + "']", this.el)
+    		.addClass("active");
 
-	$(".viz-hostview", this.el).append(this.overviewView.el);	
+
+	$(".viz-hostview", this.el).append(this.overviewView.el);
+	$(".viz-donut-nodes", this.el).append(this.nodesDonutView.el);
+	$(".viz-donut-ports", this.el).append(this.portsDonutView.el);
 	$(".viz-buckets", this.el).append(this.bucketChartView.el);
 	
 	this.overviewView.render();
@@ -41,6 +53,10 @@ var OverviewPageView = PageView.extend({
 		var target = $(e.target).parent();
 		this.bucketChartModel.set({value: target.data("value")});
 	},
+	clickDonutChartValue: function(e) {
+		var target = $(e.target).parent();
+		this
+	},
 	changeOverviewValue: function(model, value) {
 		$(".hostview-value li", this.el).removeClass("active");
 		$(".hostview-value li[data-value='" + value + "']", this.el)
@@ -49,6 +65,11 @@ var OverviewPageView = PageView.extend({
 	changeBucketChartValue: function(model, value) {
 		$(".bucketview-value li", this.el).removeClass("active");
 		$(".bucketview-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+	},
+	changeDonutChartValue: function(model, value) {
+		$(".donut-chart-value li", this.el).removeClass("active");
+		$(".donut-chart-value li[data-value='" + value + "']", this.el)
 			.addClass("active");
 	}
 });
