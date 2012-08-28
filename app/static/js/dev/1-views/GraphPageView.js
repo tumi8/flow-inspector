@@ -5,7 +5,8 @@ var GraphPageView = PageView.extend({
     	"click a.hilbert": "clickLayoutHilbert",
     	"change #filterNodeLimit": "changeNodeLimit",
     	"blur #filterPorts": "changeFilterPorts",
-    	"change #filterPortsType": "changeFilterPortsType"
+    	"change #filterPortsType": "changeFilterPortsType",
+	"change #showOthers": "changeShowOthers"
     },
     initialize: function() {
     	this.template = _.template($("#graph-page-template").html());
@@ -39,6 +40,7 @@ var GraphPageView = PageView.extend({
     	this.graphModel.bind("change:nodeLimit", this.nodeLimitChanged, this);
     	this.graphModel.bind("change:filterPorts", this.filterPortsChanged, this);
     	this.graphModel.bind("change:filterPortsType", this.filterPortsTypeChanged, this);
+	this.graphModel.bind("change:showOthers", this.showOthersChanged, this);
     	
     	// fetch at the end because a cached request calls render immediately!
     	this.nodes.fetch();
@@ -85,6 +87,7 @@ var GraphPageView = PageView.extend({
     	$("#filterNodeLimit", this.el).val(this.graphModel.get("nodeLimit"));
     	$("#filterPorts", this.el).val(this.graphModel.get("filterPorts"));
     	$("#filterPortsType", this.el).val(this.graphModel.get("filterPortsType"));
+	$("#showOthers", this.el).attr("checked", this.graphModel.get("showOthers"));
     	
     	$("aside .help", this.el).popover({ offset: 24 });
     	
@@ -190,6 +193,12 @@ var GraphPageView = PageView.extend({
     nodeLimitChanged: function(model, value) {
     	$("#filterNodeLimit", this.el).val(value);
     },
+    showOthersChanged: function(model, value) {
+	$("#showOthers", this.el).attr("checked", value);
+	this.loader.show();
+	this.nodes.fetch();
+	this.fetchFlows();
+    },
     changeFilterPorts: function() {
     	this.graphModel.set({
     		filterPorts: $("#filterPorts", this.el).val()
@@ -209,5 +218,15 @@ var GraphPageView = PageView.extend({
     	$("#filterPortsType", this.el).val(value);
     	this.loader.show();
     	this.fetchFlows();
+    },
+    changeShowOthers: function() {
+    	var checkbox = $("#showOthers", this.el);
+	var val = false;
+	if (checkbox.attr('checked')) {
+		val = true;
+	}
+	this.graphModel.set({
+		showOthers: val
+	});
     }
 });

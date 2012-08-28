@@ -66,6 +66,7 @@ var QueryModel = Backbone.Model.extend({
 var GraphModel = Backbone.Model.extend({
 	defaults: {
 		nodeLimit: 255,
+		showOthers: true,
 		filterPorts: "",
 		filterPortsType: "inclusive"
 	}

@@ -1,36 +1,36 @@
 var GraphView = Backbone.View.extend({
-    events: {
-    	"click": "stop"
-    },
-    initialize: function(options) {
-    	if(!this.model) {
-    		this.model = new GraphModel();
-    	}
-    	this.model.bind("change:nodeLimit", this.nodeLimitChanged, this);
+	events: {
+		"click": "stop"
+	},
+	initialize: function(options) {
+		if(!this.model) {
+			this.model = new GraphModel();
+		}
+		this.model.bind("change:nodeLimit", this.nodeLimitChanged, this);
     	
-    	this.nodes = options.nodes;
-    	this.flows = options.flows;
-    	this.timeline = options.timeline;
-    	this.nodes.bind("reset", this.updateNodes, this);
-    	this.flows.bind("reset", this.updateFlows, this);
+		this.nodes = options.nodes;
+		this.flows = options.flows;
+		this.timeline = options.timeline;
+		this.nodes.bind("reset", this.updateNodes, this);
+		this.flows.bind("reset", this.updateFlows, this);
     	
-    	this.w = 3000;
-    	this.h = 3000;
+		this.w = 1280;
+    		this.h = 1280;
     	
-    	this.data_nodes = [];
-    	this.data_links = [];
-    },
-    render: function() {
-    	var container = $(this.el).empty();
-    	
-    	if(this.data_nodes.length <= 0) {
-    		return;
-    	}
+		this.data_nodes = [];
+		this.data_links = [];
+	},
+	render: function() {
+		var container = $(this.el).empty();
+	
+		if(this.data_nodes.length <= 0) {
+    			return;
+		}
     		
-    	var svg = d3.select(container.get(0))
-    	.append("svg")
-			.attr("width", this.w)
-			.attr("height", this.h);
+		var svg = d3.select(container.get(0))
+			.append("svg")
+				.attr("width", this.w)
+				.attr("height", this.h);
 		
 		// stop old force otherwise this could be very CPU intensive
 		if(this.force) {
@@ -89,35 +89,36 @@ var GraphView = Backbone.View.extend({
 		$(".node", this.el).twipsy({ delayIn: 1000, offset: 3 });
 		
 		return this;
-    },
-    updateNodes: function() {
-    	if(this.nodes.length <= 0) {
-    		return;
-    	}
+	},
+	updateNodes: function() {
+		if(this.nodes.length <= 0) {
+			return;
+		}
     	
-    	this.data_nodes = [];
-    	this.node_map = {};
-    	var node_limit = this.model.get("nodeLimit");
-    	// create special "other" node
-    	var other_nodes = { 
-    		name: "others", 
-    		bytes: 0, 
-    		flows: 0, 
-    		pkts: 0, 
-    		nodes: 0 };
-    	var that = this;
+		this.data_nodes = [];
+		this.node_map = {};
+		var node_limit = this.model.get("nodeLimit");
+		var showOthers = this.model.get("showOthers");
+		// create special "other" node
+		var other_nodes = { 
+  			name: "others", 
+			bytes: 0, 
+			flows: 0, 
+			pkts: 0, 
+			nodes: 0 };
+		var that = this;
     	
-    	var nodes = [];
-    	this.nodes.each(function(node) {
-    		nodes.push(node);
-    	});
+		var nodes = [];
+		this.nodes.each(function(node) {
+			nodes.push(node);
+		});
     	
-    	if(node_limit) {
-    		// sort nodes by number of flows descending if there is a node limit
-    		nodes.sort(function(a,b) {
-    			return b.get("flows") - a.get("flows");
-    		});
-    	}
+		if(node_limit) {
+			// sort nodes by number of flows descending if there is a node limit
+			nodes.sort(function(a,b) {
+				return b.get("flows") - a.get("flows");
+			});
+		}
     	
 		nodes.forEach(function(m, i) {
 			if(!node_limit || i < node_limit) {
@@ -128,7 +129,7 @@ var GraphView = Backbone.View.extend({
 				that.data_nodes.push(node);
 				that.node_map[m.id] = node;
 			}
-			else {
+			else if (showOthers) {
 				// add node to other nodes
 				other_nodes.nodes++;
 				other_nodes.flows += m.get("flows");
@@ -144,28 +145,31 @@ var GraphView = Backbone.View.extend({
 			return a.model.id - b.model.id;
 		});
 		
-		if(node_limit) {
+		if(node_limit && showOthers) {
 			this.data_nodes.push(other_nodes);
 		}
     	
-    	this.render();
+		this.render();
     	
-    	this.hilbertLayout();
-    },
-    updateFlows: function() {
-    	if(this.data_nodes.length <= 0) {
-    		this.updateNodes();
-    	}
+    		this.hilbertLayout();
+	},
+	updateFlows: function() {
+		if(this.data_nodes.length <= 0) {
+			this.updateNodes();
+		}
     	
-    	var that = this;
-    	this.data_links = [];
+		var that = this;
+		this.data_links = [];
     	
-    	var min_bucket = d3.min(this.flows.models, function(d) { return d.get("bucket"); });
-    	var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
+		var min_bucket = d3.min(this.flows.models, function(d) { return d.get("bucket"); });
+    		var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
     	
 		this.flows.each(function(m) {
 			var source = that.node_map[m.get("srcIP")];
 			var target = that.node_map[m.get("dstIP")];
+			if (source === undefined || target === undefined) {
+				return;
+			}
 			var t = 1.0;
 			if(min_bucket < max_bucket) {
 				t = (m.get("bucket").getTime() - min_bucket.getTime()) / (max_bucket.getTime() - min_bucket.getTime());
@@ -180,40 +184,40 @@ var GraphView = Backbone.View.extend({
 		});
 		
 		this.render();
-    },
-    stop: function() {
-    	if(this.force) {
-    		this.force.stop();
-    	}
-    	return this;
-    },
-    forceLayout: function(reset) {
-    	if(this.data_nodes.length <= 0 || this.data_links.length <= 0) {
-    		return this;
-    	}
+	},
+	stop: function() {
+		if(this.force) {
+			this.force.stop();
+		}
+		return this;
+	},
+	forceLayout: function(reset) {
+		if(this.data_nodes.length <= 0 || this.data_links.length <= 0) {
+			return this;
+		}
     	
-    	this.stop();
+		this.stop();
+
+		if(reset) {
+			this.data_nodes.forEach(function(n) {
+				delete n.x;
+				delete n.y;
+			});
+		}
     	
-    	if(reset) {
-    		this.data_nodes.forEach(function(n) {
-    			delete n.x;
-    			delete n.y;
-    		});
-    	}
+		this.force.start();
+		return this;
+	},
+	hilbertLayout: function() {
+		if(this.data_nodes.length <= 0) {
+			return this;
+		}
+
+		this.stop();
     	
-    	this.force.start();
-    	return this;
-    },
-    hilbertLayout: function() {
-    	if(this.data_nodes.length <= 0) {
-    		return this;
-    	}
-    	
-    	this.stop();
-    	
-    	var hilbertW = 500,
-    		hilbertH = 500,
-    		n = 2;
+		var hilbertW = 500,
+			hilbertH = 500,
+			n = 2;
 		for(; n*n < this.data_nodes.length; n *= 2);
 		
 		for(var i = 0; i < this.data_nodes.length; i++) {
@@ -252,10 +256,10 @@ var GraphView = Backbone.View.extend({
 			.attr("cx", function(d) { return d.x; })
 			.attr("cy", function(d) { return d.y; });
     	
-    	return this;
-    },
-    nodeLimitChanged: function(model, value) {
-    	this.updateNodes();
-    	this.updateFlows();
-    }
+		return this;
+	},
+	nodeLimitChanged: function(model, value) {
+		this.updateNodes();
+		this.updateFlows();
+	}
 });
