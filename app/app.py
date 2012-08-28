@@ -18,7 +18,6 @@ import math
 import bson
 import pymongo
 import config
-import json
 import common
 
 from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error, response, redirect

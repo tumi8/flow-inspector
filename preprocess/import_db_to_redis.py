@@ -24,30 +24,43 @@ import config
 
 ######### functions
 
-def getFirstTable(tables, firstTimestamp, TYPE):
+def getTableNameFromTimestamp(timestamp):
+	timeObj = datetime.datetime.utcfromtimestamp(timestamp)
+	if timeObj.minute < 30:
+		halfHour = 0
+	else:
+		halfHour = 1
+	tableName = "h_%0.4d%0.2d%0.2d_%0.2d_%0.1d" % (timeObj.year, timeObj.month, timeObj.day, timeObj.hour, halfHour)
+	return tableName
+
+def getTables(tables, firstTimestamp, lastTimestamp, TYPE):
 	"""
 		Expects a sorted list of table names (sorted by time).
 		Returns the table which contains the first flow that 
 		has a firstSwitched time of firstTimestamp
 	"""
-	if firstTimestamp == 0:
+	if firstTimestamp == 0 and lastTimestamp == 0:
 		return tables
 	
-	timeObj = datetime.datetime.utcfromtimestamp(firstTimestamp)
-	if timeObj.minute < 30:
-		halfHour = 0
-	else:
-		halfHour = 1
-	firstTableName = "h_%0.4d%0.2d%0.2d_%0.2d_%0.1d" % (timeObj.year, timeObj.month, timeObj.day, timeObj.hour, halfHour)
+	# restrict tablespace on first timestamp
+	if firstTimestamp != 0:
+		firstTableName = getTableNameFromTimestamp(firstTimestamp)
 
-	print tables
-	try:
-		idx = tables.index(firstTableName) 
-	except:
-		# no such table in list
-		return []
-	return tables[idx:len(tables)]
-
+		try:
+			idx = tables.index(firstTableName) 
+		except:
+			# no such table in list
+			return []
+		tables =  tables[idx:len(tables)]
+	if lastTimestamp != 0:
+		lastTable = getTableNameFromTimestamp(lastTimestamp)
+		try:
+			idx = tables.index(lastTable)
+		except:
+			# no such table in list
+			return tables
+		tables = tables[0:idx]
+	return tables
  
 
 # width defines bar width
@@ -87,6 +100,7 @@ parser.add_argument("--max-queue", nargs="?", type=int, default=100000, help="Th
 parser.add_argument("--clear-queue", nargs="?", type=bool, default=False, const=True, help="Whether to clear the queue before importing the flows.")
 parser.add_argument("--continuous-update", nargs="?", type=bool, default=False, const=True, help="Whether the database import should stop after it reaches the end of the database, or whether it should continue to get new flows")
 parser.add_argument("--start-time", nargs="?", type=int,  default=0, const=True, help="Defines the offset in unix time at which flow importing into mongo should start. This is handy for large flow-database where we do not want to import the complete database. Default: 0 (import all tables)")
+parser.add_argument("--end-time", nargs="?", type=int, default=0, const=True, help="Defines the offset in unix time at which flow importing into mongo should stop. This is handy  for large flow-databases where we do not want to import the complete database. Default: 0 (import all tables)")
 parser.add_argument("--from-temporary", nargs="?", type=bool, default=False, const=True, help="Import flows that have been generated with app/pcapprocess/check-pcap.py")
 
 args = parser.parse_args()
@@ -218,7 +232,7 @@ while True:
 		tables.sort()
 
 	# get the tables that contain the flows starting with args.start_time
-	tables = getFirstTable(tables, args.start_time, TYPE)
+	tables = getTables(tables, args.start_time, args.end_time, TYPE)
 
 	if args.continuous_update:
 		# TODO: this is a bit hacky. since we do not know flow timeouts and do not (yet) have unique identifiers
@@ -255,7 +269,8 @@ while True:
 
 		print "Importing table ", table, "..."
 	
-		c.execute("SELECT * FROM " + table + " WHERE FIRSTSWITCHED >= " + str(args.start_time) + " ORDER BY FIRSTSWITCHED ASC")
+		#c.execute("SELECT * FROM " + table + " WHERE  FIRSTSWITCHED >= " + str(args.start_time) + " ORDER BY FIRSTSWITCHED ASC")
+		c.execute("SELECT * FROM " + table + " WHERE srcIP != 2208239215 and dstIP != 2208239215 and FIRSTSWITCHED >= " + str(args.start_time) + " ORDER BY FIRSTSWITCHED ASC")
 	
 		for row in c:
 			obj = dict()
