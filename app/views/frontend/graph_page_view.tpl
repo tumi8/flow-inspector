@@ -23,6 +23,7 @@
 	    			data-content="Set positions of all nodes on the canvas with a Hilber curve.">
 	    			Hilbert Curve</a>
 	    	</p>
+		<!--
 	    	<h5>Data Mapping</h5>
 	    	<form class="form-stacked">
 	    		<fieldset>
@@ -44,9 +45,11 @@
 	    			</div>
 	    		</fieldset>
 	    	</form>
+		-->
 	    	<h5>Filters</h5>
 	    	<form class="form-stacked">
 	    		<fieldset>
+				<label class="checkbox"><input type="checkbox" id="showOthers">Show Others</label>
 	    			<div class="clearfix help"
 	    				title="Node limit"
 	    				data-content="Limit the number of nodes. Nodes are sorted by the number of flows that belong to them. Then only the first n nodes will be shown individually. The others will be grouped together.">

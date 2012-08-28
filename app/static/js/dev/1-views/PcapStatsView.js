@@ -35,7 +35,6 @@ var PcapStatsView = Backbone.View.extend({
 		//$(this.el).append("<h2>Statistics</h2>");
 
 		data = data.map(function(d) { return {x: parseInt(d.get("second")), y: d.get(selectedVal)}});
-		console.log(data)
 		//data = [ { x: 0, y: 40 }, { x: 1, y: 49 }, { x: 2, y: 17 }, { x: 3, y: 42 } ];
 
 
