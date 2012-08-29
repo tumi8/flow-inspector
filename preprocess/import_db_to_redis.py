@@ -269,8 +269,7 @@ while True:
 
 		print "Importing table ", table, "..."
 	
-		#c.execute("SELECT * FROM " + table + " WHERE  FIRSTSWITCHED >= " + str(args.start_time) + " ORDER BY FIRSTSWITCHED ASC")
-		c.execute("SELECT * FROM " + table + " WHERE srcIP != 2208239215 and dstIP != 2208239215 and FIRSTSWITCHED >= " + str(args.start_time) + " ORDER BY FIRSTSWITCHED ASC")
+		c.execute("SELECT * FROM " + table + " WHERE  FIRSTSWITCHED >= " + str(args.start_time) + " ORDER BY FIRSTSWITCHED ASC")
 	
 		for row in c:
 			obj = dict()

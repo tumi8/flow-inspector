@@ -37,9 +37,9 @@ var GraphView = Backbone.View.extend({
 			this.force.stop();
 		}
 		this.force = d3.layout.force()
-			.charge(-120)
-			.gravity(0.15)
-			.linkDistance(30)
+			//.charge(-120)
+			.gravity(0.05)
+			.linkDistance(100)
 			.nodes(this.data_nodes)
 			.links(this.data_links)
 			.size([this.w, this.h]);

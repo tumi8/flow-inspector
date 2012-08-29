@@ -151,6 +151,26 @@ def update_node_index(obj, collection, aggr_sum, operation):
 					
 	# insert if not exists, else update sums
 	collection.update({ "_id": obj[COL_DST_IP] }, doc, True)
+
+	# update total counters
+	doc = { "$inc": {} }
+	if operation == INDEX_ADD:
+		doc["$inc"]["flows"] = 1
+		doc["$inc"][proto + ".flows"] = 1
+	else:
+		# remove
+		doc["$inc"]["flows"] =  -obj.get("flows")
+		doc["$inc"][proto + "flows"] =  -obj.get("flows")
+	for s in aggr_sum:
+		if operation == INDEX_ADD:
+			doc["$inc"][s] = obj.get(s, 0)
+			doc["$inc"][proto + "." + s] = obj.get(s, 0)
+		else:
+			# remove
+			doc["$inc"][s] = -obj.get(s, 0)
+			doc["$inc"][proto + "." + s] = -obj.get(s, 0)
+	collection.update({"_id": "total"}, doc, True)
+			
 	
 def update_port_index(obj, collection, aggr_sum, filter_ports, operation):
 	"""Update the port index collection in MongoDB with the current flow.
@@ -225,7 +245,21 @@ def update_port_index(obj, collection, aggr_sum, filter_ports, operation):
 	# insert if not exists, else update sums
 	collection.update({ "_id": port }, doc, True)
 
-
+	# update total counters
+	doc = { "$inc": {} }
+	if operation == INDEX_ADD:
+		doc["$inc"]["flows"] = 1
+	else:
+		# remove
+		doc["$inc"]["flows"] =  -obj.get("flows")
+	for s in aggr_sum:
+		if operation == INDEX_ADD:
+			doc["$inc"][s] = obj.get(s, 0)
+		else:
+			# remove
+			doc["$inc"][s] = -obj.get(s, 0)
+	collection.update({"_id": "total"}, doc, True)
+	
 # read ports for special filtering
 def getKnownPorts(flow_filter_unknown_ports):
 	known_ports = None

@@ -16,7 +16,11 @@ var OverviewView = Backbone.View.extend({
 		this.index = new IndexQuery(null, { index: this.model.get("index") });
 		this.index.bind("reset", this.render, this);
 		// fetch at the end because a cached request calls render immediately!
-		this.index.fetch();
+
+		this.showLimit = 15 
+
+
+		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
 	},
 	render: function() {
 		var
@@ -39,10 +43,6 @@ var OverviewView = Backbone.View.extend({
 		data.sort(function(a,b) {
 			return b.get(num_val, 0) - a.get(num_val, 0);
 		});
-
-		// take the first 10 elements
-		var num_elements = 15
-		var data = data.slice(0, num_elements);
 
 
 		this.svg = d3.select(container.get(0))
@@ -162,7 +162,7 @@ var OverviewView = Backbone.View.extend({
 		}
 
 		this.index.index = value;
-		this.index.fetch();
+		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
 		return this;
 	}
 });

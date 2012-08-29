@@ -384,8 +384,15 @@ def api_index(name):
 		spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
 		spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
 
+	# query without the total field	
+	full_spec = {}
+	full_spec["$and"] = [
+			spec, 
+			{ "_id": { "$ne": "total" }}
+		]
 
-	cursor = collection.find(fields=fields).batch_size(1000)
+	cursor = collection.find(full_spec, fields=fields).batch_size(1000)
+
 	if sort:
 		cursor.sort(sort)
 	if limit:
@@ -395,12 +402,20 @@ def api_index(name):
 		result = cursor.count() 
 	else:
 		result = []
+		total = []
 		for row in cursor:
 			row["id"] = row["_id"]
 			del row["_id"]
 			result.append(row)
-	
-	return { "results": result }
+
+	# get the total counter
+	spec = {"_id": "total"}
+	cursor = collection.find(spec)
+	total = cursor[0]
+	total["id"] = total["_id"]
+	del total["_id"]
+
+	return { "totalCounter": total, "results": result }
 
 @get("/static/:path#.+#")
 def server_static(path):

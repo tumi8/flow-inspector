@@ -66,7 +66,7 @@ var QueryModel = Backbone.Model.extend({
 var GraphModel = Backbone.Model.extend({
 	defaults: {
 		nodeLimit: 255,
-		showOthers: true,
+		showOthers: false,
 		filterPorts: "",
 		filterPortsType: "inclusive"
 	}
@@ -237,6 +237,7 @@ var Flows = CachedCollection.extend({
 var IndexQuery = CachedCollection.extend({
     cache_timeout: 60*10,
     model: IndexEntry,
+    total_count: 0,
     initialize: function(models, options) {
     	this.index = options.index || "nodes";
     },
@@ -244,6 +245,7 @@ var IndexQuery = CachedCollection.extend({
     	return "/api/index/" + this.index;
     },
     parse: function(response) {
+	this.totalCounter = response.totalCounter;
     	return response.results;
     }
 });
