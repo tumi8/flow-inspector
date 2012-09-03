@@ -113,13 +113,6 @@ var GraphView = Backbone.View.extend({
 			nodes.push(node);
 		});
     	
-		if(node_limit) {
-			// sort nodes by number of flows descending if there is a node limit
-			nodes.sort(function(a,b) {
-				return b.get("flows") - a.get("flows");
-			});
-		}
-    	
 		nodes.forEach(function(m, i) {
 			if(!node_limit || i < node_limit) {
 				var node = {

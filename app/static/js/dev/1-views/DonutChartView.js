@@ -36,18 +36,9 @@ var DonutChartView = Backbone.View.extend({
 	    		return;
 		}
 		
+		// data is already sorted
 		var data = this.index.models;
-		// sort data
-		data.sort(function(a,b) {
-			return b.get(num_val, 0) - a.get(num_val, 0);
-		});
     	
-		var data = this.index.models;
-		// sort data
-		data.sort(function(a,b) {
-			return b.get(num_val, 0) - a.get(num_val, 0);
-		});
-     	
 		if(data.length > this.showLimit) {
 			var others = data[this.showLimit].clone();
 			others.id = -1;
