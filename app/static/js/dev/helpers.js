@@ -3,10 +3,17 @@ if(!FlowInspector) {
 }
 
 // definitions
+/*
 FlowInspector.tcpColor = "rgba(204,0,0,1.0)"
 FlowInspector.udpColor = "rgba(0,204,0,1.0)"
 FlowInspector.icmpColor = "rgba(0,102,204,1.0)"
 FlowInspector.otherColor = "rgba(255,163,71,1.0)"
+*/
+FlowInspector.tcpColor = "rgb(204,0,0)";
+FlowInspector.udpColor = "rgb(0,204,0)";
+FlowInspector.icmpColor = "rgb(0,102,204)";
+FlowInspector.otherColor = "rgb(255,163,71)";
+
 
 /**
  * Transforms a 32bit IPv4 address into a human readable format
