@@ -16,7 +16,7 @@ var BucketChartView = Backbone.View.extend({
 		this.flows = new Flows();
 		this.flows.bind("reset", this.render, this);
 		// fetch at the end because a cached request calls render immediately!
-		this.flows.fetch({ data: { "resolution": 1000 }});
+		this.flows.fetch({ data: { "resolution": 1000}});
 	},
 	render: function() {
 		var container = $(this.el).empty(),
@@ -144,12 +144,70 @@ var BucketChartView = Backbone.View.extend({
 			.attr("y2", function(d) { return y(d.get(num_val)); })
 			.attr("stroke", function(d) { return stroke(d.get(num_val) / max_value); });
     	
+		var legendXOffset = 65;
+
 		this.labelGroup.append("text")
 			.attr("x", w-5)
-			.attr("y", h-5)
+			.attr("y", 5)
 			.attr("text-anchor", "end")
 			.text("#" + num_val);
-    		
+
+		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", 20)
+			.attr("text-anchor", "end")
+			.text("tcp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", 10)
+			.attr("fill", FlowInspector.tcpColor);
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", 35 )
+			.attr("text-anchor", "end")
+			.text("udp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", 25)
+			.attr("fill", FlowInspector.udpColor);
+
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", 50)
+			.attr("text-anchor", "end")
+			.text("icmp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", 40)
+			.attr("fill", FlowInspector.icmpColor);
+
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", 65)
+			.attr("text-anchor", "end")
+			.text("other");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", 55)
+			.attr("fill", FlowInspector.otherColor);
+
+	
+
 		$(".bar", this.el).twipsy({ offset: 3 });
     	
 		return this;

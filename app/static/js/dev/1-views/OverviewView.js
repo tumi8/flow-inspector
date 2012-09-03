@@ -53,6 +53,7 @@ var OverviewView = Backbone.View.extend({
 		this.labelGroup = this.svg.append("svg:g");
 		this.barGroup = this.svg.append("svg:g");
 
+
 		var y = d3.scale.linear().range([0, h]);
 		var min_value = d3.min(data, function(d) { return d.get(num_val); });
 		var max_value = d3.max(data, function(d) { return d.get(num_val); });
@@ -60,21 +61,19 @@ var OverviewView = Backbone.View.extend({
 
 
 		// add text to bars
-		this.labelGroup.selectAll("text.yAxis")
+		this.labelGroup.selectAll("text")
 			.data(data)
 			.enter()
-				.append("svg:text")
+				.append("text")
 					.attr("x", 0)
-					.attr("y", function(d, idx) { return y(idx); })
-					.attr("dx", -barWidth/2)
-					.attr("dy", "1.2em")
+					.attr("y", function(d, idx) { return y(idx) + 10; })
 					.attr("text-anchor", "left")
   					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
-					.text(function(d) { return FlowInspector.ipToStr(d.id); })
-					.attr("class", "yAxis");
+					.text(function(d) { return FlowInspector.ipToStr(d.id); });
 
 
-		var offset = d3.select('text.yAxis').node().getComputedTextLength() + 15;
+		var offset = d3.select('text').node().getComputedTextLength() + 15;
+		//var offset = 15;
 		var x = d3.scale.linear().range([0, w - offset]);
 		x.domain([0, max_value]);
 
@@ -153,6 +152,70 @@ var OverviewView = Backbone.View.extend({
 			.attr("y1", function(d, idx) { return y(idx); })
 			.attr("y2", function(d, idx) { return y(idx) + barWidth; })
 			.attr("stroke", function(d) { return stroke(d.get(num_val) / max_value); });
+
+    	
+		var legendXOffset = 65;
+
+		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h-5)
+			.attr("text-anchor", "end")
+			.text("#" + num_val);
+
+		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 65)
+			.attr("text-anchor", "end")
+			.text("tcp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 75)
+			.attr("fill", FlowInspector.tcpColor);
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 50 )
+			.attr("text-anchor", "end")
+			.text("udp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 60)
+			.attr("fill", FlowInspector.udpColor);
+
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 35)
+			.attr("text-anchor", "end")
+			.text("icmp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 45)
+			.attr("fill", FlowInspector.icmpColor);
+
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 20)
+			.attr("text-anchor", "end")
+			.text("other");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 30)
+			.attr("fill", FlowInspector.otherColor);
+
 
 		return this;
 	},
