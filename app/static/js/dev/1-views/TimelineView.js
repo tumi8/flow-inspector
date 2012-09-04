@@ -83,7 +83,7 @@ var TimelineView = Backbone.View.extend({
 			data = this.flows.models,
 			bucket_size = this.flows.bucket_size,
 			xAxis = this.getXAxis(h, x),
-			titleFormat = this.getTitleFormat();
+			titleFormat = FlowInspector.getTitleFormat(this.model.get("value"));
  
 			
 		if(data.length === 0) {
@@ -160,7 +160,7 @@ var TimelineView = Backbone.View.extend({
     		data = this.flows.models,
     		bucket_size = this.flows.bucket_size,
     		xAxis = this.getXAxis(h, x),
-    		titleFormat = this.getTitleFormat();
+    		titleFormat = FlowInspector.getTitleFormat(this.model.get("value"));
 		
 		// Set the scale domain
 		var max_value = d3.max(data, function(d) { return d.get(value); });
@@ -205,16 +205,6 @@ var TimelineView = Backbone.View.extend({
 			.tickSubdivide(10)
     			.tickPadding(10)
 	    		.tickFormat(d3.time.format("%Y-%m-%d %H:%M:%S"));
-	},
-	getTitleFormat: function() {
-		var value = this.model.get("value");
-		if(value === "pkts") {
-			return function(d) { return Math.floor(d.get(value)/1000)+"k pakets"; };
-		}
-		if(value === "bytes") {
-			return function(d) { return (d3.format(".2f"))(d.get(value)/1024/1024)+" MB"; };
-		}
-		return function(d) { return Math.floor(d.get(value)) + " flows" };
 	},
 	startDrag: function(e) {
   		// align start to bucket

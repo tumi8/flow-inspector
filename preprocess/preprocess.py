@@ -92,6 +92,7 @@ class FlowHandler:
 		
 		self.num_flows += 1
 		
+		proto = common.getProto(flow)
 		carry = dict();
 		emitted = dict();
 		for s in self.aggr_sum:
@@ -131,8 +132,8 @@ class FlowHandler:
 							set_value = None
 							value = flow.get(v, None)
 							if value != None and value in self.filter_ports:
-								proto = int(flow.get(common.COL_PROTO, -1))
-								if proto == -1 or proto in self.filter_ports[value]:
+								filter_proto = int(flow.get(common.COL_PROTO, -1))
+								if filter_proto == -1 or filter_proto in self.filter_ports[value]:
 									set_value = value
 							doc["$set"][v] = set_value
 						else:
@@ -143,7 +144,9 @@ class FlowHandler:
 						
 				for s in self.aggr_sum:
 					doc["$inc"][s] = 0
+					doc["$inc"][proto + "." + s] = 0
 				doc["$inc"]["flows"] = 0
+				doc["$inc"][proto + ".flows" ] = 0
 				
 				if self.cache != None:
 					# insert into cache
@@ -154,6 +157,13 @@ class FlowHandler:
 				for s in self.aggr_sum:
 					assert flow.get(s, 0) - emitted[s] >= 0
 					doc["$inc"][s] += flow.get(s, 0) - emitted[s]
+					# it is possible that the protocol specific part is not yet in the document
+					# check and adopt to this
+					keyString = proto + "." + s
+					if not keyString in doc["$inc"]:
+						doc["$inc"][keyString] = flow.get(s, 0) - emitted[s]
+					else:
+						doc["$inc"][keyString] += flow.get(s, 0) - emitted[s]
 			else:
 				for s in self.aggr_sum:
 					interval = intervalFactor * flow.get(s, 0)
@@ -162,9 +172,19 @@ class FlowHandler:
 					carry[s] = num - val;
 					emitted[s] += val
 					doc["$inc"][s] += val
+					keyString = proto + "." + s
+					if not keyString in doc["$inc"]:
+						doc["$inc"][keyString] = val
+					else:
+						doc["$inc"][keyString] += val
 					
 			# count number of aggregated flows in the bucket
 			doc["$inc"]["flows"] += intervalFactor
+			keyString = proto + ".flows"
+			if not keyString in doc["$inc"]:
+				doc["$inc"][keyString] = intervalFactor
+			else:
+				doc["$inc"][keyString] += intervalFactor
 			
 			# if caching is actived then insert into cache
 			if self.cache != None:

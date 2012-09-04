@@ -248,13 +248,13 @@ if __name__ == "__main__":
 			sourcePort = srcPort
 			connectedIP = dstIP
 			destinationPort = dstPort
-			if flow['finSeen']:
+			if 'finSeen' in flow:
 				ts = int(flow['finSeenTs']) / finRstInterval * finRstInterval
 				if ts in finSent:
 					finSent[ts] += 1
 				else:
 					finSent[ts] = 1
-			if flow['rstSeen']:
+			if 'rstSeen' in flow:
 				ts = int(flow['rstSeenTs']) / finRstInterval * finRstInterval
 				if ts in rstSent:
 					rstSent[ts] += 1
@@ -265,13 +265,13 @@ if __name__ == "__main__":
 			sourcePort = dstPort
 			connectedIP = srcIP
 			destinationPort = srcPort
-			if flow['finSeen']:
+			if 'finSeen' in flow:
 				ts = int(flow['finSeenTs']) / finRstInterval * finRstInterval
 				if ts in finReceived:
 					finReceived[ts] += 1
 				else:
 					finReceived[ts] = 1
-			if flow['rstSeen']:
+			if 'rstSeen' in flow:
 				ts = int(flow['rstSeenTs']) / finRstInterval * finRstInterval
 				if ts in rstReceived:
 					rstReceived[ts] += 1

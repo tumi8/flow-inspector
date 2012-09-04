@@ -29,7 +29,7 @@ db_name = "flows"
 # This list is assumed be sorted ascending!
 flow_bucket_sizes = [60, 10*60, 60*60, 24*60*60]
 # Those values have to match in order to aggregate two flows
-flow_aggr_values = ["srcIP", "dstIP", "srcPort", "dstPort"]
+flow_aggr_values = ["srcIP", "dstIP", "srcPort", "dstPort", "proto"]
 # Those columns will be summed up
 flow_aggr_sums = ["pkts", "bytes"]
 # Special treatment for ports:

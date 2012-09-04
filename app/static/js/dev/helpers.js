@@ -2,6 +2,19 @@ if(!FlowInspector) {
 	var FlowInspector = {};
 }
 
+// definitions
+/*
+FlowInspector.tcpColor = "rgba(204,0,0,1.0)"
+FlowInspector.udpColor = "rgba(0,204,0,1.0)"
+FlowInspector.icmpColor = "rgba(0,102,204,1.0)"
+FlowInspector.otherColor = "rgba(255,163,71,1.0)"
+*/
+FlowInspector.tcpColor = "rgb(204,0,0)";
+FlowInspector.udpColor = "rgb(0,204,0)";
+FlowInspector.icmpColor = "rgb(0,102,204)";
+FlowInspector.otherColor = "rgb(255,163,71)";
+
+
 /**
  * Transforms a 32bit IPv4 address into a human readable format
  * (e.g. 192.168.0.1)
@@ -118,3 +131,66 @@ FlowInspector.isIPValid = function(ipaddr)  {
         }
 	return false;
 }
+
+FlowInspector.getTitleFormat = function(value) {
+	if(value === "pkts") {
+		return function(d) { 
+			var val = 0;
+			// if get is a function, call it, otherwise take d's value
+			if (typeof d.get == 'function') {
+				val = d.get(value);
+			} else {
+				val = d;
+			}
+			var factor = 1;
+			var unit = "";
+			if (val >= 1000*1000) {
+				factor = 1000 * 1000;
+				unit = "m";
+			} else if (val >= 1000) {
+				factor = 1000;
+				unit = "k";
+			}
+			return Math.floor(val/factor)+unit; };
+	}
+	if(value === "bytes") {
+		return function(d) { 
+			var val = 0;
+			// if get is a function, call it, otherwise take d's value
+			if (typeof d.get == 'function') {
+				val = d.get(value);
+			} else {
+				val = d;
+			}
+			var factor = 1;
+			var unit = "B"
+			// bigger than terrabyte
+			if (val > 1000*1000*1000*1000) {
+				factor = 1000*1000*1000*1000;
+				unit = "TB";
+			} else if (val > 1000*1000*1000) {
+				factor = 1000*1000*1000;
+				unit = "GB";
+			} else if (val > 1000*1000) {
+				factor = 1000*1000;
+				unit = "MB";
+			} else if (val > 1000) {
+				factor = 1000;
+				unit = "kB";
+			} else {
+				return (d3.format("f"))(val) + unit;
+			}
+
+			return (d3.format(".2f"))(val/factor) + unit; };
+	}
+	return function(d) { 
+		var val = 0;
+		// if get is a function, call it, otherwise take d's value
+		if (typeof d.get == 'function') {
+			val = d.get(value);
+		} else {
+			val = d;
+		}
+		return Math.floor(val) + " flows" };
+}
+

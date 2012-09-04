@@ -16,7 +16,11 @@ var OverviewView = Backbone.View.extend({
 		this.index = new IndexQuery(null, { index: this.model.get("index") });
 		this.index.bind("reset", this.render, this);
 		// fetch at the end because a cached request calls render immediately!
-		this.index.fetch();
+
+		this.showLimit = 15 
+
+
+		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
 	},
 	render: function() {
 		var
@@ -40,10 +44,6 @@ var OverviewView = Backbone.View.extend({
 			return b.get(num_val, 0) - a.get(num_val, 0);
 		});
 
-		// take the first 10 elements
-		var num_elements = 15
-		var data = data.slice(0, num_elements);
-
 
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")
@@ -53,6 +53,7 @@ var OverviewView = Backbone.View.extend({
 		this.labelGroup = this.svg.append("svg:g");
 		this.barGroup = this.svg.append("svg:g");
 
+
 		var y = d3.scale.linear().range([0, h]);
 		var min_value = d3.min(data, function(d) { return d.get(num_val); });
 		var max_value = d3.max(data, function(d) { return d.get(num_val); });
@@ -60,21 +61,19 @@ var OverviewView = Backbone.View.extend({
 
 
 		// add text to bars
-		this.labelGroup.selectAll("text.yAxis")
+		this.labelGroup.selectAll("text")
 			.data(data)
 			.enter()
-				.append("svg:text")
+				.append("text")
 					.attr("x", 0)
-					.attr("y", function(d, idx) { return y(idx); })
-					.attr("dx", -barWidth/2)
-					.attr("dy", "1.2em")
+					.attr("y", function(d, idx) { return y(idx) + 10; })
 					.attr("text-anchor", "left")
   					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
-					.text(function(d) { return FlowInspector.ipToStr(d.id); })
-					.attr("class", "yAxis");
+					.text(function(d) { return FlowInspector.ipToStr(d.id); });
 
 
-		var offset = d3.select('text.yAxis').node().getComputedTextLength() + 15;
+		var offset = d3.select('text').node().getComputedTextLength() + 15;
+		//var offset = 15;
 		var x = d3.scale.linear().range([0, w - offset]);
 		x.domain([0, max_value]);
 
@@ -86,23 +85,66 @@ var OverviewView = Backbone.View.extend({
 
 		var bar_enter = bar.enter().append("g")
 			.attr("class", "bar")
-			.attr("title", function(d) { return d.get(num_val) + " " + num_val; })
-			.on("mouseover", function(d) {
-				d3.select(this).selectAll("rect")
-					.attr("fill", stroke(d.get(num_val) / max_value));
-			})
-			.on("mouseout", function(d) {
-				d3.select(this).selectAll("rect")
-					.attr("fill", "rgba(0,100,205,0.2)");
-			});
+			.attr("title", FlowInspector.getTitleFormat(num_val));
+
+		$(".bar", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
+
+		// the following method aims at getting the appropriate x-offset for 
+		// the value of num_val (which can be flows, pakets, or bytes) 
+		// for the given protocol (tcp, udp, icmp, others)
+		getProtoSpecificX = function(obj, proto, num_val) {
+			var val = 1;
+			var protoObj = obj.get(proto);
+			// the value might not be set in the db. use 0 as default
+			if (protoObj) {
+				val = protoObj[num_val];
+				if (! val > 0) {
+					val = 1;
+				}
+			}
+			return x(val);
+		}
 			
 
+		// tcp bar, starts of the left side of the graph
 		bar_enter.append("rect")
+				.attr("class", "tcp")
 				.attr("x", offset)
 				.attr("y", function(d, idx) { return y(idx); })
-				.attr("width", function(d) { return x(d.get(num_val)); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "tcp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", "rgba(0,100,205,0.2)");
+				.attr("fill", FlowInspector.tcpColor);
+
+
+		// udp bar, starts after the tcp bar
+		bar_enter.append("rect")
+				.attr("class", "udp")
+				.attr("x", function(d, idx) { return offset + getProtoSpecificX(d, "tcp", num_val); } )
+				.attr("y", function(d, idx) { return y(idx); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "udp", num_val); })
+				.attr("height", barWidth)
+				.attr("fill", FlowInspector.udpColor);
+
+		// icmp bar, starts after the udp bar
+		bar_enter.append("rect")
+				.attr("class", "icmp")
+				.attr("x", function(d, idx) { return offset + getProtoSpecificX(d, "tcp", num_val) + getProtoSpecificX(d, "udp", num_val); } )
+				.attr("y", function(d, idx) { return y(idx); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "icmp", num_val); })
+				.attr("height", barWidth)
+				.attr("fill", FlowInspector.icmpColor);
+
+		// others bar, starts after the imcp bar
+		bar_enter.append("rect")
+				.attr("class", "other")
+				.attr("x", function(d, idx) { return offset + getProtoSpecificX(d, "tcp", num_val) + getProtoSpecificX(d, "udp", num_val) + getProtoSpecificX(d, "icmp", num_val) } )
+				.attr("y", function(d, idx) { return y(idx); })
+				.attr("width", function(d) { return getProtoSpecificX(d, "other", num_val); })
+				.attr("height", barWidth)
+				.attr("fill", FlowInspector.otherColor);
 
 		bar_enter.append("line")
 			.attr("x1", function(d) { return x(d.get(num_val)) + offset; })
@@ -110,9 +152,70 @@ var OverviewView = Backbone.View.extend({
 			.attr("y1", function(d, idx) { return y(idx); })
 			.attr("y2", function(d, idx) { return y(idx) + barWidth; })
 			.attr("stroke", function(d) { return stroke(d.get(num_val) / max_value); });
-		
 
-		$(".bar", this.el).twipsy({offset: 3});
+    	
+		var legendXOffset = 65;
+
+		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h-5)
+			.attr("text-anchor", "end")
+			.text("#" + num_val);
+
+		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 65)
+			.attr("text-anchor", "end")
+			.text("tcp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 75)
+			.attr("fill", FlowInspector.tcpColor);
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 50 )
+			.attr("text-anchor", "end")
+			.text("udp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 60)
+			.attr("fill", FlowInspector.udpColor);
+
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 35)
+			.attr("text-anchor", "end")
+			.text("icmp");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 45)
+			.attr("fill", FlowInspector.icmpColor);
+
+
+    		this.labelGroup.append("text")
+			.attr("x", w-5)
+			.attr("y", h - 20)
+			.attr("text-anchor", "end")
+			.text("other");
+
+		this.labelGroup.append("rect")
+			.attr("width", 20)
+			.attr("height", 10)
+			.attr("x", w - legendXOffset)
+			.attr("y", h - 30)
+			.attr("fill", FlowInspector.otherColor);
+
 
 		return this;
 	},
@@ -122,7 +225,7 @@ var OverviewView = Backbone.View.extend({
 		}
 
 		this.index.index = value;
-		this.index.fetch();
+		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
 		return this;
 	}
 });
