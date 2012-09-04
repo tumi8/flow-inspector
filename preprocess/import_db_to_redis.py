@@ -38,9 +38,10 @@ def getFirstTable(tables, firstTimestamp, TYPE):
 		halfHour = 0
 	else:
 		halfHour = 1
-	firstTableName = "h_%0.4d%0.2d%0.2d_%0.2d_%0.1d" % (timeObj.year, timeObj.month, timeObj.day, timeObj.hour, halfHour)
+	firstTableName = "H_%0.4d%0.2d%0.2d_%0.2d_%0.1d" % (timeObj.year, timeObj.month, timeObj.day, timeObj.hour, halfHour)
 
-	print tables
+	print "First table that matches firstTimestamp == \"", firstTimestamp, "\" is \"" + firstTableName + "\"."
+
 	try:
 		idx = tables.index(firstTableName) 
 	except:
@@ -66,7 +67,7 @@ def progress(width, percent):
 def compareTables(a, b):
 	compsA = a.split('_')
 	compsB = b.split('_')
-	return -cmp(int(compsA[1]), int(compsB[1])) or cmp(int(compsA[2]), int(compsB[2])) or cmp(int(compsA[3]), int(compsB[3]))
+	return cmp(int(compsA[1]), int(compsB[1])) or cmp(int(compsA[2]), int(compsB[2])) or cmp(int(compsA[3]), int(compsB[3]))
 
 
 
