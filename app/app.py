@@ -411,9 +411,10 @@ def api_index(name):
 	# get the total counter
 	spec = {"_id": "total"}
 	cursor = collection.find(spec)
-	total = cursor[0]
-	total["id"] = total["_id"]
-	del total["_id"]
+	if cursor.count() > 0:
+		total = cursor[0]
+		total["id"] = total["_id"]
+		del total["_id"]
 
 	return { "totalCounter": total, "results": result }
 
