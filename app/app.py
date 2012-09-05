@@ -4,7 +4,7 @@
 """
 Flow Inspector - Visual Network Flow Analyis
 
-Author: Mario Volke
+Author: Mario Volke, Lothar Braun
 """
 
 import sys
@@ -206,12 +206,12 @@ def api_bucket_query():
 	include_ips = []
 	if "include_ips" in request.GET:
 		include_ips = request.GET["include_ips"].strip()
-		include_ips = map(lambda v: v.strip(), include_ips.split(","))
+		include_ips = map(lambda v: int(v.strip()), include_ips.split(","))
 
 	exclude_ips = []
 	if "exclude_ips" in request.GET:
 		exclude_ips = request.GET["exclude_ips"].strip()
-		exclude_ips = map(lambda v: v.strip(), exclude_ips.split(","))
+		exclude_ips = map(lambda v: int(v.strip()), exclude_ips.split(","))
 	
 	# get buckets and aggregate
 	if bucket_size == None:
@@ -284,7 +284,7 @@ def api_bucket_query():
 		cursor.limit(limit)
 
 	buckets = []
-	if ((fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0) and not isPcap:
+	if ((fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0 or len(include_ips) > 0 or len(exclude_ips) > 0) and not isPcap:
 		current_bucket = -1
 		aggr_buckets = {}
 		for doc in cursor:
