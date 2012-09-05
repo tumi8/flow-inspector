@@ -29,9 +29,6 @@ TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 # MongoDB
 db_conn = pymongo.Connection(config.db_host, config.db_port)
 db = db_conn[config.db_name]
-pcapDB = db_conn["pcap"]
-
-pcapProcessor = None
 
 def get_bucket_size(start_time, end_time, resolution):
 	for i,s in enumerate(config.flow_bucket_sizes):
@@ -105,8 +102,6 @@ def extract_mongo_query_params():
 @get("/hierarchical-edge-bundle/:##")
 @get("/hive-plot")
 @get("/hive-plot/:##")
-@get('/pcap')
-@get('/pcap/:##')
 @view("index")
 def index():
     # find js files
@@ -219,29 +214,16 @@ def api_bucket_query():
 
 	# get proper collection
 	collection = None
-	isPcap = False
-	if "pcapType" in request.GET:
-		isPcap = True
-		name = request.GET["pcapType"]
-		if name == "allFlows":
-			collection = pcapDB[common.PCAP_DB_ALL]
-		elif name == "withGaps":
-			collection = pcapDB[common.PCAP_DB_GAP]
-		elif name == "lowThroughput":
-			collection = pcapDB[common.PCAP_DB_LOWTHROUGHPUT]
-		if collection == None:
-			raise HTTPError(404, "Index name not known.")
+	if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
+		collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
 	else:
-		if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
-			collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
-		else:
-			# use preaggregated collection
-			collection = db[common.DB_FLOW_AGGR_PREFIX + str(bucket_size)]
+		# use preaggregated collection
+		collection = db[common.DB_FLOW_AGGR_PREFIX + str(bucket_size)]
 
 
 	# only stated fields will be available, all others will be aggregated toghether	
 	# filter for known aggregation values
-	if not isPcap and fields != None:
+	if fields != None:
 		fields = [v for v in fields if v in config.flow_aggr_values]
 		
 	spec = {}
@@ -284,7 +266,7 @@ def api_bucket_query():
 		cursor.limit(limit)
 
 	buckets = []
-	if ((fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0 or len(include_ips) > 0 or len(exclude_ips) > 0) and not isPcap:
+	if (fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0 or len(include_ips) > 0 or len(exclude_ips) > 0:
 		current_bucket = -1
 		aggr_buckets = {}
 		for doc in cursor:
@@ -421,66 +403,6 @@ def api_index(name):
 @get("/static/:path#.+#")
 def server_static(path):
 	return static_file(path, root=os.path.join(os.path.dirname(__file__), "static"))
-
-@get("/pcap/stats")
-def pcap_stats():
-	collection = pcapDB[common.PCAP_STATS]
-	cursor = collection.find().batch_size(1000)
-	cursor.sort([("second", pymongo.ASCENDING)])
-	result = []
-	for row in cursor:
-		del row["_id"]
-		result.append(row)
-	return { "results": result }
-			
-
-@post('/pcap')
-def pcap_upload():
-	data = request.files.get('data')
-	response.content_type = "application/json"
-
-	raw = data.value
-	filename = data.filename
-
-	saveFilename = os.path.join(config.pcap_output_dir, "tmp.pcap")
-	try:
-		f = open(saveFilename, 'w+')
-		f.write(raw)
-		f.close()
-	except Exception as inst:
-		return str(inst)
-
-	pcapProcessorArgs = [ os.path.join(os.path.dirname(__file__), "pcapprocess", "check-pcap.py"), '-i', saveFilename, '-o', config.pcap_output_dir, '-g', config.gnuplot_path ]
-	pcapProcessor = subprocess.Popen(pcapProcessorArgs, shell=False, stdin=subprocess.PIPE)
-	redirect('/pcap')
-
-@get('/pcap/live-feed')
-def pcap_life_feed():
-	lifeFile = os.path.join(config.pcap_output_dir, "analysis-output.txt")
-	runningFile = os.path.join(config.pcap_output_dir, "running_file.txt")
-	isRunning = False
-	try: 
-		f = open(runningFile)
-		line = f.readline()
-		line = line.rstrip('\n')
-		if line == "running":
-			isRunning = True
-	except:
-		# if file does not exist or if we observe any error, 
-		# we assume that the pcap-process is no longer running
-		pass
-
-	result = []
-	try:
-		f = open(lifeFile)
-		lineNum = 0
-		for line in f:
-			result.append({"id": lineNum, "line": line })
-			lineNum += 1
-	except:
-		# no failure handling necessary
-		return { "running" : isRunning }
-	return { "running": isRunning, "results": result }
 
 
 if __name__ == "__main__":
