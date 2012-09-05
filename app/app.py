@@ -89,47 +89,6 @@ def extract_mongo_query_params():
 	if "count" in request.GET:
 		count = True
 
-	return (fields, sort, limit, count)
-			
-@get("/")
-@get("/dashboard")
-@get("/dashboard/:##")
-@get("/graph")
-@get("/graph/:##")
-@get("/query-page")
-@get("/query-page/:##")
-@get("/hierarchical-edge-bundle")
-@get("/hierarchical-edge-bundle/:##")
-@get("/hive-plot")
-@get("/hive-plot/:##")
-@view("index")
-def index():
-    # find js files
-    include_js = []
-    path = os.path.join(os.path.dirname(__file__), "static", "js", "dev")
-    for dirname, dirnames, filenames in os.walk(path):
-        dirnames.sort(reverse=True)
-        filenames.sort(reverse=True)
-        for filename in filenames:
-            if not filename.startswith(".") and filename.endswith(".js"):
-                include_js.insert(0, dirname[len(os.path.dirname(__file__)):] + "/" + filename)
-
-    # find frontend templates
-    frontend_templates = []
-    path = os.path.join(os.path.dirname(__file__), "views", "frontend")
-    for filename in os.listdir(path):
-        if not filename.startswith(".") and filename.endswith(".tpl"):
-            frontend_templates.append(os.path.join("frontend", filename))
-
-    return dict(
-        include_js = include_js,
-        frontend_templates = frontend_templates)
-
-@get("/api/bucket/query")
-@get("/api/bucket/query/")
-def api_bucket_query():
-	(fields, sort, limit, count) = extract_mongo_query_params()
-
 	# get query params
 	start_bucket = 0
 	if "start_bucket" in request.GET:
@@ -212,20 +171,11 @@ def api_bucket_query():
 	if bucket_size == None:
 		bucket_size = get_bucket_size(start_bucket, end_bucket, resolution)
 
-	# get proper collection
-	collection = None
-	if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
-		collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
-	else:
-		# use preaggregated collection
-		collection = db[common.DB_FLOW_AGGR_PREFIX + str(bucket_size)]
-
-
 	# only stated fields will be available, all others will be aggregated toghether	
 	# filter for known aggregation values
 	if fields != None:
 		fields = [v for v in fields if v in config.flow_aggr_values]
-		
+
 	spec = {}
 	if start_bucket > 0 or end_bucket < sys.maxint:
 		spec["bucket"] = {}
@@ -251,6 +201,56 @@ def api_bucket_query():
 	if len(exclude_ips) > 0:
 		spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
 		spec[common.COL_DST_IP] = { "$in": exclude_ips } 
+
+	
+	return (spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)
+			
+@get("/")
+@get("/dashboard")
+@get("/dashboard/:##")
+@get("/graph")
+@get("/graph/:##")
+@get("/query-page")
+@get("/query-page/:##")
+@get("/hierarchical-edge-bundle")
+@get("/hierarchical-edge-bundle/:##")
+@get("/hive-plot")
+@get("/hive-plot/:##")
+@view("index")
+def index():
+    # find js files
+    include_js = []
+    path = os.path.join(os.path.dirname(__file__), "static", "js", "dev")
+    for dirname, dirnames, filenames in os.walk(path):
+        dirnames.sort(reverse=True)
+        filenames.sort(reverse=True)
+        for filename in filenames:
+            if not filename.startswith(".") and filename.endswith(".js"):
+                include_js.insert(0, dirname[len(os.path.dirname(__file__)):] + "/" + filename)
+
+    # find frontend templates
+    frontend_templates = []
+    path = os.path.join(os.path.dirname(__file__), "views", "frontend")
+    for filename in os.listdir(path):
+        if not filename.startswith(".") and filename.endswith(".tpl"):
+            frontend_templates.append(os.path.join("frontend", filename))
+
+    return dict(
+        include_js = include_js,
+        frontend_templates = frontend_templates)
+
+@get("/api/bucket/query")
+@get("/api/bucket/query/")
+def api_bucket_query():
+	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+
+	# get proper collection
+	collection = None
+	if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
+		collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
+	else:
+		# use preaggregated collection
+		collection = db[common.DB_FLOW_AGGR_PREFIX + str(bucket_size)]
 
 	if fields != None:
 		query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
@@ -318,10 +318,8 @@ def api_bucket_query():
 @get("/api/index/:name")
 @get("/api/index/:name/")
 def api_index(name):
-	(fields, sort, limit, count) = extract_mongo_query_params()
-	if fields != None:
-		fields = [v for v in fields if v in config.flow_aggr_values]
-	
+	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+
 	collection = None
 	if name == "nodes":
 		collection = db[common.DB_INDEX_NODES]
@@ -330,41 +328,6 @@ def api_index(name):
 		
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
-
-	# only stated fields will be available, all others will be aggregated toghether	
-	fields = None 
-	if "fields" in request.GET:
-		fields = request.GET["fields"].strip()
-		fields = map(lambda v: v.strip(), fields.split(","))
-		# filter for known aggregation values
-		fields = [v for v in fields if v in config.flow_aggr_values]
-		
-	# port filter
-	include_ports = []
-	if "include_ports" in request.GET:
-		include_ports = request.GET["include_ports"].strip()
-		try:
-			include_ports = map(lambda v: int(v.strip()), include_ports.split(","))
-		except ValueError:
-			raise HTTPError(output="Ports have to be integers.")
-			
-	exclude_ports = []
-	if "exclude_ports" in request.GET:
-		exclude_ports = request.GET["exclude_ports"].strip()
-		try:
-			exclude_ports = map(lambda v: int(v.strip()), exclude_ports.split(","))
-		except ValueError:
-			raise HTTPError(output="Ports have to be integers.")
-		
-	spec = {}
-	if len(include_ports) > 0:
-		spec["$or"] = [
-			{ common.COL_SRC_PORT: { "$in": include_ports } },
-			{ common.COL_DST_PORT: { "$in": include_ports } }
-		]
-	if len(exclude_ports) > 0:
-		spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
-		spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
 
 	# query without the total field	
 	full_spec = {}
