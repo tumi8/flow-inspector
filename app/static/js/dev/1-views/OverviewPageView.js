@@ -1,50 +1,50 @@
 var OverviewPageView = PageView.extend({
-    events: {
-    	"click .hostview-value a": "clickHostviewValue",
-	"click .bucketview-value a": "clickBucketChartValue",
-	"click .donut-chart-value a": "clickDonutChartValue"
-    },
-    initialize: function() {
-    	this.template = _.template($("#overview-page-template").html());
-    	
-	this.nodesDonutModel = new DonutChartModel({ index: "nodes" });
-	this.nodesDonutModel.bind("change:value", this.changeDonutChartValue, this);
-	this.nodesDonutView = new DonutChartView({ model: this.nodesDonutModel });
+	events: {
+		"click .hostview-value a": "clickHostviewValue",
+		"click .bucketview-value a": "clickBucketChartValue",
+		"click .donut-chart-value a": "clickDonutChartValue"
+	},
+	initialize: function() {
+		this.template = _.template($("#overview-page-template").html());
+		
+		this.nodesDonutModel = new DonutChartModel({ index: "nodes" });
+		this.nodesDonutModel.bind("change:value", this.changeDonutChartValue, this);
+		this.nodesDonutView = new DonutChartView({ model: this.nodesDonutModel });
+		
+		this.portsDonutModel = new DonutChartModel({ index: "ports" });
+		this.portsDonutView = new DonutChartView({ model: this.portsDonutModel });
+		
+		this.hostModel = new HostViewModel();
+		this.hostModel.bind("change:value", this.changeHostViewValue, this);
+		this.hostView = new HostView({ model: this.hostModel });
+		
+		this.bucketChartModel = new BucketChartModel();
+		this.bucketChartModel.bind("change:value", this.changeBucketChartValue, this);
+		this.bucketChartView = new BucketChartView({ model: this.bucketChartModel });
+	},
+	render: function() {
+		$(this.el).html(this.template());
+		
+		$(".hostview-value li[data-value='" + this.hostModel.get("value") + "']", this.el)
+			.addClass("active");
+		
+		$(".bucketview-value li[data-value='" + this.bucketChartModel.get("value") + "']", this.el)
+			.addClass("active");
+		
+		$(".donut-chart-value li[data-value='" + this.nodesDonutModel.get("value") + "']", this.el)
+			.addClass("active");
 
-	this.portsDonutModel = new DonutChartModel({ index: "ports" });
-	this.portsDonutView = new DonutChartView({ model: this.portsDonutModel });
+		$(".viz-hostview", this.el).append(this.hostView.el);
+		$(".viz-donut-nodes", this.el).append(this.nodesDonutView.el);
+		$(".viz-donut-ports", this.el).append(this.portsDonutView.el);
+		$(".viz-buckets", this.el).append(this.bucketChartView.el);
 	
-    	this.hostModel = new HostViewModel();
-    	this.hostModel.bind("change:value", this.changeHostViewValue, this);
-    	this.hostView = new HostView({ model: this.hostModel });
-
-
-        this.bucketChartModel = new BucketChartModel();
-        this.bucketChartModel.bind("change:value", this.changeBucketChartValue, this);
-        this.bucketChartView = new BucketChartView({ model: this.bucketChartModel });
-    },
-    render: function() {
-    	$(this.el).html(this.template());
-    	
-    	$(".hostview-value li[data-value='" + this.hostModel.get("value") + "']", this.el)
-    		.addClass("active");
-
-    	$(".bucketview-value li[data-value='" + this.bucketChartModel.get("value") + "']", this.el)
-    		.addClass("active");
-
-    	$(".donut-chart-value li[data-value='" + this.nodesDonutModel.get("value") + "']", this.el)
-    		.addClass("active");
-
-
-	$(".viz-hostview", this.el).append(this.hostView.el);
-	$(".viz-donut-nodes", this.el).append(this.nodesDonutView.el);
-	$(".viz-donut-ports", this.el).append(this.portsDonutView.el);
-	$(".viz-buckets", this.el).append(this.bucketChartView.el);
-	
-	this.hostView.render();
-	this.bucketChartView.render();
-	return this;
-    },
+		this.hostView.render();
+		this.nodesDonutView.render();
+		this.portsDonutView.render();
+		this.bucketChartView.render();
+		return this;
+	},
 	clickHostviewValue: function(e) {
 		var target = $(e.target).parent();
 		this.hostModel.set({ value: target.data("value") });
