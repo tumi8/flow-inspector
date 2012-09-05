@@ -402,6 +402,75 @@ body {
 	font-size: 10px;
 }
 
+/* Overview */
+
+.page-overview .bucket-chart {
+	position: relative;
+	margin-bottom: 10px;
+}
+.page-overview .bucket-chart .loader {
+	border-radius: 5px;
+}
+.page-overview .bucket-chart .bar line {
+  fill: none;
+  stroke-width: 1.5px;
+}
+.page-overview .bucket-chart text {
+	fill: #666;
+	font-size: 10px;
+}
+.page-overview .bucket-chart .axis line,
+.page-overview .bucket-chart .axis path {
+  	fill: none;
+  	stroke: #666;
+  	shape-rendering: crispedges;
+}
+.page-overview .bucket-chart .axis .tick {
+	stroke: #ccc;
+}
+.page-overview .bucket-chart .axis .tick.minor {
+	stroke: #666;
+}
+.page-overview .donut-chart,
+.page-overview .donut-chart {
+	position: relative;
+	margin-bottom: 10px;
+}
+.page-overview .donut-chart text,
+.page-overview .donut-chart text {
+	fill: #666;
+	font-size: 10px;
+}
+
+.page-overview .host-chart {
+	position: relative;
+	margin-bottom: 10px;
+}
+.page-overview .host-chart .loader {
+	border-radius: 5px;
+}
+.page-overview .host-chart .bar line {
+  fill: none;
+  stroke-width: 1.5px;
+}
+.page-overview .host-chart text {
+	fill: #666;
+	font-size: 10px;
+}
+.page-overview .host-chart .axis line,
+.page-overview .host-chart .axis path {
+  	fill: none;
+  	stroke: #666;
+  	shape-rendering: crispedges;
+}
+.page-overview .host-chart .axis .tick {
+	stroke: #ccc;
+}
+.page-overview .host-chart .axis .tick.minor {
+	stroke: #666;
+}
+
+
 /* Graph */
 
 .page-graph .canvas .node {
