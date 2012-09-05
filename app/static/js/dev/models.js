@@ -30,7 +30,7 @@ var BucketChartModel = Backbone.Model.extend({
 	}
 });
 
-var OverviewModel = Backbone.Model.extend({
+var HostViewModel = Backbone.Model.extend({
 	defaults: {
 		index: "nodes",
 		value: "flows"

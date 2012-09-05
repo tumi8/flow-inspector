@@ -1,9 +1,9 @@
-var OverviewView = Backbone.View.extend({
-	className: "overview",
+var HostView = Backbone.View.extend({
+	className: "hostview",
 	events: {},
 	initialize: function() {
 		if(!this.model) {
-			this.model = new OverviewModel();
+			this.model = new HostViewModel();
 		}
     	
 		this.model.bind("change:value", this.render, this);

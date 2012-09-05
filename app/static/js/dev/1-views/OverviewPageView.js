@@ -14,9 +14,9 @@ var OverviewPageView = PageView.extend({
 	this.portsDonutModel = new DonutChartModel({ index: "ports" });
 	this.portsDonutView = new DonutChartView({ model: this.portsDonutModel });
 	
-    	this.overviewModel = new OverviewModel();
-    	this.overviewModel.bind("change:value", this.changeOverviewValue, this);
-    	this.overviewView = new OverviewView({ model: this.overviewModel });
+    	this.hostModel = new HostViewModel();
+    	this.hostModel.bind("change:value", this.changeHostViewValue, this);
+    	this.hostView = new HostView({ model: this.hostModel });
 
 
         this.bucketChartModel = new BucketChartModel();
@@ -26,7 +26,7 @@ var OverviewPageView = PageView.extend({
     render: function() {
     	$(this.el).html(this.template());
     	
-    	$(".hostview-value li[data-value='" + this.overviewModel.get("value") + "']", this.el)
+    	$(".hostview-value li[data-value='" + this.hostModel.get("value") + "']", this.el)
     		.addClass("active");
 
     	$(".bucketview-value li[data-value='" + this.bucketChartModel.get("value") + "']", this.el)
@@ -36,18 +36,18 @@ var OverviewPageView = PageView.extend({
     		.addClass("active");
 
 
-	$(".viz-hostview", this.el).append(this.overviewView.el);
+	$(".viz-hostview", this.el).append(this.hostView.el);
 	$(".viz-donut-nodes", this.el).append(this.nodesDonutView.el);
 	$(".viz-donut-ports", this.el).append(this.portsDonutView.el);
 	$(".viz-buckets", this.el).append(this.bucketChartView.el);
 	
-	this.overviewView.render();
+	this.hostView.render();
 	this.bucketChartView.render();
 	return this;
     },
 	clickHostviewValue: function(e) {
 		var target = $(e.target).parent();
-		this.overviewModel.set({ value: target.data("value") });
+		this.hostModel.set({ value: target.data("value") });
 	},
 	clickBucketChartValue: function(e) {
 		var target = $(e.target).parent();
@@ -58,7 +58,7 @@ var OverviewPageView = PageView.extend({
 		this.nodesDonutModel.set({ value: target.data("value") });
 		this.portsDonutModel.set({ value: target.data("value") });
 	},
-	changeOverviewValue: function(model, value) {
+	changeHostViewValue: function(model, value) {
 		$(".hostview-value li", this.el).removeClass("active");
 		$(".hostview-value li[data-value='" + value + "']", this.el)
 		.addClass("active");
