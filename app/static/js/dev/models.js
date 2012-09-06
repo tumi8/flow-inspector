@@ -33,7 +33,8 @@ var BucketChartModel = Backbone.Model.extend({
 var HostViewModel = Backbone.Model.extend({
 	defaults: {
 		index: "nodes",
-		value: "flows"
+		value: "flows",
+		interval: []
 	}
 });
 
@@ -68,7 +69,9 @@ var GraphModel = Backbone.Model.extend({
 		nodeLimit: 255,
 		showOthers: false,
 		filterPorts: "",
-		filterPortsType: "inclusive"
+		filterPortsType: "inclusive",
+		filterIPs: "",
+		filterIPsType: "inclusive"
 	}
 });
 
@@ -249,6 +252,23 @@ var IndexQuery = CachedCollection.extend({
     	return response.results;
     }
 });
+
+var DynamicIndexQuery = CachedCollection.extend({
+    cache_timeout: 60*10,
+    model: IndexEntry,
+    total_count: 0,
+    initialize: function(models, options) {
+    	this.index = options.index || "nodes";
+    },
+    url: function() {
+    	return "/api/dynamic/index/" + this.index;
+    },
+    parse: function(response) {
+	this.totalCounter = response.totalCounter;
+    	return response.results;
+    }
+});
+
 
 var PcapFlows = CachedCollection.extend({
 	cache_timeout: 60*10,
