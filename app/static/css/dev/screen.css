@@ -401,6 +401,71 @@ body {
 	fill: #666;
 	font-size: 10px;
 }
+.page-dashboard .host-chart {
+	position: relative;
+	margin-bottom: 10px;
+}
+.page-dashboard .host-chart .loader {
+	border-radius: 5px;
+}
+.page-dashboard .host-chart .bar line {
+  fill: none;
+  stroke-width: 1.5px;
+}
+.page-dashboard .host-chart text {
+	fill: #666;
+	font-size: 10px;
+}
+.page-dashboard .host-chart .axis line,
+.page-dashboard .host-chart .axis path {
+  	fill: none;
+  	stroke: #666;
+  	shape-rendering: crispedges;
+}
+.page-dashboard .host-chart .axis .tick {
+	stroke: #ccc;
+}
+.page-dashboard .host-chart .axis .tick.minor {
+	stroke: #666;
+}
+
+.page-dashboard .timeline-view {
+	height: 90px;
+}
+.page-dashboard .timeline-view .loader {
+	border-radius: 5px;
+}
+.page-dashboard .timeline-view svg {
+	-moz-user-select: -moz-none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	user-select: none;
+	cursor: pointer;
+}
+.page-dashboard .timeline-view .selection rect {
+	fill: rgba(0,0,0,0.3);
+}
+.page-dashboard .timeline-view .bar line {
+  fill: none;
+  stroke-width: 1.5px;
+}
+.page-dashboard .timeline-view text {
+	fill: #666;
+	font-size: 10px;
+}
+.page-dashboard .timeline-view .axis line,
+.page-dashboard .timeline-view .axis path {
+  	fill: none;
+  	stroke: #333;
+  	shape-rendering: crispEdges;
+}
+.page-dashboard .timeline-view .axis .tick {
+	stroke: #333;
+}
+.page-dashboard .timeline-view .axis .tick.minor {
+	stroke: #333;
+}
+
 
 /* Overview */
 
@@ -441,7 +506,6 @@ body {
 	fill: #666;
 	font-size: 10px;
 }
-
 .page-overview .host-chart {
 	position: relative;
 	margin-bottom: 10px;

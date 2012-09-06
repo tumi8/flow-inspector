@@ -2,7 +2,7 @@
 	<div class="container page-overview">
 		<div class="content">
 			<div class="page-header">
-				<h1>Overview</h1>
+				<h1>Global Database Overview</h1>
 			</div>
 			<h2>Host Overview</h2>
 			<ul class="pills hostview-value">
