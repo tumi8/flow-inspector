@@ -20,6 +20,8 @@ import pymongo
 import config
 import common
 
+import operator
+
 from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error, response, redirect
 from bottle import jinja2_view as view, jinja2_template as template
 
@@ -314,6 +316,104 @@ def api_bucket_query():
 		"bucket_size": bucket_size,
 		"results": buckets
 	}
+
+@get("/api/dynamic/index/:name")
+def api_dynamic_index(name):
+	def createNewIndexEntry(row):
+		# top level
+		r = { "id": row[key[0]], "flows": 0 }
+		for s in config.flow_aggr_sums:
+			r[s] = row[s]
+
+		# protocol specific
+		for p in common.AVAILABLE_PROTOS:
+			r[p] = { "flows": 0 }
+			for s in config.flow_aggr_sums:	
+				r[p][s] = 0
+		# src and dst specific		
+		for dest in ["src", "dst"]:
+			r[dest] = {}
+			r[dest]["flows" ] = 0
+			for s in config.flow_aggr_sums:
+				r[dest][s] = 0
+		return r
+
+	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+
+	collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
+
+	cursor = collection.find(spec, fields=fields).batch_size(1000)
+
+	result = {}
+
+	# total counter that contains information about all flows in 
+	# the REQUESTED buckets (not over the complete dataset)
+	# this is important because the limit parameter might remove
+	# some information
+	total = {}
+	total["flows"] = 0
+	for s in config.flow_aggr_sums:
+		total[s] = 0
+	for proto in common.AVAILABLE_PROTOS:
+		total[proto] = {}
+		for s in config.flow_aggr_sums:
+			total[proto][s] = 0
+			total[proto]["flows"] = 0
+
+	for row in cursor:
+	
+		if name == "nodes":
+			keylist = [ (common.COL_SRC_IP, "src"), (common.COL_DST_IP, "dst") ]
+		elif name == "ports":
+			keylist = [ (common.COL_SRC_PORT, "src"), (common.COL_DST_PORT, "dst") ]
+		else:
+			raise HTTPError(output = "Unknown dynamic index")
+
+		# update total counters
+		for s in config.flow_aggr_sums:
+			total[s] += row[s]
+			total["flows"] += 1
+			if common.COL_PROTO in row:
+				total[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
+				total[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += 1
+
+
+		# update individual counters
+		for key in keylist:
+			if row[key[0]] in result:
+				r = result[row[key[0]]]
+			else:
+				r = createNewIndexEntry(row)
+
+			r["flows"] += row["flows"]
+			r[key[1]]["flows"] += row["flows"]
+			for s in config.flow_aggr_sums:
+				r[s] += row[s]
+				r[key[1]][s] += row[s]
+
+			if common.COL_PROTO in row:
+				r[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
+				for s in config.flow_aggr_sums:
+					r[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
+
+			result[row[key[0]]] = r
+
+	# no that we have calculated the indexes, take the values and postprocess them
+	results = result.values()
+	if sort:
+		# TODO: implement sort function that allows for sorting with two keys
+		if len(sort) != 1:
+			raise HTTPError(output = "Cannot sort by multiple fields. This must yet be implemented.")
+		if sort[0][1] == pymongo.ASCENDING:
+			results.sort(key=operator.itemgetter(sort[0][0]))
+		else:
+			results.sort(key=operator.itemgetter(sort[0][0]), reverse=True)
+	
+	if limit:
+		results = results[0:limit]
+
+	return { "totalCounter" : total, "results": results }
+
 	
 @get("/api/index/:name")
 @get("/api/index/:name/")

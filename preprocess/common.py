@@ -63,7 +63,9 @@ COLUMNMAP = {
 }
 
 def getProto(obj):
-	proto = obj.get("proto", 0)
+	return getProtoFromValue(obj.get("proto", 0))
+
+def getProtoFromValue(proto):
 	if proto == 17 or proto == "UDP":
 		result = COL_PROTO_UDP
 	elif proto == 6 or proto == "TCP":
