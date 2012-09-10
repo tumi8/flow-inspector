@@ -26,7 +26,8 @@ var PcapStatsPoint = Backbone.Model.extend({
 
 var BucketChartModel = Backbone.Model.extend({
 	defaults: {
-		value: "flows"
+		value: "flows",
+		interval: []
 	}
 });
 
@@ -34,6 +35,7 @@ var HostViewModel = Backbone.Model.extend({
 	defaults: {
 		index: "nodes",
 		value: "flows",
+		limit: 15,
 		interval: []
 	}
 });
@@ -42,7 +44,9 @@ var HostViewModel = Backbone.Model.extend({
 var DonutChartModel = Backbone.Model.extend({
 	defaults: {
 		index: "nodes",
-		value: "flows"
+		value: "flows",
+		interval: [],
+		limit: 30
 	}
 });
 

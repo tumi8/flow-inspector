@@ -1,22 +1,22 @@
 var DonutChartView = Backbone.View.extend({
 	className: "donut-chart",
 	events: {},
-	initialize: function() {
+	initialize: function(options) {
 		if(!this.model) {
 			this.model = new DonutChartModel();
 		}
     	
-		this.model.bind("change:value", this.render, this);
+		this.model.bind("change:value", this.changeValue, this);
 		this.model.bind("change:index", this.changeIndex, this);
+		this.model.bind("change:interval", this.changeInterval, this);
     	
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
-		this.index = new IndexQuery(null, { index: this.model.get("index") });
+		this.index = options.index;
 		this.index.bind("reset", this.render, this);
 
 		// fetch at the end because a cached request calls render immediately!
-		this.showLimit = 30;
-		this.index.fetch({data: {"limit": this.showLimit + 1, "sort": this.model.get("value") + " desc"}});
+		this.fetchData();
 	},
 	render: function() {
 		var container = $(this.el).empty();
@@ -121,8 +121,32 @@ var DonutChartView = Backbone.View.extend({
 		return this;
 	},
 	changeIndex: function(model, value) {
-		alert("requesting in changeIndex");
 		this.index.index = value;
-		this.index.fetch({data: {"limit": this.showLimit + 1, "sort": this.model.get("value") + " desc"}});
+		$(this.loaderTemplate()).show();
+		this.fetchData();
+	},
+	changeValue: function(model, value) {
+		$(this.loaderTemplate()).show();
+		this.fetchData();
+	},
+	changeInterval: function(mode, value) {
+		$(this.loaderTemplate()).show();
+		this.fetchData();
+	},
+	fetchData: function(model, value) {
+		var limit      = this.model.get("limit");
+		var sortField  = this.model.get("value");
+		var interval   = this.model.get("interval");
+		var data = {
+			"limit": limit + 1,
+			"sort": sortField + " desc"
+		};
+
+		if (interval.length > 0) {
+			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
+			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
+		}
+
+		this.index.fetch({data: data});
 	}
 });

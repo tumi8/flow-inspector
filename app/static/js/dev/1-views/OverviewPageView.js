@@ -7,16 +7,19 @@ var OverviewPageView = PageView.extend({
 	initialize: function() {
 		this.template = _.template($("#overview-page-template").html());
 		
+		this.portsIndex = new IndexQuery(null, { index: "ports" });
+		this.nodesIndex = new IndexQuery(null, { index: "nodes" });
+
 		this.nodesDonutModel = new DonutChartModel({ index: "nodes" });
 		this.nodesDonutModel.bind("change:value", this.changeDonutChartValue, this);
-		this.nodesDonutView = new DonutChartView({ model: this.nodesDonutModel });
+		this.nodesDonutView = new DonutChartView({ model: this.nodesDonutModel, index: this.nodesIndex });
 		
 		this.portsDonutModel = new DonutChartModel({ index: "ports" });
-		this.portsDonutView = new DonutChartView({ model: this.portsDonutModel });
+		this.portsDonutView = new DonutChartView({ model: this.portsDonutModel, index: this.portsIndex });
 		
 		this.hostModel = new HostViewModel();
 		this.hostModel.bind("change:value", this.changeHostViewValue, this);
-		this.hostView = new HostView({ model: this.hostModel });
+		this.hostView = new HostView({ model: this.hostModel, index: new IndexQuery(null, { index: this.hostModel.get("index") }) });
 		
 		this.bucketChartModel = new BucketChartModel();
 		this.bucketChartModel.bind("change:value", this.changeBucketChartValue, this);

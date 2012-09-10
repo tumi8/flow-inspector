@@ -1,26 +1,25 @@
 var HostView = Backbone.View.extend({
-	className: "hostview",
+	className: "host-chart",
 	events: {},
-	initialize: function() {
-		if(!this.model) {
+	initialize: function(options) {
+		if(!this.model ) {
 			this.model = new HostViewModel();
 		}
     	
 		this.model.bind("change:value", this.render, this);
+		this.model.bind("change:interval", this.changeInterval, this);
+
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
 		// chart formatting
 		this.m = [10, 20, 30, 70];
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
     	
-		this.index = new IndexQuery(null, { index: this.model.get("index") });
+		this.index = options.index;// new IndexQuery(null, { index: this.model.get("index") });
 		this.index.bind("reset", this.render, this);
+
 		// fetch at the end because a cached request calls render immediately!
-
-		this.showLimit = 15 
-
-
-		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
+		this.fetchData();
 	},
 	render: function() {
 		var
@@ -225,7 +224,23 @@ var HostView = Backbone.View.extend({
 		}
 
 		this.index.index = value;
-		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
+		this.fetchData();
 		return this;
+	},
+	fetchData: function() {
+		var limit = this.model.get("limit");
+		var interval = this.model.get("interval");
+		var data = {
+			"limit": limit, 
+			"sort": this.model.get("value") + " desc"
+		}
+		if (interval.length > 0) {
+			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
+			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
+		}
+		this.index.fetch({data: data});
+	},
+	changeInterval: function() {
+		this.fetchData();
 	}
 });

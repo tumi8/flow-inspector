@@ -5,7 +5,9 @@ var GraphPageView = PageView.extend({
 		"click a.hilbert": "clickLayoutHilbert",
 		"change #filterNodeLimit": "changeNodeLimit",
 		"blur #filterPorts": "changeFilterPorts",
+		"blur #filterIPs": "changeFilterIPs",
 		"change #filterPortsType": "changeFilterPortsType",
+		"change #filterIPsType": "changeFilterIPsType",
 		"change #showOthers": "changeShowOthers"
 	},
 	initialize: function() {
@@ -33,13 +35,15 @@ var GraphPageView = PageView.extend({
 		});
     	
 		// bind after initialization of GraphView to get event after the GraphView instance
-		this.nodes.bind("reset", this.updateIfLoaded, this);
+		this.nodes.bind("reset", this.finishedNodesLoading, this);
 		this.flows.bind("reset", this.updateIfLoaded, this);
     	
 		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
 		this.graphModel.bind("change:nodeLimit", this.nodeLimitChanged, this);
 		this.graphModel.bind("change:filterPorts", this.filterPortsChanged, this);
 		this.graphModel.bind("change:filterPortsType", this.filterPortsTypeChanged, this);
+		this.graphModel.bind("change:filterIPs", this.filterIPsChanged, this);
+		this.graphModel.bind("change:filterIPsType", this.filterIPsTypeChanged, this);
 		this.graphModel.bind("change:showOthers", this.showOthersChanged, this);
     	
 		// fetch at the end because a cached request calls render immediately!
@@ -102,6 +106,10 @@ var GraphPageView = PageView.extend({
 	show: function() {
 		$(window).bind("resize", this._onResize);
 		return PageView.prototype.show.call(this);
+	},
+	finishedNodesLoading: function() {
+		// we have a new set of nodes. Reload the appropriate flows
+		this.fetchFlows();
 	},
 	updateIfLoaded: function() {
 		if(!$(this.el).html()) {
@@ -173,7 +181,6 @@ var GraphPageView = PageView.extend({
 			}
 		}
 		
-		/*
 		if (!showOthers) {
 			// we only need to take flows to the top nodes within the nodeLimit
 			// into account. So if we have the nodes, we can limit our flow extraction 
@@ -189,7 +196,6 @@ var GraphPageView = PageView.extend({
 				data["include_ips"] = filter_ips;
 			}
 		}
-		*/
 
 		this.flows.fetch({ data: data });
 	},
@@ -222,6 +228,8 @@ var GraphPageView = PageView.extend({
 	},
 	nodeLimitChanged: function(model, value) {
 		$("#filterNodeLimit", this.el).val(value);
+		this.loader.show();
+		this.fetchNodes();
 	},
 	showOthersChanged: function(model, value) {
 		$("#showOthers", this.el).attr("checked", value);
@@ -233,8 +241,17 @@ var GraphPageView = PageView.extend({
 			filterPorts: $("#filterPorts", this.el).val()
 		});
 	},
+	changeFilterIPs: function() {
+		alert("changeFilterIPs");
+	},
 	filterPortsChanged: function(model, value) {
 		$("#filterPorts", this.el).val(value);
+		this.loader.show();
+		this.fetchFlows();
+	},
+	filterIPsChanged: function(model, value) {
+		$("#filterIPs", this.el).val(value);
+		// TODO: We have to check the nodes, too ...
 		this.loader.show();
 		this.fetchFlows();
 	},
@@ -243,9 +260,20 @@ var GraphPageView = PageView.extend({
 			filterPortsType: $("#filterPortsType", this.el).val()
 		});
 	},
+	changeFilterIPsType: function() {
+		this.graphModel.set({
+			filterIPsType: $("#filterIPsType", this.el).val()
+		});
+	},
 	filterPortsTypeChanged: function(model, value) {
 		$("#filterPortsType", this.el).val(value);
 		this.loader.show();
+		this.fetchFlows();
+	},
+	filterIPsTypeChanged: function(model, value) {
+		$("#filterIPsType", this.el).val(value);
+		this.loader.show();
+		// TODO: we also have to check the nodes ...
 		this.fetchFlows();
 	},
 	changeShowOthers: function() {
