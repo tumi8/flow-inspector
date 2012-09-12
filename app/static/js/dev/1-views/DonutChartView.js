@@ -16,7 +16,9 @@ var DonutChartView = Backbone.View.extend({
 		this.index.bind("reset", this.render, this);
 
 		// fetch at the end because a cached request calls render immediately!
-		this.fetchData();
+		if (this.model.get("fetchOnInit")) {
+			this.fetchData();
+		}
 	},
 	render: function() {
 		var container = $(this.el).empty();

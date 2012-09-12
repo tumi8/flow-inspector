@@ -19,7 +19,9 @@ var HostView = Backbone.View.extend({
 		this.index.bind("reset", this.render, this);
 
 		// fetch at the end because a cached request calls render immediately!
-		this.fetchData();
+		if (this.model.get("fetchOnInit")) {
+			this.fetchData();
+		}
 	},
 	render: function() {
 		var
@@ -38,11 +40,6 @@ var HostView = Backbone.View.extend({
 			container.append(this.loaderTemplate());
 			return this;
 		}
-		// sort data
-		data.sort(function(a,b) {
-			return b.get(num_val, 0) - a.get(num_val, 0);
-		});
-
 
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")
@@ -60,19 +57,20 @@ var HostView = Backbone.View.extend({
 
 
 		// add text to bars
-		this.labelGroup.selectAll("text")
+		this.labelGroup.selectAll()
 			.data(data)
 			.enter()
 				.append("text")
+					.attr("class", "host-overview-y-axis-text")
 					.attr("x", 0)
 					.attr("y", function(d, idx) { return y(idx) + 10; })
 					.attr("text-anchor", "left")
   					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
 					.text(function(d) { return FlowInspector.ipToStr(d.id); });
 
+		var textGroup = this.labelGroup.selectAll('.host-overview-y-axis-text');
+		var offset = textGroup.node().getComputedTextLength() + 15;
 
-		var offset = d3.select('text').node().getComputedTextLength() + 15;
-		//var offset = 15;
 		var x = d3.scale.linear().range([0, w - offset]);
 		x.domain([0, max_value]);
 

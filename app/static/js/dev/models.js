@@ -35,6 +35,7 @@ var HostViewModel = Backbone.Model.extend({
 	defaults: {
 		index: "nodes",
 		value: "flows",
+		fetchOnInit: false,
 		limit: 15,
 		interval: []
 	}
@@ -45,6 +46,7 @@ var DonutChartModel = Backbone.Model.extend({
 	defaults: {
 		index: "nodes",
 		value: "flows",
+		fetchOnInit: false,
 		interval: [],
 		limit: 30
 	}
