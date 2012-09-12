@@ -24,6 +24,7 @@ import operator
 
 from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error, response, redirect
 from bottle import jinja2_view as view, jinja2_template as template
+from bottle import PasteServer
 
 # set template path
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
@@ -259,6 +260,7 @@ def api_bucket_query():
 	else:
 		query_fields = ["bucket", "flows"] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
 
+	print "bucket/query:", bucket_size, "spec:", spec, "fields:", query_fields
 	cursor = collection.find(spec, fields=query_fields).batch_size(1000)
 	if sort:
 		cursor.sort("bucket", sort)
@@ -340,9 +342,15 @@ def api_dynamic_index(name):
 
 	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
 
+	print "Bucket_Size: ", bucket_size
 	collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
 
+	print collection
+
+	print "Spec:", spec, "fields: ", fields
 	cursor = collection.find(spec, fields=fields).batch_size(1000)
+
+	print "Got", cursor.count(), "entries from the database"
 
 	result = {}
 
@@ -356,12 +364,11 @@ def api_dynamic_index(name):
 		total[s] = 0
 	for proto in common.AVAILABLE_PROTOS:
 		total[proto] = {}
+		total[proto]["flows"] = 0
 		for s in config.flow_aggr_sums:
 			total[proto][s] = 0
-			total[proto]["flows"] = 0
 
 	for row in cursor:
-	
 		if name == "nodes":
 			keylist = [ (common.COL_SRC_IP, "src"), (common.COL_DST_IP, "dst") ]
 		elif name == "ports":
@@ -370,12 +377,13 @@ def api_dynamic_index(name):
 			raise HTTPError(output = "Unknown dynamic index")
 
 		# update total counters
+		total["flows"] += row["flows"]
+		if common.COL_PROTO in row:
+			total[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
 		for s in config.flow_aggr_sums:
 			total[s] += row[s]
-			total["flows"] += 1
 			if common.COL_PROTO in row:
 				total[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
-				total[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += 1
 
 
 		# update individual counters
@@ -469,5 +477,6 @@ def server_static(path):
 
 
 if __name__ == "__main__":
-	debug(config.debug)
+	#run(server=PasteServer, host=config.host, port=config.port, reloader=config.debug)
 	run(host=config.host, port=config.port, reloader=config.debug)
+	debug(config.debug)
