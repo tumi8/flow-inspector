@@ -15,7 +15,7 @@ Requirements
 ### App
 
 - Python (tested with v2.7.1)
-- MongoDB (tested with v2.0)
+- MongoDB (aggregation framework required (minimum v2.1), recommended: v2.2)
 - Bottle (v0.10.dev in /app/vendor)
 - pymongo (tested with v2.0.1)
   pip install pymongo
