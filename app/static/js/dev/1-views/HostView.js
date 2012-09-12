@@ -6,8 +6,9 @@ var HostView = Backbone.View.extend({
 			this.model = new HostViewModel();
 		}
     	
-		this.model.bind("change:value", this.render, this);
+		this.model.bind("change:value", this.changeValue, this);
 		this.model.bind("change:interval", this.changeInterval, this);
+		this.model.bind("change:bucket_size", this.changeBucketSize, this);
 
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
@@ -113,8 +114,16 @@ var HostView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "tcp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.tcpColor);
+				.attr("fill", FlowInspector.tcpColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "TCP: " + f(d);
+						});
 
+		$(".tcp", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
 
 		// udp bar, starts after the tcp bar
 		bar_enter.append("rect")
@@ -123,7 +132,15 @@ var HostView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "udp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.udpColor);
+				.attr("fill", FlowInspector.udpColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "UDP: " + f(d);
+						});
+		$(".udp", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
 
 		// icmp bar, starts after the udp bar
 		bar_enter.append("rect")
@@ -132,7 +149,16 @@ var HostView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "icmp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.icmpColor);
+				.attr("fill", FlowInspector.icmpColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "ICMP: " + f(d);
+						});
+		$(".icmp", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
+
 
 		// others bar, starts after the imcp bar
 		bar_enter.append("rect")
@@ -141,7 +167,16 @@ var HostView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "other", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.otherColor);
+				.attr("fill", FlowInspector.otherColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "Other: " + f(d);
+						});
+		$(".other", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
+
 
 		bar_enter.append("line")
 			.attr("x1", function(d) { return x(d.get(num_val)) + offset; })
@@ -226,8 +261,12 @@ var HostView = Backbone.View.extend({
 		return this;
 	},
 	fetchData: function() {
+		this.index.models = [];
+		this.render();
+
 		var limit = this.model.get("limit");
 		var interval = this.model.get("interval");
+		var bucket_size = this.model.get("bucket_size");
 		var data = {
 			"limit": limit, 
 			"sort": this.model.get("value") + " desc"
@@ -236,9 +275,18 @@ var HostView = Backbone.View.extend({
 			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
 			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
 		}
+		if (bucket_size) {
+			data["bucket_size"] = bucket_size;
+		}
 		this.index.fetch({data: data});
 	},
 	changeInterval: function() {
+		this.fetchData();
+	},
+	changeValue: function() {
+		this.fetchData();
+	},
+	changeBucketSize: function() {
 		this.fetchData();
 	}
 });

@@ -12,6 +12,7 @@ var DashboardPageView = PageView.extend({
 			model: this.timelineModel
 		});
 		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
+		this.timelineModel.bind("change:bucket_size", this.changeBucketSize, this);
 
 		this.hostModel = new HostViewModel();
 		this.hostModel.bind("change:value", this.changeHostViewValue, this);
@@ -89,6 +90,10 @@ var DashboardPageView = PageView.extend({
 		this.nodesDonutModel.set({ interval: interval });
 		this.portsDonutModel.set({ interval: interval });
 		this.bucketChartModel.set({ interval: interval });
+	},
+	changeBucketSize: function(model, bucket_size) {
+		this.hostModel.set({bucket_size: bucket_size});
+		this.nodesDonutModel.set({bucket_size: bucket_size});
+		this.portsDonutModel.set({bucket_size: bucket_size});
 	}
-
 });
