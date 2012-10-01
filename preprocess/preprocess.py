@@ -8,7 +8,7 @@ nohup ./preprocess.py
 
 It is save to run multiple instances of this script!
 
-Author: Mario Volke
+Author: Mario Volke, Lothar Braun
 """
 
 import sys
@@ -25,6 +25,7 @@ import json
 import pymongo
 import bson
 import xml.dom.minidom
+import uuid
 from collections import deque
 
 import common
@@ -43,8 +44,8 @@ args = parser.parse_args()
 
 
 # Class to handle flows
-class FlowHandler:
-	def __init__(self, bucket_interval, collection, aggr_sum, aggr_values=[], filter_ports=None, cache_size=0):
+class Aggregator:
+	def __init__(self, bucket_interval, collection, aggr_sum, aggr_values=[], filter_ports=None):
 		"""
 		:Parameters:
 		 - `bucket_interval`: The bucket interval in seconds.
@@ -58,178 +59,109 @@ class FlowHandler:
 		self.aggr_sum = aggr_sum
 		self.aggr_values = aggr_values
 		self.filter_ports = filter_ports
-		
-		# init cache
-		self.cache = None
-		self.cache_size = cache_size
-		if cache_size > 0:
-			self.cache = dict()
-			self.cache_queue = deque()
-			
-		# stats
-		self.num_flows = 0
-		self.num_slices = 0
-		self.cache_hits = 0
-		self.cache_misses = 0
-		self.db_requests = 0
-		
+
 	def get_id(self, bucket, flow):
 		"""Generate a unique id.
-		"""
+       		"""
 		id = str(bucket)
 		for i,col in enumerate(self.aggr_values):
 			id += str(flow.get(col, "x"))
 		return id
-	
+
 	def get_bucket(self, timestamp, interval):
 		"""Compute the bucket timestamp.
 		"""
 		return int(timestamp) / int(interval) * int(interval)
-	
+
+	def aggregateFromCollection(self, raw_collection):
+		# get flows from the database, create new fields (buckets, and per-protocol fields)
+		bucketProject =	{
+			'$project': {
+				#'bucket': { '$subtract' : [ "$" + common.COL_FIRST_SWITCHED, { "$mod" : [ "$" + common.COL_FIRST_SWITCHED, int(self.bucket_interval) ]} ] }
+				common.COL_FIRST_SWITCHED: 1,
+				common.COL_LAST_SWITCHED: 1,
+				'bucketNums': 
+			} 
+		}
+		
+		# include all fields that are either in aggr_sum or aggr_values
+		for s in self.aggr_sum:
+			bucketProject['$project'][s] = 1
+		for v in self.aggr_values:
+			bucketProject['$project'][v] = 1
+		# make sure that we are always looking at the protocol
+		if not common.COL_PROTO in self.aggr_values:
+			bucketProject['$project'][common.COL_PROTO] = 1
+
+		for p in common.AVAILABLE_PROTOS:
+			bucketProject['$project'][p] = {}
+			for s in self.aggr_sum:
+				bucketProject['$project'][p][s] = {"$cond": [ { "$eq": [ "$" + common.COL_PROTO, p ] }, "$" + s, 0 ]}
+
+		# take the previously generated data and group it by the aggregation keys
+		# ID:
+		# generate ID from aggregated values and bucket (TODO: do we need more?)
+		aggregateGroup = {
+			'$group': {
+				'bucket': "$bucket"
+			}
+		}
+		for v in self.aggr_values:
+			aggregateGroup['$group'][s] = "$" + v
+		for s in self.aggr_values:
+			# sum
+			aggregateGroup['$group'][v] = { 
+
+		print aggregateGroup
+		sys.exit(1)
+
+		pipeline = [ bucketProject ]
+
+#		print pipeline
+#		print raw_collection.find()
+#		for row in raw_collection.find():
+#			print row
+#		print raw_collection.find().count()
+#		print "Aggregated: ",  raw_collection.aggregate(pipeline)
+
+class FlowHandler:
+	def __init__(self, collection, cache_size=1):
+		if cache_size <= 0:
+			self.cache_size = 1
+		else:
+			self.cache_size = cache_size
+
+		self.cache_queue = deque()
+		self.collection = collection
+
+		# stats
+		self.num_flows = 0
+			
 	def handleFlow(self, flow):
 		"""Slice a flow from the queue into buckets and insert into MongoDB.
 		"""
 		
 		self.num_flows += 1
-		
 		proto = common.getProto(flow)
-		carry = dict();
-		emitted = dict();
-		for s in self.aggr_sum:
-			carry[s] = 0
-			emitted[s] = 0
-		bucket = self.get_bucket(flow[common.COL_FIRST_SWITCHED], self.bucket_interval)
-		while bucket <= flow[common.COL_LAST_SWITCHED]:
-		
-			self.num_slices += 1
-		
-			nextBucket = bucket + self.bucket_interval;
-			bucketStart = bucket
-			if bucketStart < flow[common.COL_FIRST_SWITCHED]:
-				bucketStart = flow[common.COL_FIRST_SWITCHED]
-			bucketEnd = nextBucket - 1
-			if bucketEnd > flow[common.COL_LAST_SWITCHED]:
-				bucketEnd = flow[common.COL_LAST_SWITCHED]
-			intervalFactor = (bucketEnd - bucketStart + 1) / float(flow[common.COL_LAST_SWITCHED] - flow[common.COL_FIRST_SWITCHED] + 1)
-			
-			key = self.get_id(bucket, flow)	
-			
-			# check if we hit the cache
-			doc = None
-			if self.cache != None:
-				doc = self.cache.get(key, None)
-				if doc == None:
-					self.cache_misses += 1
-				else:
-					self.cache_hits += 1
-			if doc == None:
-				doc = { "$set": { "bucket": bucket }, "$inc": {} }
-			
-				# set unknown ports to None
-				if self.filter_ports:
-					for v in self.aggr_values:
-						if v == common.COL_SRC_PORT or v == common.COL_DST_PORT:
-							set_value = None
-							value = flow.get(v, None)
-							if value != None and value in self.filter_ports:
-								filter_proto = int(flow.get(common.COL_PROTO, -1))
-								if filter_proto == -1 or filter_proto in self.filter_ports[value]:
-									set_value = value
-							doc["$set"][v] = set_value
-						else:
-							doc["$set"][v] = flow.get(v, None)
-				else:
-					for v in self.aggr_values:
-						doc["$set"][v] = flow.get(v, None)
-						
-				for s in self.aggr_sum:
-					doc["$inc"][s] = 0
-					doc["$inc"][proto + "." + s] = 0
-				doc["$inc"]["flows"] = 0
-				doc["$inc"][proto + ".flows" ] = 0
-				
-				if self.cache != None:
-					# insert into cache
-					self.cache[key] = doc
-					self.cache_queue.append(key)
-			
-			if nextBucket > flow[common.COL_LAST_SWITCHED]:
-				for s in self.aggr_sum:
-					assert flow.get(s, 0) - emitted[s] >= 0
-					doc["$inc"][s] += flow.get(s, 0) - emitted[s]
-					# it is possible that the protocol specific part is not yet in the document
-					# check and adopt to this
-					keyString = proto + "." + s
-					if not keyString in doc["$inc"]:
-						doc["$inc"][keyString] = flow.get(s, 0) - emitted[s]
-					else:
-						doc["$inc"][keyString] += flow.get(s, 0) - emitted[s]
-			else:
-				for s in self.aggr_sum:
-					interval = intervalFactor * flow.get(s, 0)
-					num = carry[s] + interval
-					val = int(num)
-					carry[s] = num - val;
-					emitted[s] += val
-					doc["$inc"][s] += val
-					keyString = proto + "." + s
-					if not keyString in doc["$inc"]:
-						doc["$inc"][keyString] = val
-					else:
-						doc["$inc"][keyString] += val
-					
-			# count number of aggregated flows in the bucket
-			doc["$inc"]["flows"] += intervalFactor
-			keyString = proto + ".flows"
-			if not keyString in doc["$inc"]:
-				doc["$inc"][keyString] = intervalFactor
-			else:
-				doc["$inc"][keyString] += intervalFactor
-			
-			# if caching is actived then insert into cache
-			if self.cache != None:
-				self.handleCache()
-			else:
-				self.updateCollection(key, doc)
-				
-			bucket = nextBucket
-			
-	def updateCollection(self, key, doc):
+		if common.COL_PROTO in flow:
+			flow[common.COL_PROTO] = proto
 		# bindata will reduce id size by 50%
-		self.collection.update({ "_id": bson.binary.Binary(key) }, doc, True)
-		self.db_requests += 1
+		self.cache_queue.append(flow)
+		if len(self.cache_queue) > self.cache_size:
+			self.updateCollection()
+			
+			
+	def updateCollection(self):
+		self.collection.insert(self.cache_queue, safe=True)
+		self.cache_queue = deque()
+
+	def removeCollection(self):
+		self.collection.drop()
 		
-	def handleCache(self, clear=False):
-		if not self.cache:
-			return
-			
-		while (clear and len(self.cache_queue) > 0) or len(self.cache_queue) > self.cache_size:
-			key = self.cache_queue.popleft()
-			doc = self.cache[key]
-			self.updateCollection(key, doc)
-			del self.cache[key]
-			
 	def printReport(self):
 		print "%s report:" % (self.collection.name)
 		print "-----------------------------------"
 		print "Flows processed: %i" % (self.num_flows)
-		if self.num_flows == 0:
-			avg_per_flow = 0
-		else:
-			avg_per_flow = self.num_slices / float(self.num_flows)
-		print "Slices overall: %i (avg. %.2f per flow)" % (self.num_slices, avg_per_flow)
-		print "Database requests: %i" % (self.db_requests)
-		
-		if self.cache != None:
-			if self.cache_hits == 0:
-				hitratio = 0
-			else:
-				hitratio = self.cache_hits / float(self.cache_hits + self.cache_misses) * 100
-			print "Cache hit ratio: %.2f%%" % (hitratio)
-
-		else:
-			print "Cache deactivated"
-			
 		print ""
 		
 output_flows = 0
@@ -266,30 +198,33 @@ port_index_collection = dst_db[common.DB_INDEX_PORTS]
 	
 known_ports = common.getKnownPorts(config.flow_filter_unknown_ports)
 
-# create flow handlers
-handlers = []
+# create flow aggregators
+flowhandler = FlowHandler(
+	dst_db[common.DB_FLOW_RAW + str(uuid.uuid4())],
+	config.pre_cache_size
+)
+
+aggregators = []
 for s in config.flow_bucket_sizes:
-	handlers.append(FlowHandler(
+	aggregators.append(Aggregator(
 		s,
 		dst_db[common.DB_FLOW_PREFIX + str(s)],
 		config.flow_aggr_sums,
 		config.flow_aggr_values,
-		known_ports,
-		config.pre_cache_size
+		known_ports
 	))
 for s in config.flow_bucket_sizes:
-	handlers.append(FlowHandler(
+	aggregators.append(Aggregator(
 		s,
 		dst_db[common.DB_FLOW_AGGR_PREFIX + str(s)],
 		config.flow_aggr_sums,
 		[],
-		None,
-		config.pre_cache_size_aggr
+		None
 	))
 
 # create indexes
-for handler in handlers:
-	handler.collection.create_index("bucket")
+for aggregator in aggregators:
+	aggregator.collection.create_index("bucket")
 
 print "%s: Preprocessing started." % (datetime.datetime.now())
 print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())
@@ -297,6 +232,7 @@ print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())
 timer = threading.Timer(common.OUTPUT_INTERVAL, print_output)
 timer.start()
 
+lastFirstSwitchedAggregation = 0
 # Daemon loop
 while True:
 	try:
@@ -324,12 +260,24 @@ while True:
 			print "Flow is too old to be imported into mongodb. Skipping flow ..."
 			continue
 	
-		# Bucket slicing
-		for handler in handlers:
-			handler.handleFlow(obj)
+		flowhandler.handleFlow(obj)
+
+		if lastFirstSwitchedAggregation == 0:
+			lastFirstSwitchedAggregation = obj[common.COL_FIRST_SWITCHED]
+
+		if lastFirstSwitchedAggregation + 600 > obj[common.COL_FIRST_SWITCHED]:
+			flowhandler.updateCollection()
+			for aggregator in aggregators:
+				aggregator.aggregateFromCollection(flowhandler.collection)
+			flowhandler.removeCollection()
+			flowhandler = FlowHandler(
+			        dst_db[common.DB_FLOW_RAW + str(uuid.uuid4())],
+			        config.pre_cache_size
+				)
+			lastFirstSwitchedAggregation = obj[common.COL_FIRST_SWITCHED]
 			
-		common.update_node_index(obj, node_index_collection, config.flow_aggr_sums, common.INDEX_ADD)
-		common.update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports, common.INDEX_ADD)
+		#common.update_node_index(obj, node_index_collection, config.flow_aggr_sums, common.INDEX_ADD)
+		#common.update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports, common.INDEX_ADD)
 			
 		output_flows += 1
 		
@@ -340,9 +288,17 @@ while True:
 timer.cancel()
 
 # clear cache
-for handler in handlers:
-	handler.handleCache(True)
+#for handler in handlers:
+#	handler.handleCache(True)
 # print reports
 print ""
-for handler in handlers:
-	handler.printReport()
+try:
+	print "Processing final aggregation step ..."
+	for aggregator in aggregators:
+		aggregator.aggregateFromCollection(flowhandler.collection)
+except KeyboardInterrupt:
+	flowHandler.removeCollection()
+
+print ""
+flowhandler.removeCollection()
+

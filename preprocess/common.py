@@ -18,7 +18,8 @@ COL_PROTO_ICMP = "icmp"
 COL_PROTO_OTHER = "other"
 AVAILABLE_PROTOS = [ COL_PROTO_TCP, COL_PROTO_UDP, COL_PROTO_ICMP, COL_PROTO_OTHER ]
 
-
+# collection for raw data
+DB_FLOW_RAW = "flows"
 # the collection prefix to use for flows
 DB_FLOW_PREFIX = "flows_"
 # the collection prefix to use for completely aggregated flows
@@ -40,7 +41,7 @@ INDEX_REMOVE = "remove"
 IGNORE_COLUMNS = ["firstSwitchedMillis", "lastSwitchedMillis"]
 
 # Print output every ... in seconds
-OUTPUT_INTERVAL = 10
+OUTPUT_INTERVAL = 1
 
 # the xml file containing known port numbers
 PORTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'config', 'service-names-port-numbers.xml')
