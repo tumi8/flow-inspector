@@ -5,12 +5,13 @@
 Import IPFIX flows from MySQL or PostgreSQL Vermont format
 into the Redis buffer for preprocessing
 
-Author: Mario Volke
+Author: Mario Volke, Lothar Braun 
 """
 
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import math
 import time
