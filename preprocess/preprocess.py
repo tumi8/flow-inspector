@@ -23,22 +23,25 @@ import argparse
 import datetime
 import redis
 import json
-import pymongo
 import bson
 import xml.dom.minidom
 from collections import deque
 
 import common
+import backend
 import config
 
 parser = argparse.ArgumentParser(description="Import IPFIX flows from Redis cache into MongoDB.")
 parser.add_argument("--src-host", nargs="?", default="127.0.0.1", help="Redis host")
 parser.add_argument("--src-port", nargs="?", default=6379, type=int, help="Redis port")
 parser.add_argument("--src-database", nargs="?", default=0, type=int, help="Redis database")
-parser.add_argument("--dst-host", nargs="?", default=config.db_host, help="MongoDB host")
-parser.add_argument("--dst-port", nargs="?", default=config.db_port, type=int, help="MongoDB port")
-parser.add_argument("--dst-database", nargs="?", default=config.db_name, help="MongoDB database name")
+parser.add_argument("--dst-host", nargs="?", default=config.db_host, help="Backend database host")
+parser.add_argument("--dst-port", nargs="?", default=config.db_port, type=int, help="Backend database port")
+parser.add_argument("--dst-user", nargs="?", default=config.db_user, help="Backend database user")
+parser.add_argument("--dst-password", nargs="?", default=config.db_password, help="Backend database password")
+parser.add_argument("--dst-database", nargs="?", default=config.db_name, help="Backend database name")
 parser.add_argument("--clear-database", nargs="?", type=bool, default=False, const=True, help="Whether to clear the whole databse before importing any flows.")
+parser.add_argument("--backend", nargs="?", default=config.db_backend, const=True, help="Selects the backend type that is used to store the data")
 
 args = parser.parse_args()
 
@@ -251,19 +254,15 @@ except Exception, e:
 	print >> sys.stderr, "Could not connect to Redis database: %s" % (e)
 	sys.exit(1)
 
-# init pymongo connection
-try:
-	dst_conn = pymongo.Connection(args.dst_host, args.dst_port)
-except pymongo.errors.AutoReconnect, e:
-	print >> sys.stderr, "Could not connect to MongoDB database!"
-	sys.exit(1)
+dst_db = backend.getBackendObject(args.backend, args.dst_host, args.dst_port, args.dst_user, args.dst_password, args.dst_database)
 	
 if args.clear_database:
-	dst_conn.drop_database(args.dst_database)
+	dst_db.clearDatabase()
+
+dst_db.prepareCollections()
 	
-dst_db = dst_conn[args.dst_database]
-node_index_collection = dst_db[common.DB_INDEX_NODES]
-port_index_collection = dst_db[common.DB_INDEX_PORTS]
+node_index_collection = dst_db.getCollection(common.DB_INDEX_NODES)
+port_index_collection = dst_db.getCollection(common.DB_INDEX_PORTS)
 	
 known_ports = common.getKnownPorts(config.flow_filter_unknown_ports)
 
@@ -272,7 +271,7 @@ handlers = []
 for s in config.flow_bucket_sizes:
 	handlers.append(FlowHandler(
 		s,
-		dst_db[common.DB_FLOW_PREFIX + str(s)],
+		dst_db.getCollection(common.DB_FLOW_PREFIX + str(s)),
 		config.flow_aggr_sums,
 		config.flow_aggr_values,
 		known_ports,
@@ -281,7 +280,7 @@ for s in config.flow_bucket_sizes:
 for s in config.flow_bucket_sizes:
 	handlers.append(FlowHandler(
 		s,
-		dst_db[common.DB_FLOW_AGGR_PREFIX + str(s)],
+		dst_db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(s)),
 		config.flow_aggr_sums,
 		[],
 		None,
@@ -290,7 +289,7 @@ for s in config.flow_bucket_sizes:
 
 # create indexes
 for handler in handlers:
-	handler.collection.create_index("bucket")
+	handler.collection.createIndex("bucket")
 
 print "%s: Preprocessing started." % (datetime.datetime.now())
 print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())

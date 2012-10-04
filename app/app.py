@@ -14,11 +14,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
+import pymongo
 import math
 import bson
-import pymongo
 import config
 import common
+import backend
 
 import operator
 
@@ -29,16 +30,15 @@ from bottle import PasteServer
 # set template path
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 
-# MongoDB
-db_conn = pymongo.Connection(config.db_host, config.db_port)
-db = db_conn[config.db_name]
+# get database backend (currently: MongoDB)
+db = backend.getBackendObject("mongo", config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
 
 def get_bucket_size(start_time, end_time, resolution):
 	for i,s in enumerate(config.flow_bucket_sizes):
 		if i == len(config.flow_bucket_sizes)-1:
 			return s
 			
-		coll = db[common.DB_FLOW_AGGR_PREFIX + str(s)]
+		coll = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(s))
 		min_bucket = coll.find_one(
 			{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
 			fields={ "bucket": 1, "_id": 0 }, 
@@ -250,17 +250,16 @@ def api_bucket_query():
 	# get proper collection
 	collection = None
 	if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
-		collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
+		collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
 	else:
 		# use preaggregated collection
-		collection = db[common.DB_FLOW_AGGR_PREFIX + str(bucket_size)]
+		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(bucket_size))
 
 	if fields != None:
 		query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
 	else:
 		query_fields = ["bucket", "flows"] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
 
-	print "bucket/query:", bucket_size, "spec:", spec, "fields:", query_fields
 	cursor = collection.find(spec, fields=query_fields).batch_size(1000)
 	if sort:
 		cursor.sort("bucket", sort)
@@ -342,15 +341,10 @@ def api_dynamic_index(name):
 
 	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
 
-	print "Bucket_Size: ", bucket_size
-	collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
+	collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
 
-	print collection
-
-	print "Spec:", spec, "fields: ", fields
 	cursor = collection.find(spec, fields=fields).batch_size(1000)
 
-	print "Got", cursor.count(), "entries from the database"
 
 	result = {}
 
@@ -430,9 +424,9 @@ def api_index(name):
 
 	collection = None
 	if name == "nodes":
-		collection = db[common.DB_INDEX_NODES]
+		collection = db.getCollection(common.DB_INDEX_NODES)
 	elif name == "ports":
-		collection = db[common.DB_INDEX_PORTS]
+		collection = db.getCollection(common.DB_INDEX_PORTS)
 		
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
