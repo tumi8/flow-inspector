@@ -31,29 +31,7 @@ from bottle import PasteServer
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 
 # get database backend (currently: MongoDB)
-db = backend.getBackendObject("mongo", config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
-
-def get_bucket_size(start_time, end_time, resolution):
-	for i,s in enumerate(config.flow_bucket_sizes):
-		if i == len(config.flow_bucket_sizes)-1:
-			return s
-			
-		coll = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(s))
-		min_bucket = coll.find_one(
-			{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
-			fields={ "bucket": 1, "_id": 0 }, 
-			sort=[("bucket", pymongo.ASCENDING)])
-		max_bucket = coll.find_one(
-			{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
-			fields={ "bucket": 1, "_id": 0 }, 
-			sort=[("bucket", pymongo.DESCENDING)])
-			
-		if not min_bucket or not max_bucket:
-			return s
-			
-		num_slots = (max_bucket["bucket"]-min_bucket["bucket"]) / s + 1
-		if num_slots <= resolution:
-			return s
+db = backend.getBackendObject(config.db_backend, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
 
 def extract_mongo_query_params():
 	# construct query
@@ -172,7 +150,7 @@ def extract_mongo_query_params():
 	
 	# get buckets and aggregate
 	if bucket_size == None:
-		bucket_size = get_bucket_size(start_bucket, end_bucket, resolution)
+		bucket_size = db.getBucketSize(start_bucket, end_bucket, resolution)
 
 	# only stated fields will be available, all others will be aggregated toghether	
 	# filter for known aggregation values
@@ -260,58 +238,7 @@ def api_bucket_query():
 	else:
 		query_fields = ["bucket", "flows"] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
 
-	cursor = collection.find(spec, fields=query_fields).batch_size(1000)
-	if sort:
-		cursor.sort("bucket", sort)
-	else:
-		cursor.sort("bucket", pymongo.ASCENDING)
-	if limit:
-		cursor.limit(limit)
-
-	buckets = []
-	if (fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0 or len(include_ips) > 0 or len(exclude_ips) > 0:
-		current_bucket = -1
-		aggr_buckets = {}
-		for doc in cursor:
-			if doc["bucket"] > current_bucket:
-				for key in aggr_buckets:
-					buckets.append(aggr_buckets[key])
-				aggr_buckets = {}
-				current_bucket = doc["bucket"]
-				
-			# biflow?
-			if biflow and common.COL_SRC_IP in fields and common.COL_DST_IP in fields:
-				srcIP = doc.get(common.COL_SRC_IP, None)
-				dstIP = doc.get(common.COL_DST_IP, None)
-				if srcIP > dstIP:
-					doc[common.COL_SRC_IP] = dstIP
-					doc[common.COL_DST_IP] = srcIP
-			
-			# construct aggregation key
-			key = str(current_bucket)
-			for a in fields:
-				key += str(doc.get(a, "x"))
-				
-			if key not in aggr_buckets:
-				bucket = { "bucket": current_bucket }
-				for a in fields:
-					bucket[a] = doc.get(a, None)
-				for s in ["flows"] + config.flow_aggr_sums:
-					bucket[s] = 0
-				aggr_buckets[key] = bucket
-			else:
-				bucket = aggr_buckets[key]
-			
-			for s in ["flows"] + config.flow_aggr_sums:
-				bucket[s] += doc.get(s, 0)
-			
-		for key in aggr_buckets:
-			buckets.append(aggr_buckets[key])
-	else:
-		# cheap operation if nothing has to be aggregated
-		for doc in cursor:
-			del doc["_id"]
-			buckets.append(doc)
+	buckets = collection.bucket_query(spec, query_fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
 	
 	return { 
 		"bucket_size": bucket_size,
@@ -431,37 +358,8 @@ def api_index(name):
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
 
-	# query without the total field	
-	full_spec = {}
-	full_spec["$and"] = [
-			spec, 
-			{ "_id": { "$ne": "total" }}
-		]
 
-	cursor = collection.find(full_spec, fields=fields).batch_size(1000)
-
-	if sort:
-		cursor.sort(sort)
-	if limit:
-		cursor.limit(limit)
-		
-	if count:
-		result = cursor.count() 
-	else:
-		result = []
-		total = []
-		for row in cursor:
-			row["id"] = row["_id"]
-			del row["_id"]
-			result.append(row)
-
-	# get the total counter
-	spec = {"_id": "total"}
-	cursor = collection.find(spec)
-	if cursor.count() > 0:
-		total = cursor[0]
-		total["id"] = total["_id"]
-		del total["_id"]
+	(result, total) = collection.index_query(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
 
 	return { "totalCounter": total, "results": result }
 

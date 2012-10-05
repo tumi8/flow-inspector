@@ -10,6 +10,8 @@ Author: Lothar Braun
 """
 
 import sys
+import config
+import common
 
 class Collection:
 	def __init__(self, backendObject, collectionName):
@@ -23,8 +25,12 @@ class Collection:
 	def update(self, statement, document, insertIfNotExist):
 		self.backendObject.update(self.collectionName, statement, document, insertIfNotExist)
 
-	def find(self, spec=None, fields=None):
-		return self.backendObject.find(self.collectionName, spec, fields)
+	def bucket_query(self, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		return self.backendObject.bucket_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+
+	def index_query(self, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		return self.backendObject.index_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+ 
 
 	def find_one(self, spec, fields=None, sort=None):
 		return self.backendObject.find_one(self.collectionName, spec, fields, sort)
@@ -36,8 +42,8 @@ class Backend:
 		self.databaseName = databaseName
 
 
-		if self.backendType == "mysql":
-			self.cursor = self.conn.cursor()
+	def getBucketSize(self, startTime, endTime, resolution):
+		pass
 
 	def clearDatabase(self):
 		pass
@@ -54,7 +60,10 @@ class Backend:
 	def update(self, collectionName, statement, document, insertIfNotExists):
 		pass
 
-	def find(self, collectionName, spec, fields):
+	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		pass
+
+	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
 		pass
 
 	def find_one(self, collectionName, spec, fields, sort):
@@ -65,6 +74,30 @@ class MongoBackend(Backend):
 	def __init__(self, conn, backendType, databaseName):
 		Backend.__init__(self, conn, backendType, databaseName)
 		self.dst_db = self.conn[databaseName]
+
+	def getBucketSize(self, start_time, end_time, resolution):
+		import pymongo
+		for i,s in enumerate(config.flow_bucket_sizes):
+			if i == len(config.flow_bucket_sizes)-1:
+				return s
+				
+			coll = self.getCollection(common.DB_FLOW_AGGR_PREFIX + str(s))
+			min_bucket = coll.find_one(
+				{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
+				fields={ "bucket": 1, "_id": 0 }, 
+				sort=[("bucket", pymongo.ASCENDING)])
+			max_bucket = coll.find_one(
+				{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
+				fields={ "bucket": 1, "_id": 0 }, 
+				sort=[("bucket", pymongo.DESCENDING)])
+				
+			if not min_bucket or not max_bucket:
+				return s
+			
+			num_slots = (max_bucket["bucket"]-min_bucket["bucket"]) / s + 1
+			if num_slots <= resolution:
+				return s
+
 	
 	def clearDatabase(self):
 		self.conn.drop_database(self.databaseName)
@@ -78,9 +111,96 @@ class MongoBackend(Backend):
 		collection = self.dst_db[collectionName]
 		collection.update(statement, document, insertIfNotExists)
 
-	def find(self, collectionName, spec, fields):
+	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		import pymongo
 		collection = self.dst_db[collectionName]
-		return collection.find(spec=spec, fields=fields)
+		cursor = collection.find(spec, fields=fields).batch_size(1000)
+		if sort: 
+			cursor.sort("bucket", sort)
+		else:
+			cursor.sort("bucket", pymongo.ASCENDING)
+
+		buckets = []
+		if (fields != None and len(fields) > 0) or len(includePorts) > 0 or len(excludePorts) > 0 or len(includeIps) > 0 or len(excludeIps) > 0:
+			current_bucket = -1
+			aggr_buckets = {}
+			for doc in cursor:
+				if doc["bucket"] > current_bucket:
+					for key in aggr_buckets:
+						buckets.append(aggr_buckets[key])
+					aggr_buckets = {}
+					current_bucket = doc["bucket"]
+					
+				# biflow?
+				if biflow and common.COL_SRC_IP in fields and common.COL_DST_IP in fields:
+					srcIP = doc.get(common.COL_SRC_IP, None)
+					dstIP = doc.get(common.COL_DST_IP, None)
+					if srcIP > dstIP:
+						doc[common.COL_SRC_IP] = dstIP
+						doc[common.COL_DST_IP] = srcIP
+				
+				# construct aggregation key
+				key = str(current_bucket)
+				for a in fields:
+					key += str(doc.get(a, "x"))
+				
+				if key not in aggr_buckets:
+					bucket = { "bucket": current_bucket }
+					for a in fields:
+						bucket[a] = doc.get(a, None)
+					for s in ["flows"] + config.flow_aggr_sums:
+						bucket[s] = 0
+					aggr_buckets[key] = bucket
+				else:
+					bucket = aggr_buckets[key]
+				
+				for s in ["flows"] + config.flow_aggr_sums:
+					bucket[s] += doc.get(s, 0)
+				
+			for key in aggr_buckets:
+				buckets.append(aggr_buckets[key])
+		else:
+			# cheap operation if nothing has to be aggregated
+			for doc in cursor:
+				del doc["_id"]
+				buckets.append(doc)
+		return buckets
+
+	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		collection = self.dst_db[collectionName]
+		# query without the total field	
+		full_spec = {}
+		full_spec["$and"] = [
+				spec, 
+				{ "_id": { "$ne": "total" }}
+			]
+	
+		cursor = collection.find(full_spec, fields=fields).batch_size(1000)
+	
+		if sort:
+			cursor.sort(sort)
+		if limit:
+			cursor.limit(limit)
+			
+		if count:
+			result = cursor.count() 
+		else:
+			result = []
+			total = []
+			for row in cursor:
+				row["id"] = row["_id"]
+				del row["_id"]
+				result.append(row)
+	
+		# get the total counter
+		spec = {"_id": "total"}
+		cursor = collection.find(spec)
+		if cursor.count() > 0:
+			total = cursor[0]
+			total["id"] = total["_id"]
+			del total["_id"]
+	
+		return (result, total)
 
 	def find_one(self, collectionName, spec, fields, sort):
 		collection = self.dst_db[collectionName]
@@ -90,8 +210,10 @@ class MongoBackend(Backend):
 
 class MysqlBackend(Backend):
 	def __init__(self, conn, backendType, databaseName):
+		import MySQLdb
 		Backend.__init__(self, conn, backendType, databaseName)
-		self.cursor = conn.cursor()
+		self.cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
 	
 	def clearDatabase(self):
 		self.cursor.execute("SHOW TABLES")	
@@ -100,21 +222,264 @@ class MysqlBackend(Backend):
 			self.cursor.execute("DROP TABLE " + table[0])
 
 	def prepareCollections(self):
-		pass
+		# we need to create several tables that contain flows and
+		# pre aggregated flows, as well as tables for indexes that 
+		# are precalculated on the complete data set. 
+
+		# tables for storing bucketized flow data
+		for s in config.flow_bucket_sizes:
+			createString = "CREATE TABLE IF NOT EXISTS "
+			createString += common.DB_FLOW_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket INTEGER(10) UNSIGNED NOT NULL"
+			for v in config.flow_aggr_values:
+				createString += ", %s %s NOT NULL" % (v, common.MYSQL_TYPE_MAPPER[v])
+			for s in config.flow_aggr_sums + [ "flows" ]:
+				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
+			for proto in common.AVAILABLE_PROTOS:
+				for s in config.flow_aggr_sums + [ "flows" ]: 
+					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+			createString += ", PRIMARY KEY(_id))"
+			self.cursor.execute(createString)
+
+		# tables for storing aggregated timebased data
+		for s in config.flow_bucket_sizes:
+			createString = "CREATE TABLE IF NOT EXISTS "
+			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket INTEGER(10) UNSIGNED NOT NULL"
+			for s in config.flow_aggr_sums + [ "flows" ]:
+				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
+			for proto in common.AVAILABLE_PROTOS:
+				for s in config.flow_aggr_sums + [ "flows" ]: 
+					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+			createString += ", PRIMARY KEY(_id))"
+			self.cursor.execute(createString)
+		
+		# create precomputed index that describe the whole data set
+		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
+			createString = "CREATE TABLE IF NOT EXISTS %s (_id INTEGER(10) UNSIGNED NOT NULL" % table
+			for s in config.flow_aggr_sums + [ "flows" ]:
+				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
+			for proto in common.AVAILABLE_PROTOS:
+				for s in config.flow_aggr_sums + [ "flows" ]: 
+					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+			for direction in [ "src", "dst" ]:
+				for s in config.flow_aggr_sums + [ "flows" ]:
+					createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+				for proto in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ "flows" ]: 
+						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+
+			createString += ", PRIMARY KEY(_id))"
+			self.cursor.execute(createString)
 
 	def createIndex(self, tableName, fieldName):
-		pass
+		self.cursor.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
 		
 	def update(self, collectionName, statement, document, insertIfNotExists):
-		pass
+		typeString = "_id"
+		valueString = str(statement["_id"])
+		if valueString == "total":
+			valueString = "0"
+		updateString = ""
+		for part in [ "$set", "$inc" ]:
+			if not part in document:
+				continue
+			for v in document[part]:
+				valueString += "," + str(document[part][v])
+				v = v.replace('.', '_')
+				typeString += "," + v
+				if part == "$inc":
+					if updateString != "":
+						updateString += ","
+					updateString +=  v + "=" + v + "+VALUES(" + v + ")"
+		queryString = "INSERT INTO " + collectionName + "(" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString;
+		self.cursor.execute(queryString)
 
-	def find(self, collectionName, spec, fields):
-		pass
+	def getBucketSize(self, startTime, endTime, resolution):
+		for i,s in enumerate(config.flow_bucket_sizes):
+			if i == len(config.flow_bucket_sizes)-1:
+				return s
+				
+			tableName = common.DB_FLOW_AGGR_PREFIX + str(s)
+			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket ASC LIMIT 1" % (tableName, startTime, endTime)
+			self.cursor.execute(queryString);
+			tmp = self.cursor.fetchall()
+			minBucket = None
+			if len(tmp) > 0:
+				minBucket = tmp[0]["bucket"]
+
+			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket DESC LIMIT 1" % (tableName, startTime, endTime)
+			self.cursor.execute(queryString);
+			tmp = self.cursor.fetchall()
+			maxBucket = None
+			if len(tmp) > 0:
+				maxBucket = tmp[0]["bucket"]
+			
+			if not minBucket or not maxBucket:
+				return s
+			
+			numSlots = (maxBucket-minBucket) / s + 1
+			if numSlots <= resolution:
+				return s
+
+	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		print "MySQL: Constructing query ... "
+		(result, total) = self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+		#print result
+		print "MySQL: Returning data to app ..."
+		return result
+
+	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		return self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
 
 
-	def find_one(self, collectionName, spec, fields, sort):
-		pass
-	
+	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		fieldList = ""
+		if fields != None: 
+			for field in fields:
+				if field in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ "flows" ]:
+						if fieldList != "":
+							fieldList += ","
+						fieldList += field + "_" + s
+				else:
+					if fieldList != "":
+						fieldList += ","
+					fieldList += field
+			if not "bucket" in fields:
+				fieldList += ",bucket"
+		else:
+			fieldList = "*"
+
+		isWhere = False
+		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
+		if startBucket > 0:
+			isWhere = True
+			queryString += "WHERE bucket >= %d " % (startBucket)
+		if endBucket < sys.maxint:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else: 
+				queryString += "AND "
+			queryString += "bucket <= %d " % (endBucket)
+
+		firstIncludePort = True
+		for port in includePorts:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstIncludePort: 
+					queryString += "AND ("
+					firstIncludePort = False
+				else:
+					queryString += "OR "
+			queryString += "%s = %d OR %s = %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
+		if not firstIncludePort:
+			queryString += ") "
+
+		firstExcludePort = True
+		for port in excludePorts:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstExcludePort: 
+					queryString += "AND ("
+					firstExcludePort = False
+				else:
+					queryString += "OR "
+			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
+		if not firstExcludePort:
+			queryString += ") "
+
+		firstIncludeIP = True
+		for ip in includeIPs:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstIncludeIP: 
+					queryString += "AND ("
+					firstIncludeIP = False
+				else:
+					queryString += "OR "
+			queryString += "%s = %d OR %s = %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
+		if not firstIncludeIP:
+			queryString += ") "
+
+
+		firstExcludeIP = True
+		for ip in excludeIPs:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstExcludeIP: 
+					queryString += "AND ("
+					firstExcludeIP = False
+				else:
+					queryString += "OR "
+			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
+		if not firstExcludeIP:
+			queryString += ") "
+
+		if sort:
+			queryString += "ORDER BY " + sort[0][0] + " "
+			if sort[0][1] == 1:
+				queryString += "ASC "
+			else: 
+				queryString += "DESC "
+
+		if limit:
+			queryString += "LIMIT %d" % (limit)
+
+		print "MySQL: Running Query ..."
+		#print queryString
+		self.cursor.execute(queryString)
+		queryResult =  self.cursor.fetchall()
+		print "MySQL: Encoding Query ..."
+		result = []
+		total = dict()
+		for row in queryResult:
+			resultDoc = dict()
+			isTotal = False
+			for field in row:
+				if field == "_id":
+					if row[field] == 0:
+						isTotal = True
+					fieldParts = []
+				else: 
+					fieldParts = field.split('_')
+				if len(fieldParts) > 1:
+					# maximum depth is 3 
+					# TODO: hacky ... 
+					if len(fieldParts) == 2:
+						if not fieldParts[0] in resultDoc:
+							resultDoc[fieldParts[0]] = dict()
+						resultDoc[fieldParts[0]][fieldParts[1]] = row[field]
+					elif len(fieldParts) == 3:
+						# TODO: not implemented ... 
+						pass
+					else:
+						raise Exception("Internal Programming Error!")
+				else:
+					if field == "_id":
+						resultDoc["id"] = row[field]
+					else: 
+						resultDoc[field] = row[field]
+			if isTotal:
+				total = resultDoc
+			else:
+				result.append(resultDoc)
+
+		print "Got Results: ", len(result)
+		print "Total: ", total
+		#print "Result: ", result
+		#for r in result: 
+		#	print r
+		return (result, total)
+
+
 def getBackendObject(backend, host, port, user, password, databaseName):
 	if backend == "mongo":
 		# init pymongo connection

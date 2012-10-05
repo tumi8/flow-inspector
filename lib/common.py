@@ -62,6 +62,19 @@ COLUMNMAP = {
         "LASTSWITCHED" : "lastSwitched"
 }
 
+MYSQL_TYPE_MAPPER = {
+	"srcIP"         : "INTEGER(10) UNSIGNED",
+	"dstIP"         : "INTEGER(10) UNSIGNED",
+	"srcPort"       : "SMALLINT(5) UNSIGNED",
+	"dstPort"       : "SMALLINT(5) UNSIGNED",
+	"proto"         : "TINYINT(3) UNSIGNED",
+	"flows"         : "BIGINT(20) UNSIGNED",
+	"bytes"         : "BIGINT(20) UNSIGNED",
+	"pkts"          : "BIGINT(20) UNSIGNED",
+	"firstSwitched" : "INTEGER(10) UNSIGNED",
+	"lastSwitched"  : "INTEGER(10) UNSIGNED"
+}
+
 def getProto(obj):
 	return getProtoFromValue(obj.get("proto", 0))
 
