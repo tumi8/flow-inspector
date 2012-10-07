@@ -311,7 +311,7 @@ class MysqlBackend(Backend):
 		self.cursor.execute("SHOW TABLES")	
 		tables = self.cursor.fetchall()
 		for table in tables:
-			self.cursor.execute("DROP TABLE " + table[0])
+			self.cursor.execute("DROP TABLE " + table.values()[0])
 
 	def prepareCollections(self):
 		# we need to create several tables that contain flows and
