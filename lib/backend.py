@@ -14,21 +14,75 @@ import config
 import common
 
 class Collection:
+	"""
+		This class is a wrapper for the mongo db collection classes
+		it takes requests for storing and querying data from the
+		application and passes it to the backend classes, which are
+		then responsible for storing and retriving the data in/from 
+		the actual database.
+		For backends other than mongo, a collection represents a 
+		table (SQL) or another appropriate collection for flows that
+		belong to the same cagegory
+	"""
 	def __init__(self, backendObject, collectionName):
 		self.backendObject = backendObject
 		self.collectionName = collectionName
 		self.name = collectionName
 
 	def createIndex(self, fieldName):
+		"""
+		Creates an index on the given field if the database 
+		supports indexes
+		"""
 		self.backendObject.createIndex(self.collectionName, fieldName)
 
 	def update(self, statement, document, insertIfNotExist):
+		"""
+		Updates or creates a flow in the database. 
+		- statement - contains the id of the flow in the database (_id for mongo, primary key for sql)
+		- document - contains the properties of the flow
+		- insertIfNotExist: true: insert flow into db if it doesn't exist; false: only update entries of existing flows, do not create new flow
+		"""
 		self.backendObject.update(self.collectionName, statement, document, insertIfNotExist)
 
 	def bucket_query(self, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		"""
+		Queries the database for a set of flows that match the given properties
+		- spec - mongo specific spec for the query. already encodes the arguments (applies only to mongo)
+		- fields - database fields that should be queried and returned by the database
+		- sort - list of fields that should be sorted, including the sort direction
+		- count - maximum number of flows that should be returned
+		- startBucket: start interval for flows
+		- endBucket: end interval for flow queries
+		- resolution: desired time resolution
+		- bucketSize: size of buckets to be queried
+		- biflow: whether we should have biflow aggregation or not
+		- includePorts: only select flows that involve the ports in this list
+		- excludePorts: only select flows that do not involve the ports in this list
+		- inludeIPs: only select flows that involve the ips in this list
+		- excludeIPs: only select flows that do not involve the ips in this list
+		- batchSize: database should select the flows in batch sizes of batchSize (ignored for most backends)
+		"""
 		return self.backendObject.bucket_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
 
 	def index_query(self, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		"""
+		Queries the database for static indexes on all flows in the database
+		- spec - mongo specific spec for the query. already encodes the arguments (applies only to mongo)
+		- fields - database fields that should be queried and returned by the database
+		- sort - list of fields that should be sorted, including the sort direction
+		- count - maximum number of flows that should be returned
+		- startBucket: start interval for flows
+		- endBucket: end interval for flow queries
+		- resolution: desired time resolution
+		- bucketSize: size of buckets to be queried
+		- biflow: whether we should have biflow aggregation or not
+		- includePorts: only select flows that involve the ports in this list
+		- excludePorts: only select flows that do not involve the ports in this list
+		- inludeIPs: only select flows that involve the ips in this list
+		- excludeIPs: only select flows that do not involve the ips in this list
+		- batchSize: database should select the flows in batch sizes of batchSize (ignored for most backends)
+		"""
 		return self.backendObject.index_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
  
 
@@ -43,27 +97,65 @@ class Backend:
 
 
 	def getBucketSize(self, startTime, endTime, resolution):
+		"""
+		Calculates the bucket size that is closest to the requested resolution.
+		The resolution is specified by the javascript client application and
+		can be picked to be an arbitrary value.
+		The bucket sizes are defined in config.py, and must not necessarily
+		match to the requested resolution.
+		"""
 		pass
 
 	def clearDatabase(self):
+		"""
+		Removes all data from the backend
+		"""
 		pass
 
 	def getCollection(self, name):
+		"""
+		Creates and returns a wrapper "Collection" object which represents
+		a collection/table in the database. 
+		"""
 		return Collection(self, name)
 	
 	def prepareCollections(self):
+		"""
+		This method is responsible for initializing the database on application 
+		start. Some databases need to create tables when the database is used
+		for the first time. Others require maintainance or sanity checking on 
+		before the database can be used (e.g. writes). 
+		All such initialization is done in this method. The method is only 
+		called for writing processes (e.g. the preprocessor)
+		"""
 		pass
 
 	def createIndex(self, collectionName, fieldName):
+		"""
+		Creates an index on the collection/table "collectionName" on the
+		field "fieldName", if the database supports creating indexes.
+		"""
 		pass
 
 	def update(self, collectionName, statement, document, insertIfNotExists):
+		"""
+		Adds or updates a flow in the collection "collectionName". See class
+		Collection for full documentation. 
+		"""
 		pass
 
 	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		"""
+		Queries flows from the database and collection "colletionName". See
+		class Collection for full documentation of the parameters.
+		"""
 		pass
 
 	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		"""
+		Queries static indexes on the full database. See class Collection for 
+		full documentation.
+		"""
 		pass
 
 	def find_one(self, collectionName, spec, fields, sort):
