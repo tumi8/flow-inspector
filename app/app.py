@@ -20,6 +20,7 @@ import bson
 import config
 import common
 import backend
+import pygeoip
 
 import operator
 
@@ -273,6 +274,30 @@ def api_index(name):
 	(result, total) = collection.index_query(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
 
 	return { "totalCounter": total, "results": result }
+
+
+@get("/api/geoip")
+def api_geoip():
+	gi = pygeoip.GeoIP(config.geoip_dat_file)
+
+	# get ip list from get request
+	if "ips" in request.GET:
+		ips = request.GET["ips"].strip()
+		try:
+			ips = map(lambda v: v.strip(), ips.split(","))
+		except ValueError:
+			raise HTTPError(output="Error parsing ip list")
+	else:
+		raise HTTPError(output="Did not get IPs in /api/geoip!")
+
+	lookups = []
+	for ip in ips:
+		record = gi.record_by_addr(ip)
+		if record == None:
+			lookups.append({ "ip": ip, "longitude": 0, "latitude": 0})
+		else:
+			lookups.append({ "ip": ip, "longitude": record["longitude"], "latitude": record["latitude"] })
+	return { "lookups": lookups }
 
 @get("/static/:path#.+#")
 def server_static(path):

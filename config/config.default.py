@@ -55,10 +55,7 @@ pre_cache_size_aggr = 5
 # (as in firstSwitched) than the default keep time if this value is 
 # non zero.
 max_flow_age = 60*60*24*7
- 
 
-# PCAP processor settings
+# GeoIP specific parts
 #----------------------------------------------------------------
-pcap_output_dir = '/opt/data/pcap_output/'
-gnuplot_path='/usr/bin/gnuplot'
-
+geoip_dat_file="/data/flow-inspector/GeoIP.dat"
