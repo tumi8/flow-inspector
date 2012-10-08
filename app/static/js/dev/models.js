@@ -120,6 +120,7 @@ var HivePlotModel = Backbone.Model.extend({
 });
 
 var IndexEntry = Backbone.Model.extend({});
+var GeoInfoEntry = Backbone.Model.extend({});
 
 var PCAPLiveLine = Backbone.Model.extend({});
 
@@ -277,6 +278,14 @@ var DynamicIndexQuery = CachedCollection.extend({
     }
 });
 
+var GeoInfoQuery = CachedCollection.extend({
+	cache_timeout: 60*10,
+	model: GeoInfoEntry,
+	url: "/api/geoip",
+	parse: function(response) {
+		return response.lookups;
+	}
+});
 
 var PcapFlows = CachedCollection.extend({
 	cache_timeout: 60*10,
