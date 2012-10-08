@@ -24,6 +24,7 @@
 					<li class="graph"><a href="/graph">Graph</a></li>
 					<li class="edge-bundle"><a href="/hierarchical-edge-bundle">Hierarchical Edge Bundle</a></li>
 					<li class="hive-plot"><a href="/hive-plot">Hive Plot</a></li>
+					<li class="maps"><a href="/maps">Maps</a></li>
 				</ul>
 				
 				<ul class="nav secondary-nav">
@@ -56,6 +57,7 @@
     {% for file in include_js %}
     	<script src="{{ file }}"></script>
     {% endfor %}
+	<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
     
 </body>
 </html>
