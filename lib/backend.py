@@ -85,6 +85,27 @@ class Collection:
 		"""
 		return self.backendObject.index_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
  
+	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		"""
+		Queries the database for dynamic indexes which are calculated based on the start and end intervals
+		- name - index name (ports or nodes)
+		- spec - mongo specific spec for the query. already encodes the arguments (applies only to mongo)
+		- fields - database fields that should be queried and returned by the database
+		- sort - list of fields that should be sorted, including the sort direction
+		- count - maximum number of flows that should be returned
+		- startBucket: start interval for flows
+		- endBucket: end interval for flow queries
+		- resolution: desired time resolution
+		- bucketSize: size of buckets to be queried
+		- biflow: whether we should have biflow aggregation or not
+		- includePorts: only select flows that involve the ports in this list
+		- excludePorts: only select flows that do not involve the ports in this list
+		- inludeIPs: only select flows that involve the ips in this list
+		- excludeIPs: only select flows that do not involve the ips in this list
+		- batchSize: database should select the flows in batch sizes of batchSize (ignored for most backends)
+		"""
+		return self.backendObject.index_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+ 
 
 	def find_one(self, spec, fields=None, sort=None):
 		return self.backendObject.find_one(self.collectionName, spec, fields, sort)
@@ -172,6 +193,9 @@ class Backend:
 		"""
 		pass
 
+	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		pass 
+	
 	def find_one(self, collectionName, spec, fields, sort):
 		pass
 
@@ -308,6 +332,101 @@ class MongoBackend(Backend):
 	
 		return (result, total)
 
+	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		def createNewIndexEntry(row):
+			# top level
+			r = { "id": row[key[0]], "flows": 0 }
+			for s in config.flow_aggr_sums:
+				r[s] = row[s]
+	
+			# protocol specific
+			for p in common.AVAILABLE_PROTOS:
+				r[p] = { "flows": 0 }
+				for s in config.flow_aggr_sums:	
+					r[p][s] = 0
+			# src and dst specific		
+			for dest in ["src", "dst"]:
+				r[dest] = {}
+				r[dest]["flows" ] = 0
+				for s in config.flow_aggr_sums:
+					r[dest][s] = 0
+			return r
+
+		collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
+	
+		cursor = collection.find(spec, fields=fields).batch_size(1000)
+	
+		result = {}
+
+		# total counter that contains information about all flows in 
+		# the REQUESTED buckets (not over the complete dataset)
+		# this is important because the limit parameter might remove
+		# some information
+		total = {}
+		total["flows"] = 0
+		for s in config.flow_aggr_sums:
+			total[s] = 0
+		for proto in common.AVAILABLE_PROTOS:
+			total[proto] = {}
+			total[proto]["flows"] = 0
+			for s in config.flow_aggr_sums:
+				total[proto][s] = 0
+	
+		for row in cursor:
+			if name == "nodes":
+				keylist = [ (common.COL_SRC_IP, "src"), (common.COL_DST_IP, "dst") ]
+			elif name == "ports":
+				keylist = [ (common.COL_SRC_PORT, "src"), (common.COL_DST_PORT, "dst") ]
+			else:
+				raise HTTPError(output = "Unknown dynamic index")
+	
+			# update total counters
+			total["flows"] += row["flows"]
+			if common.COL_PROTO in row:
+				total[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
+			for s in config.flow_aggr_sums:
+				total[s] += row[s]
+				if common.COL_PROTO in row:
+					total[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
+	
+	
+			# update individual counters
+			for key in keylist:
+				if row[key[0]] in result:
+					r = result[row[key[0]]]
+				else:
+					r = createNewIndexEntry(row)
+	
+				r["flows"] += row["flows"]
+				r[key[1]]["flows"] += row["flows"]
+				for s in config.flow_aggr_sums:
+					r[s] += row[s]
+					r[key[1]][s] += row[s]
+	
+				if common.COL_PROTO in row:
+					r[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
+					for s in config.flow_aggr_sums:
+						r[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
+	
+				result[row[key[0]]] = r
+
+		# no that we have calculated the indexes, take the values and postprocess them
+		results = result.values()
+		if sort:
+			# TODO: implement sort function that allows for sorting with two keys
+			if len(sort) != 1:
+				raise HTTPError(output = "Cannot sort by multiple fields. This must yet be implemented.")
+			if sort[0][1] == pymongo.ASCENDING:
+				results.sort(key=operator.itemgetter(sort[0][0]))
+			else:
+				results.sort(key=operator.itemgetter(sort[0][0]), reverse=True)
+		
+		if limit:
+			results = results[0:limit]
+	
+		return (total, reults)
+		
+	
 	def find_one(self, collectionName, spec, fields, sort):
 		collection = self.dst_db[collectionName]
 		return collection.find_one(spec, fields=fields, sort=sort)
@@ -481,6 +600,13 @@ class MysqlBackend(Backend):
 	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
 		return self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
 
+	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		total = dict()
+		results = []
+
+		tableName = common.DB_FLOW_PREFIX + str(bucket_size)
+
+		return (total, results)
 
 	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
 		fieldList = ""
