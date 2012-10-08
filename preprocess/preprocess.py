@@ -212,6 +212,11 @@ class FlowHandler:
 			doc = self.cache[key]
 			self.updateCollection(key, doc)
 			del self.cache[key]
+	
+	def flushCache(self):
+		self.handleCache(True)
+		self.collection.flushCache()
+
 			
 	def printReport(self):
 		print "%s report:" % (self.collection.name)
@@ -341,7 +346,7 @@ timer.cancel()
 
 # clear cache
 for handler in handlers:
-	handler.handleCache(True)
+	handler.flushCache()
 # print reports
 print ""
 for handler in handlers:

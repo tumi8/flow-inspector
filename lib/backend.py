@@ -89,6 +89,9 @@ class Collection:
 	def find_one(self, spec, fields=None, sort=None):
 		return self.backendObject.find_one(self.collectionName, spec, fields, sort)
 
+	def flushCache(self, collectionName = None):
+		return self.backendObject.flushCache(collectionName)
+
 class Backend:
 	def __init__(self, conn, backendType, databaseName):
 		self.conn = conn
@@ -141,6 +144,17 @@ class Backend:
 		"""
 		Adds or updates a flow in the collection "collectionName". See class
 		Collection for full documentation. 
+		"""
+		pass
+
+	def flushCache(self, collectionName=None):
+		"""
+		If the backend decides to have a separate cache, this method can be used
+		to flush the cache. It will be called by the preprocessing scripts as
+		soon as the script finishes.
+		- collectionName: optional, if defined, only the collection with name "collectionName" 
+		  		  will be flushed. If value is None, all collections are flushed and 
+				  written to db.
 		"""
 		pass
 
@@ -306,6 +320,9 @@ class MysqlBackend(Backend):
 		Backend.__init__(self, conn, backendType, databaseName)
 		self.cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
+		self.tableInsertCache = dict()
+		self.cachingThreshold = 10000
+
 	
 	def clearDatabase(self):
 		self.cursor.execute("SHOW TABLES")	
@@ -363,27 +380,69 @@ class MysqlBackend(Backend):
 			self.cursor.execute(createString)
 
 	def createIndex(self, tableName, fieldName):
-		self.cursor.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
+		try:
+			self.cursor.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
+		except:
+			# most common cause: index does already exists
+			# TODO check for errors
+			pass
+
 		
 	def update(self, collectionName, statement, document, insertIfNotExists):
+		# special handling for the _id field
 		typeString = "_id"
-		valueString = str(statement["_id"])
-		if valueString == "total":
-			valueString = "0"
+		value = str(statement["_id"])
+		if value == "total":
+			# special value 0 encodes the total field
+			cacheLine = (0,)
+		else:
+			cacheLine = (value,)
+		valueString = "%s"
+
 		updateString = ""
 		for part in [ "$set", "$inc" ]:
 			if not part in document:
 				continue
 			for v in document[part]:
-				valueString += "," + str(document[part][v])
+				cacheLine = cacheLine + (document[part][v],)
+				valueString += ",%s"
 				v = v.replace('.', '_')
 				typeString += "," + v
 				if part == "$inc":
 					if updateString != "":
 						updateString += ","
 					updateString +=  v + "=" + v + "+VALUES(" + v + ")"
-		queryString = "INSERT INTO " + collectionName + "(" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString;
-		self.cursor.execute(queryString)
+
+		queryString = "INSERT INTO " + collectionName + "(" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString
+		numElem = 1
+		if collectionName in self.tableInsertCache:
+			cache = self.tableInsertCache[collectionName][0]
+			numElem = self.tableInsertCache[collectionName][1] + 1
+			if queryString in cache:
+				cache[queryString].append(cacheLine)
+			else:
+				cache[queryString] = [ cacheLine ]
+		else:
+ 			cache = dict()
+			cache[queryString] = [ cacheLine ]
+	
+		self.tableInsertCache[collectionName] = (cache, numElem)
+		
+		if numElem > self.cachingThreshold:
+			self.flushCache(collectionName)
+
+	def flushCache(self, collectionName=None):
+		if collectionName:
+			cache = self.tableInsertCache[collectionName][0]
+			for queryString in cache:
+				cacheLines = cache[queryString]
+				self.cursor.executemany(queryString, cacheLines)
+			del self.tableInsertCache[collectionName]
+		else:
+			# flush all collections
+			while len( self.tableInsertCache) > 0:
+				collection = self.tableInsertCache.keys()[0]
+				self.flushCache(collection)
 
 	def getBucketSize(self, startTime, endTime, resolution):
 		for i,s in enumerate(config.flow_bucket_sizes):
