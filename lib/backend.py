@@ -442,6 +442,8 @@ class MysqlBackend(Backend):
 		self.tableInsertCache = dict()
 		self.cachingThreshold = 10000
 
+		self.doCache = True
+
 	
 	def clearDatabase(self):
 		self.cursor.execute("SHOW TABLES")	
@@ -532,12 +534,18 @@ class MysqlBackend(Backend):
 		# special handling for the _id field
 		typeString = "_id"
 		value = str(statement["_id"])
-		if value == "total":
-			# special value 0 encodes the total field
-			cacheLine = (0,)
+		if self.doCache: 
+			if value == "total":
+				# special value 0 encodes the total field
+				cacheLine = (0,)
+			else:
+				cacheLine = (value,)
+			valueString = "%s"
 		else:
-			cacheLine = (value,)
-		valueString = "%s"
+			if value == "total":
+				valueString = "0"
+			else:
+				valueString = str(value)
 
 		#if not collectionName ==common.DB_INDEX_NODES and not collectionName == common.DB_INDEX_PORTS:
 		#	print collectionName,  statement, document
@@ -546,8 +554,11 @@ class MysqlBackend(Backend):
 			if not part in document:
 				continue
 			for v in document[part]:
-				cacheLine = cacheLine + (document[part][v],)
-				valueString += ",%s"
+				if self.doCache:
+					cacheLine = cacheLine + (document[part][v],)
+					valueString += ",%s"
+				else:
+					valueString += "," + str(document[part][v])
 				v = v.replace('.', '_')
 				typeString += "," + v
 				if part == "$inc":
@@ -556,22 +567,33 @@ class MysqlBackend(Backend):
 					updateString +=  v + "=" + v + "+VALUES(" + v + ")"
 
 		queryString = "INSERT INTO " + collectionName + "(" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString
-		numElem = 1
-		if collectionName in self.tableInsertCache:
-			cache = self.tableInsertCache[collectionName][0]
-			numElem = self.tableInsertCache[collectionName][1] + 1
-			if queryString in cache:
-				cache[queryString].append(cacheLine)
+
+		if self.doCache:
+			numElem = 1
+			if collectionName in self.tableInsertCache:
+				cache = self.tableInsertCache[collectionName][0]
+				numElem = self.tableInsertCache[collectionName][1] + 1
+				if queryString in cache:
+					cache[queryString].append(cacheLine)
+				else:
+					cache[queryString] = [ cacheLine ]
 			else:
+				cache = dict()
 				cache[queryString] = [ cacheLine ]
-		else:
- 			cache = dict()
-			cache[queryString] = [ cacheLine ]
-	
-		self.tableInsertCache[collectionName] = (cache, numElem)
 		
-		if numElem > self.cachingThreshold:
-			self.flushCache(collectionName)
+			self.tableInsertCache[collectionName] = (cache, numElem)
+
+			self.counter += 1
+			if self.counter % 100000 == 0:
+				print "Total len:",  len(self.tableInsertCache)
+				for c in self.tableInsertCache:
+					print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
+			
+			if numElem > self.cachingThreshold:
+				#self.flushCache(collectionName)
+				del self.tableInsertCache[collectionName]
+		else:
+			self.cursor.execute(queryString)
 
 	def flushCache(self, collectionName=None):
 		if collectionName:
