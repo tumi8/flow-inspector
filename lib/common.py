@@ -28,15 +28,6 @@ DB_INDEX_NODES = "index_nodes"
 # the collection to use for the port index
 DB_INDEX_PORTS = "index_ports"
 
-PCAP_DB_ALL = "all_flows"
-PCAP_DB_GAP = "with_gaps"
-PCAP_DB_LOWTHROUGHPUT = "low_throughput"
-PCAP_STATS = "pcap_stats"
-
-
-INDEX_ADD = "add"
-INDEX_REMOVE = "remove"
-
 IGNORE_COLUMNS = ["firstSwitchedMillis", "lastSwitchedMillis"]
 
 # Print output every ... in seconds
@@ -90,49 +81,38 @@ def getProtoFromValue(proto):
 
 	return result
 
-def update_node_index(obj, collection, aggr_sum, operation):
+def update_node_index(obj, collection, aggr_sum):
 	"""Update the node index collection in MongoDB with the current flow.
 	
 	:Parameters:
 	 - `obj`: A dictionary containing a flow.
 	 - `collection`: A pymongo collection to insert the documents.
 	 - `aggr_sum`: A list of keys which will be sliced and summed up.
-	 - `operation`: Whether to add or remove the flow to/from the index
 	"""
 
-	# logic check. operation must be either INDEX_ADD or INDEX_REMOVE
-	if operation != INDEX_ADD and operation != INDEX_REMOVE:
-		raise Exception("Logic Error: operation is neither INDEX_ADD nor INDEX_REMOVE")
-	
 	# update source node
 	doc = { "$inc": {} }
 
 	proto = getProto(obj)
 
 	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = obj.get(s,0)
-			doc["$inc"]["src." + s] = obj.get(s, 0)
-			doc["$inc"]["src." + proto + "." + s] = obj.get(s,0)
-		else:
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = -obj.get(s,0)
-			doc["$inc"]["src." + s] = -obj.get(s, 0)
-			doc["$inc"]["src." + proto + "." + s] = -obj.get(s,0)
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"][proto + "." + s] = obj.get(s,0)
+		doc["$inc"]["src." + s] = obj.get(s, 0)
+		doc["$inc"]["src." + proto + "." + s] = obj.get(s,0)
 
-
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"][proto + ".flows"] = 1
-		doc["$inc"]["src.flows"] = 1
-		doc["$inc"]["src." + proto + ".flows"] = 1
+	if "flows" in obj:
+		flows = obj["flows"]
 	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"][proto + ".flows"] = -obj.get(proto + ".flows")
-		doc["$inc"]["src.flows"] = -obj.get("src.flows") 
-		doc["$inc"]["src." + proto + ".flows"] = -obj.get("src." + proto + ".flows") 
+		flows = 1
+	if "bucket" in obj:
+		doc["$set"] = {}
+		doc["$set"]["bucket"] = obj["bucket"]
+
+	doc["$inc"]["flows"] = flows
+	doc["$inc"][proto + ".flows"] = flows
+	doc["$inc"]["src.flows"] = flows
+	doc["$inc"]["src." + proto + ".flows"] = flows
 	
 	# insert if not exists, else update sums
 	collection.update({ "_id": obj[COL_SRC_IP] }, doc, True)
@@ -141,53 +121,52 @@ def update_node_index(obj, collection, aggr_sum, operation):
 	doc = { "$inc": {} }
 	
 	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = obj.get(s,0)
-			doc["$inc"]["dst." + s] = obj.get(s, 0)
-			doc["$inc"]["dst." + proto + "." + s] = obj.get(s,0)
-		else:
-			doc["$inc"][proto + "." + s] = -obj.get(s,0)
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"]["dst." + s] = -obj.get(s, 0)
-			doc["$inc"]["dst." + proto + "." + s] = -obj.get(s,0)
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"][proto + "." + s] = obj.get(s,0)
+		doc["$inc"]["dst." + s] = obj.get(s, 0)
+		doc["$inc"]["dst." + proto + "." + s] = obj.get(s,0)
 
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"][proto + ".flows"] = 1
-		doc["$inc"]["dst.flows"] = 1
-		doc["$inc"]["dst." + proto + ".flows"] = 1
+	if "flows" in obj:
+		flows = obj["flows"]
 	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"][proto + ".flows"] = -obj.get(proto + ".flows")
-		doc["$inc"]["dst.flows"] = -obj.get("dst.flows") 
-		doc["$inc"]["dst." + proto + ".flows"] = -obj.get("dst." + proto + ".flows") 
+		flows = 1
+	if "bucket" in obj:
+		doc["$set"] = {}
+		doc["$set"]["bucket"] = obj["bucket"]
+
+
+	doc["$inc"]["flows"] = flows
+	doc["$inc"][proto + ".flows"] = flows 
+	doc["$inc"]["dst.flows"] = flows 
+	doc["$inc"]["dst." + proto + ".flows"] = flows
 					
 	# insert if not exists, else update sums
 	collection.update({ "_id": obj[COL_DST_IP] }, doc, True)
 
 	# update total counters
 	doc = { "$inc": {} }
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"][proto + ".flows"] = 1
+
+	if "flows" in obj:
+		flows = obj["flows"]
 	else:
-		# remove
-		doc["$inc"]["flows"] =  -obj.get("flows")
-		doc["$inc"][proto + "flows"] =  -obj.get("flows")
+		flows = 1
+	if "bucket" in obj:
+		doc["$set"] = {}
+		doc["$set"]["bucket"] = obj["bucket"]
+
+
+	doc["$inc"]["flows"] = flows 
+	doc["$inc"][proto + ".flows"] = flows 
+
+
 	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = obj.get(s, 0)
-		else:
-			# remove
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = -obj.get(s, 0)
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"][proto + "." + s] = obj.get(s, 0)
+
 	collection.update({"_id": "total"}, doc, True)
 			
 	
-def update_port_index(obj, collection, aggr_sum, filter_ports, operation):
+def update_port_index(obj, collection, aggr_sum, filter_ports):
 	"""Update the port index collection in MongoDB with the current flow.
 	
 	:Parameters:
@@ -195,29 +174,26 @@ def update_port_index(obj, collection, aggr_sum, filter_ports, operation):
 	 - `collection`: A pymongo collection to insert the documents.
 	 - `aggr_sum`: A list of keys which will be sliced and summed up.
 	 - `filter_ports`: A dictionary of ports and protocols to remove unknown ports
-	 - `operation`: Whether to add or remove the flow to/from the index.
 	"""
 	
 	# update source port
 	doc = { "$inc": {} }
 
 	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"]["src." + s] = obj.get(s, 0)
-		else:
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"]["src." + s] = -obj.get(s, 0)
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"]["src." + s] = obj.get(s, 0)
 
-
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"]["src.flows"] = 1
+	if "flows" in obj:
+		flows = obj["flows"]
 	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"]["src.flows"] = -obj.get("flows") 
-		
+		flows = 1
+	if "bucket" in obj:
+		doc["$set"] = {}
+		doc["$set"]["bucket"] = obj["bucket"]
+
+
+	doc["$inc"]["flows"] = flows
+	doc["$inc"]["src.flows"] = flows
 
 	# set unknown ports to None
 	port = obj.get(COL_SRC_PORT, None)
@@ -236,43 +212,40 @@ def update_port_index(obj, collection, aggr_sum, filter_ports, operation):
 	doc = { "$inc": {} }
 
 	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"]["dst." + s] = obj.get(s, 0)
-		else:
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"]["dst." + s] = -obj.get(s, 0)
-
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"]["dst.flows"] = 1
-	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"]["dst.flows"] = -obj.get("flows") 
-		
-	for s in aggr_sum:
 		doc["$inc"][s] = obj.get(s, 0)
 		doc["$inc"]["dst." + s] = obj.get(s, 0)
-	doc["$inc"]["flows"] = 1
-	doc["$inc"]["dst.flows"] = 1
+
+	if "flows" in obj:
+		flows = obj["flows"]
+	else:
+		flows = 1
+	if "bucket" in obj:
+		doc["$set"] = {}
+		doc["$set"]["bucket"] = obj["bucket"]
+
+	
+	doc["$inc"]["flows"] = flows
+	doc["$inc"]["dst.flows"] = flows
 	
 	# insert if not exists, else update sums
 	collection.update({ "_id": port }, doc, True)
 
 	# update total counters
 	doc = { "$inc": {} }
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
+
+	if "flows" in obj:
+		flows = obj["flows"]
 	else:
-		# remove
-		doc["$inc"]["flows"] =  -obj.get("flows")
+		flows = 1
+	if "bucket" in obj:
+		doc["$set"] = {}
+		doc["$set"]["bucket"] = obj["bucket"]
+
+
+	doc["$inc"]["flows"] = flows 
 	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-		else:
-			# remove
-			doc["$inc"][s] = -obj.get(s, 0)
+		doc["$inc"][s] = obj.get(s, 0)
+
 	collection.update({"_id": "total"}, doc, True)
 	
 # read ports for special filtering

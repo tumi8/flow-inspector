@@ -248,7 +248,7 @@ def api_bucket_query():
 @get("/api/dynamic/index/:name")
 def api_dynamic_index(name):
 	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
-	(total, results) = db.dynamic_index_query(name, spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
+	(results, total) = db.dynamic_index_query(name, spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
 
 	return { "totalCounter" : total, "results": results }
 

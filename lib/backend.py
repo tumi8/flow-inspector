@@ -498,6 +498,27 @@ class MysqlBackend(Backend):
 			createString += ", PRIMARY KEY(_id))"
 			self.cursor.execute(createString)
 
+		# create tables for storing incremental indexes
+		for bucket_size in config.flow_bucket_sizes:
+			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
+				table = index + "_" + str(bucket_size)
+				createString = "CREATE TABLE IF NOT EXISTS %s (_id INTEGER(10) UNSIGNED NOT NULL, bucket INTEGER(10) UNSIGNED NOT NULL" % table
+				for s in config.flow_aggr_sums + [ "flows" ]:
+					createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
+				for proto in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ "flows" ]: 
+						createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+				for direction in [ "src", "dst" ]:
+					for s in config.flow_aggr_sums + [ "flows" ]:
+						createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+					for proto in common.AVAILABLE_PROTOS:
+						for s in config.flow_aggr_sums + [ "flows" ]: 
+							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
+	
+				createString += ", PRIMARY KEY(_id, bucket))"
+				self.cursor.execute(createString)
+
+
 	def createIndex(self, tableName, fieldName):
 		try:
 			self.cursor.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
@@ -518,6 +539,8 @@ class MysqlBackend(Backend):
 			cacheLine = (value,)
 		valueString = "%s"
 
+		#if not collectionName ==common.DB_INDEX_NODES and not collectionName == common.DB_INDEX_PORTS:
+		#	print collectionName,  statement, document
 		updateString = ""
 		for part in [ "$set", "$inc" ]:
 			if not part in document:
@@ -593,7 +616,6 @@ class MysqlBackend(Backend):
 	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
 		print "MySQL: Constructing query ... "
 		(result, total) = self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
-		#print result
 		print "MySQL: Returning data to app ..."
 		return result
 
@@ -601,14 +623,17 @@ class MysqlBackend(Backend):
 		return self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
 
 	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
-		total = dict()
-		results = []
+		if name == "nodes":
+			tableName = common.DB_INDEX_NODES + "_" + str(bucketSize)
+		elif name == "ports":
+			tableName = common.DB_INDEX_PORTS + "_" + str(bucketSize)
+		else:
+			raise Exception("Unknown index specified")
 
-		tableName = common.DB_FLOW_PREFIX + str(bucket_size)
+		(results, total) =  self.sql_query(tableName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, [ "_id"])
+		return (results, total)
 
-		return (total, results)
-
-	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, aggregate = None):
 		fieldList = ""
 		if fields != None: 
 			for field in fields:
@@ -623,15 +648,26 @@ class MysqlBackend(Backend):
 					fieldList += field
 			if not "bucket" in fields:
 				fieldList += ",bucket"
+		elif aggregate != None:
+			# aggregate all fields
+			fieldList = ""
+			for field in aggregate:
+				if fieldList != "":
+					fieldList = ","
+				fieldList += field 
+			for field in config.flow_aggr_sums + [ "flows" ]:
+				fieldList += ",SUM(" + field + ") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
 		else:
 			fieldList = "*"
 
 		isWhere = False
 		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
-		if startBucket > 0:
+		if startBucket != None and startBucket > 0:
 			isWhere = True
 			queryString += "WHERE bucket >= %d " % (startBucket)
-		if endBucket < sys.maxint:
+		if endBucket != None and endBucket < sys.maxint:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
@@ -700,6 +736,16 @@ class MysqlBackend(Backend):
 		if not firstExcludeIP:
 			queryString += ") "
 
+		if aggregate:
+			queryString += "GROUP BY "
+			firstField = True
+			for field in aggregate:
+				if not firstField:
+					queryString += ","
+				else:
+					firstField = False
+				queryString += field + " "
+
 		if sort:
 			queryString += "ORDER BY " + sort[0][0] + " "
 			if sort[0][1] == 1:
@@ -711,12 +757,20 @@ class MysqlBackend(Backend):
 			queryString += "LIMIT %d" % (limit)
 
 		print "MySQL: Running Query ..."
-		#print queryString
 		self.cursor.execute(queryString)
 		queryResult =  self.cursor.fetchall()
 		print "MySQL: Encoding Query ..."
 		result = []
 		total = dict()
+
+		# TODO: Performance. Mysql returns Decimals instead of standard ints when aggregating
+		#       While this is not a problem in itself, ujson cannot encode this
+		#       and the result cannot be transmitted to the browser. We therefore do conversions
+		#       to int, which hurts performance. We should either do
+		#       1.) use MySQLDb.converters.conversions and change the mapping dict
+		#       2.) fix ujson
+		# 	Instead we convert it while encoding ...
+
 		for row in queryResult:
 			resultDoc = dict()
 			isTotal = False
@@ -733,7 +787,7 @@ class MysqlBackend(Backend):
 					if len(fieldParts) == 2:
 						if not fieldParts[0] in resultDoc:
 							resultDoc[fieldParts[0]] = dict()
-						resultDoc[fieldParts[0]][fieldParts[1]] = row[field]
+						resultDoc[fieldParts[0]][fieldParts[1]] = int(row[field])
 					elif len(fieldParts) == 3:
 						# TODO: not implemented ... 
 						pass
@@ -741,16 +795,16 @@ class MysqlBackend(Backend):
 						raise Exception("Internal Programming Error!")
 				else:
 					if field == "_id":
-						resultDoc["id"] = row[field]
+						resultDoc["id"] = int(row[field])
 					else: 
-						resultDoc[field] = row[field]
+						resultDoc[field] = int(row[field])
 			if isTotal:
 				total = resultDoc
 			else:
 				result.append(resultDoc)
 
 		print "Got Results: ", len(result)
-		print "Total: ", total
+		#print "Total: ", total
 		#print "Result: ", result
 		#for r in result: 
 		#	print r

@@ -48,7 +48,7 @@ args = parser.parse_args()
 
 # Class to handle flows
 class FlowHandler:
-	def __init__(self, bucket_interval, collection, aggr_sum, aggr_values=[], filter_ports=None, cache_size=0):
+	def __init__(self, bucket_interval, collection, nodes_collection, ports_collection, aggr_sum, aggr_values=[], filter_ports=None, cache_size=0):
 		"""
 		:Parameters:
 		 - `bucket_interval`: The bucket interval in seconds.
@@ -59,6 +59,8 @@ class FlowHandler:
 		"""
 		self.bucket_interval = bucket_interval
 		self.collection = collection
+		self.nodes_collection = nodes_collection
+		self.ports_collection = ports_collection
 		self.aggr_sum = aggr_sum
 		self.aggr_values = aggr_values
 		self.filter_ports = filter_ports
@@ -184,6 +186,7 @@ class FlowHandler:
 					
 			# count number of aggregated flows in the bucket
 			doc["$inc"]["flows"] += intervalFactor
+ 
 			keyString = proto + ".flows"
 			if not keyString in doc["$inc"]:
 				doc["$inc"][keyString] = intervalFactor
@@ -201,6 +204,14 @@ class FlowHandler:
 	def updateCollection(self, key, doc):
 		# bindata will reduce id size by 50%
 		self.collection.update({ "_id": bson.binary.Binary(key) }, doc, True)
+		if self.nodes_collection:
+			newdoc = doc["$set"]
+			newdoc.update(doc["$inc"])
+			common.update_node_index(newdoc, self.nodes_collection, config.flow_aggr_sums)
+		if self.ports_collection:
+			newdoc = doc["$set"]
+			newdoc.update(doc["$inc"])
+			common.update_port_index(newdoc, self.ports_collection, config.flow_aggr_sums, known_ports)
 		self.db_requests += 1
 		
 	def handleCache(self, clear=False):
@@ -216,6 +227,10 @@ class FlowHandler:
 	def flushCache(self):
 		self.handleCache(True)
 		self.collection.flushCache()
+		if self.nodes_collection:
+			self.nodes_collection.flushCache()
+		if self.ports_collection:
+			self.ports_collection.flushCache()
 
 			
 	def printReport(self):
@@ -277,6 +292,8 @@ for s in config.flow_bucket_sizes:
 	handlers.append(FlowHandler(
 		s,
 		dst_db.getCollection(common.DB_FLOW_PREFIX + str(s)),
+		dst_db.getCollection(common.DB_INDEX_NODES + "_" + str(s)),
+		dst_db.getCollection(common.DB_INDEX_PORTS + "_" + str(s)),
 		config.flow_aggr_sums,
 		config.flow_aggr_values,
 		known_ports,
@@ -286,6 +303,8 @@ for s in config.flow_bucket_sizes:
 	handlers.append(FlowHandler(
 		s,
 		dst_db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(s)),
+		None,
+		None,
 		config.flow_aggr_sums,
 		[],
 		None,
@@ -333,8 +352,8 @@ while True:
 		for handler in handlers:
 			handler.handleFlow(obj)
 			
-		common.update_node_index(obj, node_index_collection, config.flow_aggr_sums, common.INDEX_ADD)
-		common.update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports, common.INDEX_ADD)
+		common.update_node_index(obj, node_index_collection, config.flow_aggr_sums)
+		common.update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports)
 			
 		output_flows += 1
 		
