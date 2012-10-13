@@ -119,6 +119,20 @@ class Backend:
 		self.backendType = backendType
 		self.databaseName = databaseName
 
+	def getMinBucket(self, bucketSize = None):
+		"""
+		Gets the earliest bucket that is stored in the database for the given 
+		bucket size. 
+		"""
+		pass
+
+	def getMaxBucket(self, bucketSize = None):
+		"""
+		Gets the latest bucket that is stored in the database for the given 
+		bucket size. 
+		"""
+		pass
+
 
 	def getBucketSize(self, startTime, endTime, resolution):
 		"""
@@ -199,11 +213,35 @@ class Backend:
 	def find_one(self, collectionName, spec, fields, sort):
 		pass
 
+	def run_query(self, collectionName, query):
+		pass
+
 
 class MongoBackend(Backend):
 	def __init__(self, conn, backendType, databaseName):
 		Backend.__init__(self, conn, backendType, databaseName)
 		self.dst_db = self.conn[databaseName]
+
+	def getMinBucket(self, bucketSize = None):
+		if not bucketSize:
+			# use minimal bucket size
+			bucketSize = config.flow_bucket_sizes[0]
+		coll = self.dst_db[common.DB_FLOW_PREFIX + str(bucketSize)]
+		min_bucket = coll.find_one(
+			fields={ "bucket": 1, "_id": 0 }, 
+			sort=[("bucket", pymongo.ASCENDING)])
+		return min_bucket["bucket"]
+
+	def getMaxBucket(self, bucketSize = None):
+		if not bucketSize:
+			# use minimal bucket size
+			bucketSize = config.flow_bucket_sizes[0]
+		coll = self.dst_db[common.DB_FLOW_PREFIX + str(bucketSize)]
+		max_bucket = coll.find_one(
+			fields={ "bucket": 1, "_id": 0 }, 
+			sort=[("bucket", pymongo.DESCENDING)])
+		return min_bucket["bucket"]
+
 
 	def getBucketSize(self, start_time, end_time, resolution):
 		import pymongo
@@ -441,6 +479,7 @@ class MysqlBackend(Backend):
 
 		self.tableInsertCache = dict()
 		self.cachingThreshold = 10000
+		self.counter = 0
 
 		self.doCache = True
 
@@ -584,14 +623,13 @@ class MysqlBackend(Backend):
 			self.tableInsertCache[collectionName] = (cache, numElem)
 
 			self.counter += 1
-			if self.counter % 100000 == 0:
-				print "Total len:",  len(self.tableInsertCache)
-				for c in self.tableInsertCache:
-					print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
+			#if self.counter % 100000 == 0:
+				#print "Total len:",  len(self.tableInsertCache)
+				#for c in self.tableInsertCache:
+					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
 			
 			if numElem > self.cachingThreshold:
-				#self.flushCache(collectionName)
-				del self.tableInsertCache[collectionName]
+				self.flushCache(collectionName)
 		else:
 			self.cursor.execute(queryString)
 
@@ -607,6 +645,22 @@ class MysqlBackend(Backend):
 			while len( self.tableInsertCache) > 0:
 				collection = self.tableInsertCache.keys()[0]
 				self.flushCache(collection)
+
+	def getMinBucket(self, bucketSize = None):
+		if not bucketSize:
+			# use minimal bucket size
+			bucketSize = config.flow_bucket_sizes[0]
+		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
+		self.cursor.execute("SELECT MIN(bucket) as bucket FROM %s" % (tableName))
+		return self.cursor.fetchall()[0]["bucket"]
+		
+	def getMaxBucket(self, bucketSize = None):
+		if not bucketSize:
+			# use minimal bucket size
+			bucketSize = config.flow_bucket_sizes[0]
+		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
+		self.cursor.execute("SELECT MAX(bucket) as bucket FROM %s" % (tableName))
+		return self.cursor.fetchall()[0]["bucket"]
 
 	def getBucketSize(self, startTime, endTime, resolution):
 		for i,s in enumerate(config.flow_bucket_sizes):
@@ -831,6 +885,11 @@ class MysqlBackend(Backend):
 		#for r in result: 
 		#	print r
 		return (result, total)
+
+	def run_query(self, collectionName, query):
+		finalQuery = query % (collectionName)
+		self.cursor.execute(finalQuery)
+		return self.cursor.fetchall()
 
 
 def getBackendObject(backend, host, port, user, password, databaseName):
