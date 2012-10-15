@@ -81,11 +81,16 @@ class MySQLBackend(Backend):
 	def prepareCollection(self, name, fieldDict):
 		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
 		first = True
+		primary = ""
 		for field in fieldDict:
 			if not first:
 				createString += ","
-			createString += field + " " + fieldDict[field] 
+			createString += field + " " + fieldDict[field][0]
+			if fieldDict[field][1] != None:
+				primary = " PRIMARY KEY(" + field + ")"
 			first = False
+		if primary != "":
+			createString += "," + primary
 		createString += ")"
 		self.execute(createString)
 
@@ -99,15 +104,21 @@ class MySQLBackend(Backend):
 		queryString = "INSERT INTO " + collectionName + " ("
 		typeString = ""
 		valueString = ""
+		updateString = ""
 		for field in fieldDict:
 			if typeString != "":
 				typeString += ","
 			if valueString != "":
 				valueString += ","
+			if updateString != "":
+				updateString += ","
+			updateString += field + "=" "VALUES(" + field + ")"
 			typeString += field
-			valueString += fieldDict[field]
+			valueString += str(fieldDict[field])
 
-		queryString += typeString + ") VALUES (" + valueString + ")" 
+		queryString += typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString
+
+		self.execute(queryString)
 
 def getBackendObject(backend, host, port, user, password, databaseName):
 	if backend == "mysql":
