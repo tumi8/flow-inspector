@@ -114,10 +114,15 @@ class Collection:
 		return self.backendObject.flushCache(collectionName)
 
 class Backend:
-	def __init__(self, conn, backendType, databaseName):
-		self.conn = conn
-		self.backendType = backendType
+	def __init__(self, host, port, user, password, databaseName):
+		self.host = host
+		self.port = port
+		self.user = user
+		self.password = password
 		self.databaseName = databaseName
+
+	def connect(self):
+		pass
 
 	def getMinBucket(self, bucketSize = None):
 		"""
@@ -218,9 +223,24 @@ class Backend:
 
 
 class MongoBackend(Backend):
-	def __init__(self, conn, backendType, databaseName):
-		Backend.__init__(self, conn, backendType, databaseName)
-		self.dst_db = self.conn[databaseName]
+	def __init__(self, host, port, user, password, databaseName):
+		Backend.__init__(self, host, port, user, password, databaseName)
+		self.connect()
+
+	def connect(self):
+		# init pymongo connection
+		try:
+			import pymongo
+		except Exception as inst:
+			print >> sys.stderr, "Cannot connect to Mongo database: pymongo is not installed!"
+			sys.exit(1)
+		try:
+			self.conn = pymongo.Connection(self.host, self.port)
+		except pymongo.errors.AutoReconnect, e:
+			print >> sys.stderr, "Cannot connect to Mongo Database: ", e
+			sys.exit(1)
+		self.dst_db = self.conn[self.databaseName]
+	
 
 	def getMinBucket(self, bucketSize = None):
 		if not bucketSize:
@@ -472,23 +492,58 @@ class MongoBackend(Backend):
 
 
 class MysqlBackend(Backend):
-	def __init__(self, conn, backendType, databaseName):
+	def __init__(self, host, port, user, password, databaseName):
 		import MySQLdb
-		Backend.__init__(self, conn, backendType, databaseName)
-		self.cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-
+		Backend.__init__(self, host, port, user, password, databaseName)
 		self.tableInsertCache = dict()
 		self.cachingThreshold = 10000
 		self.counter = 0
 
 		self.doCache = True
 
+	def connect(self):
+		import MySQLdb
+		import _mysql_exceptions
+		try:
+			dns = dict(
+				db = self.databaseName,
+				host = self.host,
+				port = self.port,
+				user = self.user,
+				passwd = self.password
+			)         
+			self.conn = MySQLdb.connect(**dns)
+			self.cursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+		except Exception as inst:
+			print >> sys.stderr, "Cannot connect to MySQL database: ", inst 
+			sys.exit(1)
+
+
+	def execute(self, string):
+		import MySQLdb
+		import _mysql_exceptions
+		
+		try: 
+			self.cursor.execute(string)
+		except (AttributeError, MySQLdb.OperationalError):
+			self.connect()
+			self.execute(string)
+
+	def executemany(self, string, objects):
+		import MySQLdb
+		import _mysql_exceptions
+		try:
+			self.cursor.executemany(string, objects)
+		except (AttributeError, MySQLdb.OperationalError):
+			self.connect()
+			self.executemany(strin, objects)
+
 	
 	def clearDatabase(self):
-		self.cursor.execute("SHOW TABLES")	
+		self.execute("SHOW TABLES")	
 		tables = self.cursor.fetchall()
 		for table in tables:
-			self.cursor.execute("DROP TABLE " + table.values()[0])
+			self.execute("DROP TABLE " + table.values()[0])
 
 	def prepareCollections(self):
 		# we need to create several tables that contain flows and
@@ -507,7 +562,7 @@ class MysqlBackend(Backend):
 				for s in config.flow_aggr_sums + [ "flows" ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 			createString += ", PRIMARY KEY(_id))"
-			self.cursor.execute(createString)
+			self.execute(createString)
 
 		# tables for storing aggregated timebased data
 		for s in config.flow_bucket_sizes:
@@ -519,7 +574,7 @@ class MysqlBackend(Backend):
 				for s in config.flow_aggr_sums + [ "flows" ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 			createString += ", PRIMARY KEY(_id))"
-			self.cursor.execute(createString)
+			self.execute(createString)
 		
 		# create precomputed index that describe the whole data set
 		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
@@ -537,7 +592,7 @@ class MysqlBackend(Backend):
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 
 			createString += ", PRIMARY KEY(_id))"
-			self.cursor.execute(createString)
+			self.execute(createString)
 
 		# create tables for storing incremental indexes
 		for bucket_size in config.flow_bucket_sizes:
@@ -557,12 +612,12 @@ class MysqlBackend(Backend):
 							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 	
 				createString += ", PRIMARY KEY(_id, bucket))"
-				self.cursor.execute(createString)
+				self.execute(createString)
 
 
 	def createIndex(self, tableName, fieldName):
 		try:
-			self.cursor.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
+			self.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
 		except:
 			# most common cause: index does already exists
 			# TODO check for errors
@@ -631,14 +686,14 @@ class MysqlBackend(Backend):
 			if numElem > self.cachingThreshold:
 				self.flushCache(collectionName)
 		else:
-			self.cursor.execute(queryString)
+			self.execute(queryString)
 
 	def flushCache(self, collectionName=None):
 		if collectionName:
 			cache = self.tableInsertCache[collectionName][0]
 			for queryString in cache:
 				cacheLines = cache[queryString]
-				self.cursor.executemany(queryString, cacheLines)
+				self.executemany(queryString, cacheLines)
 			del self.tableInsertCache[collectionName]
 		else:
 			# flush all collections
@@ -651,7 +706,7 @@ class MysqlBackend(Backend):
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
-		self.cursor.execute("SELECT MIN(bucket) as bucket FROM %s" % (tableName))
+		self.execute("SELECT MIN(bucket) as bucket FROM %s" % (tableName))
 		return self.cursor.fetchall()[0]["bucket"]
 		
 	def getMaxBucket(self, bucketSize = None):
@@ -659,7 +714,7 @@ class MysqlBackend(Backend):
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
-		self.cursor.execute("SELECT MAX(bucket) as bucket FROM %s" % (tableName))
+		self.execute("SELECT MAX(bucket) as bucket FROM %s" % (tableName))
 		return self.cursor.fetchall()[0]["bucket"]
 
 	def getBucketSize(self, startTime, endTime, resolution):
@@ -669,14 +724,14 @@ class MysqlBackend(Backend):
 				
 			tableName = common.DB_FLOW_AGGR_PREFIX + str(s)
 			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket ASC LIMIT 1" % (tableName, startTime, endTime)
-			self.cursor.execute(queryString);
+			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			minBucket = None
 			if len(tmp) > 0:
 				minBucket = tmp[0]["bucket"]
 
 			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket DESC LIMIT 1" % (tableName, startTime, endTime)
-			self.cursor.execute(queryString);
+			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			maxBucket = None
 			if len(tmp) > 0:
@@ -833,7 +888,7 @@ class MysqlBackend(Backend):
 			queryString += "LIMIT %d" % (limit)
 
 		print "MySQL: Running Query ..."
-		self.cursor.execute(queryString)
+		self.execute(queryString)
 		queryResult =  self.cursor.fetchall()
 		print "MySQL: Encoding Query ..."
 		result = []
@@ -888,40 +943,14 @@ class MysqlBackend(Backend):
 
 	def run_query(self, collectionName, query):
 		finalQuery = query % (collectionName)
-		self.cursor.execute(finalQuery)
+		self.execute(finalQuery)
 		return self.cursor.fetchall()
 
 
 def getBackendObject(backend, host, port, user, password, databaseName):
 	if backend == "mongo":
-		# init pymongo connection
-		try:
-			import pymongo
-		except Exception as inst:
-			print >> sys.stderr, "Cannot connect to Mongo database: pymongo is not installed!"
-			sys.exit(1)
-		try:
-			dst_conn = pymongo.Connection(host, port)
-		except pymongo.errors.AutoReconnect, e:
-			print >> sys.stderr, "Cannot connect to Mongo Database: ", e
-			sys.exit(1)
-		return MongoBackend(dst_conn, backend, databaseName)
+		return MongoBackend(host, port, user, password, databaseName)
 	elif backend == "mysql":
-		try:
-			import MySQLdb
-			import _mysql_exceptions
-
-			dns = dict(
-				db = databaseName,
-				host = host,
-				port = port,
-				user = user,
-				passwd = password
-                        )
-                        conn = MySQLdb.connect(**dns)
-			return MysqlBackend(conn, backend, databaseName)
-		except Exception as inst:
-			print >> sys.stderr, "Cannot connect to MySQL database: ", inst 
-			sys.exit(1)
+		return MysqlBackend(host, port, user, password, databaseName)
 	else:
 		raise Exception("Backend " + backend + " is not a supported backend")
