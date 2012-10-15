@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 from network_scan_detector import NetworkScanDetector
 from host_information_checker import HostInformationChecker
+from simon_test import SimonTest
 import flowbackend
 import databackend
 import config
@@ -27,9 +28,11 @@ if __name__ == "__main__":
 
 	networkScanDetector = NetworkScanDetector(flowdb, datadb)
 	hostInformationChecker = HostInformationChecker(flowdb, datadb)
+	simonTest = SimonTest(flowdb, datadb)
 
 	# use smallest bucket size 
 	slidingBucketSize = config.flow_bucket_sizes[0]
 	for bucket in range(startBucket, endBucket, slidingBucketSize):
-		networkScanDetector.analyze(startBucket, startBucket)
-		hostInformationChecker.analyze(startBucket, endBucket)
+		#networkScanDetector.analyze(startBucket, startBucket)
+		#hostInformationChecker.analyze(startBucket, endBucket)
+		simonTest.analyze(bucket, bucket)
