@@ -79,12 +79,13 @@ class MySQLBackend(Backend):
 
 
 	def prepareCollection(self, name, fieldDict):
-		createString = "CREATE TABLE IF NOT EXISTS " + name + "("
+		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
 		first = True
 		for field in fieldDict:
 			if not first:
 				createString += ","
 			createString += field + " " + fieldDict[field] 
+			first = False
 		createString += ")"
 		self.execute(createString)
 
