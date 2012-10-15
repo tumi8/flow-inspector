@@ -16,7 +16,7 @@ flowDBPassword="password"
 flowDBName="flows"
 
 
-# Destination Backend (Default: MongoDB)
+# Destination Flow Backend (Default: MongoDB)
 #----------------------------------------------------------------
 db_backend = "mongo"
 db_host = "127.0.0.1"
@@ -24,6 +24,15 @@ db_port = 27017
 db_user = None
 db_password = None
 db_name = "flows"
+
+# Destination Data Backend (for miscelanous data)
+#----------------------------------------------------------------
+data_backend = "mysql"
+data_backend_host = "127.0.0.1"
+data_backend_port = 3306
+data_backend_user = "username"
+data_backend_password = "password"
+data_backend_name = "flows"
 
 # Flow settings
 #----------------------------------------------------------------
