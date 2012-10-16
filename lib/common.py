@@ -66,6 +66,19 @@ MYSQL_TYPE_MAPPER = {
 	"lastSwitched"  : "INTEGER(10) UNSIGNED"
 }
 
+ORACLE_TYPE_MAPPER = {
+	"srcIP"         : "NUMBER(10) UNSIGNED",
+	"dstIP"         : "NUMBER(10) UNSIGNED",
+	"srcPort"       : "NUMBER(5) UNSIGNED",
+	"dstPort"       : "NUMBER(5) UNSIGNED",
+	"proto"         : "NUMBER(3) UNSIGNED",
+	"flows"         : "NUMBER(20) UNSIGNED",
+	"bytes"         : "NUMBER(20) UNSIGNED",
+	"pkts"          : "NUMBER(20) UNSIGNED",
+	"firstSwitched" : "NUMBER(10) UNSIGNED",
+	"lastSwitched"  : "NUMBER(10) UNSIGNED"
+}
+
 def getProto(obj):
 	return getProtoFromValue(obj.get("proto", 0))
 

@@ -5,6 +5,7 @@ backend communication.
 Currently supported backends:
 	- mongodb
 	- mysql
+	- oracle
 
 Author: Lothar Braun 
 """
@@ -243,6 +244,7 @@ class MongoBackend(Backend):
 	
 
 	def getMinBucket(self, bucketSize = None):
+		import pymongo
 		if not bucketSize:
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
@@ -253,6 +255,7 @@ class MongoBackend(Backend):
 		return min_bucket["bucket"]
 
 	def getMaxBucket(self, bucketSize = None):
+		import pymongo
 		if not bucketSize:
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
@@ -260,7 +263,7 @@ class MongoBackend(Backend):
 		max_bucket = coll.find_one(
 			fields={ "bucket": 1, "_id": 0 }, 
 			sort=[("bucket", pymongo.DESCENDING)])
-		return min_bucket["bucket"]
+		return max_bucket["bucket"]
 
 
 	def getBucketSize(self, start_time, end_time, resolution):
@@ -946,11 +949,513 @@ class MysqlBackend(Backend):
 		self.execute(finalQuery)
 		return self.cursor.fetchall()
 
+class OracleBackend(Backend):
+	def __init__(self, host, port, user, password, databaseName):
+		Backend.__init__(self, host, port, user, password, databaseName)
+		self.tableInsertCache = dict()
+		self.cachingThreshold = 10000
+		self.counter = 0
+
+		self.doCache = True
+
+	def connect(self):
+		import cx_Oracle
+		try:
+			connection_string = self.user + "/" + self.password + "@" + self.host + ":" + str(self.port) + "/" + self.databaseName
+			self.conn = cx_Oracle.Connection(connection_string)
+			self.cursor = cx_Oracle.Cursor(conn)
+		except Exception as inst:
+			print >> sys.stderr, "Cannot connect to Oracle database: ", inst 
+			#sys.exit(1)
+
+
+	def execute(self, string):
+		import cx_Oracle
+		try: 
+			self.cursor.execute(string)
+		except (AttributeError, cx_Oracle.OperationalError):
+			self.connect()
+			self.execute(string)
+
+#	def executemany(self, string, objects):
+#		import cx_Oracle
+#		try:
+#			self.cursor.executemany(string, objects)
+#		except (AttributeError, cx_Oracle.OperationalError):
+#			self.connect()
+#			self.executemany(strin, objects)
+
+
+	def prepareCollection(self, name, fieldDict):
+		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
+		first = True
+		primary = ""
+		for field in fieldDict:
+			if not first:
+				createString += ","
+			createString += field + " " + fieldDict[field][0]
+			if fieldDict[field][1] != None:
+				primary = " PRIMARY KEY(" + field + ")"
+			first = False
+		if primary != "":
+			createString += "," + primary
+		createString += ")"
+		self.execute(createString)
+
+
+	def query(self, tablename, string):
+		string = string % (tableName)
+		self.execute(string)
+		return self.cursor.fetchall()
+
+	def insert(self, collectionName, fieldDict):
+		queryString = "MERGE INTO " + collectionName + " target USING (SELECT "
+		selectString = ""
+		matchedString = ""
+		notMatchedInsert = ""
+		notMatchedValues = ""
+		primary = ""
+		for field in fieldDict:
+			if selectString != "":
+				selectString += ","
+			if matchedString != "":
+				matchedString += ","
+			if notMatchedInsert != "":
+				notMatchedInsert += ","
+			if notMatchedValues != "":
+				notMatchedValues += ","
+			selectString += str(fieldDict[field])  + " as " + field
+			matchedString += field + "=" + str(fieldDict[field][0])
+			notMatchedInsert += "target." + field
+			notMatchedValues += "SOURCE." + field
+			if fieldDict[field][1] != None:
+				primary = field
+		
+		queryString += selectString + " FROM dual) SOURCE ON (target." + primary + " = SOURCE." + primary + ")"
+		queryString += "WHEN MATCHED THEN UPDATE SET " + matchedString
+		queryString += " WHEN NOT MATCHED THEN INSERT (" + notMatchedInsert + ") VALUES (" + notMatchedValues + ")" 
+		
+		print queryString
+
+		self.execute(queryString)
+
+	def clearDatabase(self):
+		self.execute("""SELECT table_name from information_schema.tables 
+		                        WHERE table_schema=%s AND table_type='BASE TABLE' ORDER BY table_name ASC""" % (self.databaseName))	
+		tables = self.cursor.fetchall()
+		for table in tables:
+			print table
+			#self.execute("DROP TABLE " + table.values()[0])
+
+	def prepareCollections(self):
+		# we need to create several tables that contain flows and
+		# pre aggregated flows, as well as tables for indexes that 
+		# are precalculated on the complete data set. 
+
+		# tables for storing bucketized flow data
+		for s in config.flow_bucket_sizes:
+			createString = "CREATE TABLE IF NOT EXISTS "
+			createString += common.DB_FLOW_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket NUMBER(10) UNSIGNED NOT NULL"
+			for v in config.flow_aggr_values:
+				createString += ", %s %s NOT NULL" % (v, common.ORACLE_TYPE_MAPPER[v])
+			for s in config.flow_aggr_sums + [ "flows" ]:
+				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
+			for proto in common.AVAILABLE_PROTOS:
+				for s in config.flow_aggr_sums + [ "flows" ]: 
+					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+			createString += ", PRIMARY KEY(_id))"
+			self.execute(createString)
+
+		# tables for storing aggregated timebased data
+		for s in config.flow_bucket_sizes:
+			createString = "CREATE TABLE IF NOT EXISTS "
+			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket NUMBER(10) UNSIGNED NOT NULL"
+			for s in config.flow_aggr_sums + [ "flows" ]:
+				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
+			for proto in common.AVAILABLE_PROTOS:
+				for s in config.flow_aggr_sums + [ "flows" ]: 
+					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+			createString += ", PRIMARY KEY(_id))"
+			self.execute(createString)
+		
+		# create precomputed index that describe the whole data set
+		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
+			createString = "CREATE TABLE IF NOT EXISTS %s (_id NUMBER(10) UNSIGNED NOT NULL" % table
+			for s in config.flow_aggr_sums + [ "flows" ]:
+				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
+			for proto in common.AVAILABLE_PROTOS:
+				for s in config.flow_aggr_sums + [ "flows" ]: 
+					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+			for direction in [ "src", "dst" ]:
+				for s in config.flow_aggr_sums + [ "flows" ]:
+					createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+				for proto in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ "flows" ]: 
+						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+
+			createString += ", PRIMARY KEY(_id))"
+			self.execute(createString)
+
+		# create tables for storing incremental indexes
+		for bucket_size in config.flow_bucket_sizes:
+			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
+				table = index + "_" + str(bucket_size)
+				createString = "CREATE TABLE IF NOT EXISTS %s (_id NUMBER(10) UNSIGNED NOT NULL, bucket NUMBER(10) UNSIGNED NOT NULL" % table
+				for s in config.flow_aggr_sums + [ "flows" ]:
+					createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
+				for proto in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ "flows" ]: 
+						createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+				for direction in [ "src", "dst" ]:
+					for s in config.flow_aggr_sums + [ "flows" ]:
+						createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+					for proto in common.AVAILABLE_PROTOS:
+						for s in config.flow_aggr_sums + [ "flows" ]: 
+							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
+	
+				createString += ", PRIMARY KEY(_id, bucket))"
+				self.execute(createString)
+
+
+	def createIndex(self, tableName, fieldName):
+		try:
+			self.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
+		except:
+			# most common cause: index does already exists
+			# TODO check for errors
+			pass
+
+		
+	def update(self, collectionName, statement, document, insertIfNotExists):
+		# special handling for the _id field
+		typeString = "_id"
+		value = str(statement["_id"])
+		if self.doCache: 
+			if value == "total":
+				# special value 0 encodes the total field
+				cacheLine = (0,)
+			else:
+				cacheLine = (value,)
+			valueString = "%s"
+		else:
+			if value == "total":
+				valueString = "0"
+			else:
+				valueString = str(value)
+
+		#if not collectionName ==common.DB_INDEX_NODES and not collectionName == common.DB_INDEX_PORTS:
+		#	print collectionName,  statement, document
+		updateString = ""
+		for part in [ "$set", "$inc" ]:
+			if not part in document:
+				continue
+			for v in document[part]:
+				if self.doCache:
+					cacheLine = cacheLine + (document[part][v],)
+					valueString += ",%s"
+				else:
+					valueString += "," + str(document[part][v])
+				v = v.replace('.', '_')
+				typeString += "," + v
+				if part == "$inc":
+					if updateString != "":
+						updateString += ","
+					updateString +=  v + "=" + v + "+VALUES(" + v + ")"
+
+		queryString = "INSERT INTO " + collectionName + "(" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString
+
+		if self.doCache:
+			numElem = 1
+			if collectionName in self.tableInsertCache:
+				cache = self.tableInsertCache[collectionName][0]
+				numElem = self.tableInsertCache[collectionName][1] + 1
+				if queryString in cache:
+					cache[queryString].append(cacheLine)
+				else:
+					cache[queryString] = [ cacheLine ]
+			else:
+				cache = dict()
+				cache[queryString] = [ cacheLine ]
+		
+			self.tableInsertCache[collectionName] = (cache, numElem)
+
+			self.counter += 1
+			#if self.counter % 100000 == 0:
+				#print "Total len:",  len(self.tableInsertCache)
+				#for c in self.tableInsertCache:
+					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
+			
+			if numElem > self.cachingThreshold:
+				self.flushCache(collectionName)
+		else:
+			self.execute(queryString)
+
+	def flushCache(self, collectionName=None):
+		if collectionName:
+			cache = self.tableInsertCache[collectionName][0]
+			for queryString in cache:
+				cacheLines = cache[queryString]
+				self.executemany(queryString, cacheLines)
+			del self.tableInsertCache[collectionName]
+		else:
+			# flush all collections
+			while len( self.tableInsertCache) > 0:
+				collection = self.tableInsertCache.keys()[0]
+				self.flushCache(collection)
+
+	def getMinBucket(self, bucketSize = None):
+		if not bucketSize:
+			# use minimal bucket size
+			bucketSize = config.flow_bucket_sizes[0]
+		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
+		self.execute("SELECT MIN(bucket) as bucket FROM %s" % (tableName))
+		return self.cursor.fetchall()[0]["bucket"]
+		
+	def getMaxBucket(self, bucketSize = None):
+		if not bucketSize:
+			# use minimal bucket size
+			bucketSize = config.flow_bucket_sizes[0]
+		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
+		self.execute("SELECT MAX(bucket) as bucket FROM %s" % (tableName))
+		return self.cursor.fetchall()[0]["bucket"]
+
+	def getBucketSize(self, startTime, endTime, resolution):
+		for i,s in enumerate(config.flow_bucket_sizes):
+			if i == len(config.flow_bucket_sizes)-1:
+				return s
+				
+			tableName = common.DB_FLOW_AGGR_PREFIX + str(s)
+			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket ASC LIMIT 1" % (tableName, startTime, endTime)
+			self.execute(queryString);
+			tmp = self.cursor.fetchall()
+			minBucket = None
+			if len(tmp) > 0:
+				minBucket = tmp[0]["bucket"]
+
+			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket DESC LIMIT 1" % (tableName, startTime, endTime)
+			self.execute(queryString);
+			tmp = self.cursor.fetchall()
+			maxBucket = None
+			if len(tmp) > 0:
+				maxBucket = tmp[0]["bucket"]
+			
+			if not minBucket or not maxBucket:
+				return s
+			
+			numSlots = (maxBucket-minBucket) / s + 1
+			if numSlots <= resolution:
+				return s
+
+	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		print "Oracle: Constructing query ... "
+		(result, total) = self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+		print "Oracle: Returning data to app ..."
+		return result
+
+	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		return self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+
+	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+		if name == "nodes":
+			tableName = common.DB_INDEX_NODES + "_" + str(bucketSize)
+		elif name == "ports":
+			tableName = common.DB_INDEX_PORTS + "_" + str(bucketSize)
+		else:
+			raise Exception("Unknown index specified")
+
+		(results, total) =  self.sql_query(tableName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, [ "_id"])
+		return (results, total)
+
+	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, aggregate = None):
+		fieldList = ""
+		if fields != None: 
+			for field in fields:
+				if field in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ "flows" ]:
+						if fieldList != "":
+							fieldList += ","
+						fieldList += field + "_" + s
+				else:
+					if fieldList != "":
+						fieldList += ","
+					fieldList += field
+			if not "bucket" in fields:
+				fieldList += ",bucket"
+		elif aggregate != None:
+			# aggregate all fields
+			fieldList = ""
+			for field in aggregate:
+				if fieldList != "":
+					fieldList = ","
+				fieldList += field 
+			for field in config.flow_aggr_sums + [ "flows" ]:
+				fieldList += ",SUM(" + field + ") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
+		else:
+			fieldList = "*"
+
+		isWhere = False
+		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
+		if startBucket != None and startBucket > 0:
+			isWhere = True
+			queryString += "WHERE bucket >= %d " % (startBucket)
+		if endBucket != None and endBucket < sys.maxint:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else: 
+				queryString += "AND "
+			queryString += "bucket <= %d " % (endBucket)
+
+		firstIncludePort = True
+		for port in includePorts:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstIncludePort: 
+					queryString += "AND ("
+					firstIncludePort = False
+				else:
+					queryString += "OR "
+			queryString += "%s = %d OR %s = %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
+		if not firstIncludePort:
+			queryString += ") "
+
+		firstExcludePort = True
+		for port in excludePorts:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstExcludePort: 
+					queryString += "AND ("
+					firstExcludePort = False
+				else:
+					queryString += "OR "
+			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
+		if not firstExcludePort:
+			queryString += ") "
+
+		firstIncludeIP = True
+		for ip in includeIPs:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstIncludeIP: 
+					queryString += "AND ("
+					firstIncludeIP = False
+				else:
+					queryString += "OR "
+			queryString += "%s = %d OR %s = %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
+		if not firstIncludeIP:
+			queryString += ") "
+
+
+		firstExcludeIP = True
+		for ip in excludeIPs:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstExcludeIP: 
+					queryString += "AND ("
+					firstExcludeIP = False
+				else:
+					queryString += "OR "
+			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
+		if not firstExcludeIP:
+			queryString += ") "
+
+		if aggregate:
+			queryString += "GROUP BY "
+			firstField = True
+			for field in aggregate:
+				if not firstField:
+					queryString += ","
+				else:
+					firstField = False
+				queryString += field + " "
+
+		if sort:
+			queryString += "ORDER BY " + sort[0][0] + " "
+			if sort[0][1] == 1:
+				queryString += "ASC "
+			else: 
+				queryString += "DESC "
+
+		if limit:
+			queryString += "LIMIT %d" % (limit)
+
+		print "Oracle: Running Query ..."
+		self.execute(queryString)
+		queryResult =  self.cursor.fetchall()
+		print "Oracle: Encoding Query ..."
+		result = []
+		total = dict()
+
+		# TODO: Performance. Mysql returns Decimals instead of standard ints when aggregating
+		#       While this is not a problem in itself, ujson cannot encode this
+		#       and the result cannot be transmitted to the browser. We therefore do conversions
+		#       to int, which hurts performance. We should either do
+		#       1.) use MySQLDb.converters.conversions and change the mapping dict
+		#       2.) fix ujson
+		# 	Instead we convert it while encoding ...
+
+		for row in queryResult:
+			resultDoc = dict()
+			isTotal = False
+			for field in row:
+				if field == "_id":
+					if row[field] == 0:
+						isTotal = True
+					fieldParts = []
+				else: 
+					fieldParts = field.split('_')
+				if len(fieldParts) > 1:
+					# maximum depth is 3 
+					# TODO: hacky ... 
+					if len(fieldParts) == 2:
+						if not fieldParts[0] in resultDoc:
+							resultDoc[fieldParts[0]] = dict()
+						resultDoc[fieldParts[0]][fieldParts[1]] = int(row[field])
+					elif len(fieldParts) == 3:
+						# TODO: not implemented ... 
+						pass
+					else:
+						raise Exception("Internal Programming Error!")
+				else:
+					if field == "_id":
+						resultDoc["id"] = int(row[field])
+					else: 
+						resultDoc[field] = int(row[field])
+			if isTotal:
+				total = resultDoc
+			else:
+				result.append(resultDoc)
+
+		print "Got Results: ", len(result)
+		#print "Total: ", total
+		#print "Result: ", result
+		#for r in result: 
+		#	print r
+		return (result, total)
+
+	def run_query(self, collectionName, query):
+		finalQuery = query % (collectionName)
+		self.execute(finalQuery)
+		return self.cursor.fetchall()
+
+
 
 def getBackendObject(backend, host, port, user, password, databaseName):
 	if backend == "mongo":
 		return MongoBackend(host, port, user, password, databaseName)
 	elif backend == "mysql":
 		return MysqlBackend(host, port, user, password, databaseName)
+	elif backend == "oracle":
+		return OracleBackend(host, port, user, password, databaseName)
 	else:
 		raise Exception("Backend " + backend + " is not a supported backend")

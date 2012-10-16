@@ -6,6 +6,11 @@ Because a user might decide to store his flows in some kind of specialized flow 
 another backend is necessary if the flow backend does not support data other than flows
 (this can for example happen if the nfdump or SiLK tools are used to manage the flow
 information).
+Supported backends:
+	- mysql
+	- oracle
+
+Author: Lothar Braun 
 """
 
 import sys
@@ -127,7 +132,7 @@ class OracleBackend(Backend):
 			self.cursor = cx_Oracle.Cursor(conn)
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to Oracle database: ", inst 
-			sys.exit(1)
+			#sys.exit(1)
 
 
 	def execute(self, string):
@@ -175,6 +180,7 @@ class OracleBackend(Backend):
 		matchedString = ""
 		notMatchedInsert = ""
 		notMatchedValues = ""
+		primary = ""
 		for field in fieldDict:
 			if selectString != "":
 				selectString += ","
@@ -185,12 +191,18 @@ class OracleBackend(Backend):
 			if notMatchedValues != "":
 				notMatchedValues += ","
 			selectString += str(fieldDict[field])  + " as " + field
-			matchedString += field + "=" + str(fieldDict[field])
+			matchedString += field + "=" + str(fieldDict[field][0])
 			notMatchedInsert += "target." + field
 			notMatchedValues += "SOURCE." + field
+			if fieldDict[field][1] != None:
+				primary = field
 		
-		queryString += selectString + " FROM dual) SOURCE ON target
+		queryString += selectString + " FROM dual) SOURCE ON (target." + primary + " = SOURCE." + primary + ")"
+		queryString += "WHEN MATCHED THEN UPDATE SET " + matchedString
+		queryString += " WHEN NOT MATCHED THEN INSERT (" + notMatchedInsert + ") VALUES (" + notMatchedValues + ")" 
 		
+		print queryString
+
 		self.execute(queryString)
 
 
