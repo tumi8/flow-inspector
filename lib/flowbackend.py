@@ -1397,6 +1397,12 @@ class OracleBackend(Backend):
 		total = dict()
 
 		columns = [i[0].lower() for i in self.cursor.description]
+		#TODO: this is hacky ..
+		if 'srcip' in columns:
+			columns[columns.index('srcip')] = "srcIP"
+		if 'dstip' in columns:
+			columns[columns.index('dstip')] = "dstIP"
+
 		for row in queryResult:
 			resultDoc = dict()
 			isTotal = False

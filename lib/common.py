@@ -41,7 +41,9 @@ REDIS_QUEUE_KEY = "entry:queue"
 # Oracle is a professional environment. We therefore need to perform
 # some special mappings for table column names: Oracle is case sensitive
 # and does not cope with anything that is not upper case *sigh*
-COLUMNMAP = {
+ORACLE_COLUMNMAP = {
+	"ID"	: "id",
+	"FLOWS" : "flows",
         "SRCIP" : "srcIP",
         "DSTIP" : "dstIP",
         "SRCPORT" : "srcPort",
@@ -50,8 +52,9 @@ COLUMNMAP = {
         "BYTES" : "bytes",
         "PKTS"  : "pkts",
         "FIRSTSWITCHED" : "firstSwitched",
-        "LASTSWITCHED" : "lastSwitched"
+        "LASTSWITCHED" : "lastSwitched",
 }
+
 
 MYSQL_TYPE_MAPPER = {
 	"srcIP"         : "INTEGER(10) UNSIGNED",
