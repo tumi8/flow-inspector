@@ -957,51 +957,60 @@ class OracleBackend(Backend):
 		self.counter = 0
 
 		self.doCache = True
+		self.connect()
+
+		self.tableNames = [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]
+		for s in config.flow_bucket_sizes:
+			self.tableNames.append(common.DB_FLOW_PREFIX + str(s))
+			self.tableNames.append(common.DB_FLOW_AGGR_PREFIX + str(s))
+			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
+				self.tableNames.append(index + "_" + str(s))
 
 	def connect(self):
 		import cx_Oracle
+		print "Oracle: Attempting new connect:" 
 		try:
 			connection_string = self.user + "/" + self.password + "@" + self.host + ":" + str(self.port) + "/" + self.databaseName
+			print connection_string
 			self.conn = cx_Oracle.Connection(connection_string)
-			self.cursor = cx_Oracle.Cursor(conn)
+
+			self.cursor = cx_Oracle.Cursor(self.conn)
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to Oracle database: ", inst 
-			#sys.exit(1)
+			sys.exit(1)
 
 
-	def execute(self, string):
+	def execute(self, string, params = None):
 		import cx_Oracle
 		try: 
-			self.cursor.execute(string)
-		except (AttributeError, cx_Oracle.OperationalError):
+			if params == None:
+				self.cursor.execute(string)
+			else:
+				self.cursor.execute(string, params)
+			self.conn.commit()
+		except (AttributeError, cx_Oracle.OperationalError) as e:
+			print e
 			self.connect()
 			self.execute(string)
+		except cx_Oracle.DatabaseError as e:
+			print e 
+			error, = e.args
+			if error.code == 955:
+				print "Table already exists!"
+			else:
+				print e
+				print "Have seen unknown error. Terminating!"
+				sys.exit(-1)
 
-#	def executemany(self, string, objects):
-#		import cx_Oracle
-#		try:
-#			self.cursor.executemany(string, objects)
-#		except (AttributeError, cx_Oracle.OperationalError):
-#			self.connect()
-#			self.executemany(strin, objects)
 
-
-	def prepareCollection(self, name, fieldDict):
-		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
-		first = True
-		primary = ""
-		for field in fieldDict:
-			if not first:
-				createString += ","
-			createString += field + " " + fieldDict[field][0]
-			if fieldDict[field][1] != None:
-				primary = " PRIMARY KEY(" + field + ")"
-			first = False
-		if primary != "":
-			createString += "," + primary
-		createString += ")"
-		self.execute(createString)
-
+	def executemany(self, string, objects):
+		import cx_Oracle
+		try:
+			self.cursor.executemany(string, objects)
+			self.conn.commit()
+		except (AttributeError, cx_Oracle.OperationalError):
+			self.connect()
+			self.executemany(string, objects)
 
 	def query(self, tablename, string):
 		string = string % (tableName)
@@ -1015,37 +1024,69 @@ class OracleBackend(Backend):
 		notMatchedInsert = ""
 		notMatchedValues = ""
 		primary = ""
+		params = {}
 		for field in fieldDict:
 			if selectString != "":
 				selectString += ","
-			if matchedString != "":
-				matchedString += ","
 			if notMatchedInsert != "":
 				notMatchedInsert += ","
 			if notMatchedValues != "":
 				notMatchedValues += ","
-			selectString += str(fieldDict[field])  + " as " + field
-			matchedString += field + "=" + str(fieldDict[field][0])
+			selectString += ":"+field  + " as " + field
+			params[field] = str(fieldDict[field][0])
+			if fieldDict[field][1] == None:
+				if matchedString != "":
+					matchedString += ","
+				matchedString += field + "=" + "SOURCE." + field + "+" + "target." + field
 			notMatchedInsert += "target." + field
 			notMatchedValues += "SOURCE." + field
 			if fieldDict[field][1] != None:
-				primary = field
+				if primary != "":
+					primary += " AND "
+				primary += "target." + field + "=SOURCE." + field
 		
-		queryString += selectString + " FROM dual) SOURCE ON (target." + primary + " = SOURCE." + primary + ")"
+		queryString += selectString + " FROM dual) SOURCE ON (" + primary + ")"
 		queryString += "WHEN MATCHED THEN UPDATE SET " + matchedString
 		queryString += " WHEN NOT MATCHED THEN INSERT (" + notMatchedInsert + ") VALUES (" + notMatchedValues + ")" 
+		if self.doCache:
+			numElem = 1
+			if collectionName in self.tableInsertCache:
+				cache = self.tableInsertCache[collectionName][0]
+				numElem = self.tableInsertCache[collectionName][1] + 1
+				if queryString in cache:
+					cache[queryString].append(params)
+				else:
+					cache[queryString] = [ params ]
+			else:
+				cache = dict()
+				cache[queryString] = [ params ]
 		
-		print queryString
+			self.tableInsertCache[collectionName] = (cache, numElem)
 
-		self.execute(queryString)
+			self.counter += 1
+			#if self.counter % 100000 == 0:
+				#print "Total len:",  len(self.tableInsertCache)
+				#for c in self.tableInsertCache:
+					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
+			
+			if numElem > self.cachingThreshold:
+				self.flushCache(collectionName)
+		else:
+			self.execute(queryString, params)
 
 	def clearDatabase(self):
-		self.execute("""SELECT table_name from information_schema.tables 
-		                        WHERE table_schema=%s AND table_type='BASE TABLE' ORDER BY table_name ASC""" % (self.databaseName))	
-		tables = self.cursor.fetchall()
-		for table in tables:
-			print table
-			#self.execute("DROP TABLE " + table.values()[0])
+		import cx_Oracle
+		for table in self.tableNames:
+			try:
+				self.cursor.execute("DROP TABLE " + table)
+			except cx_Oracle.DatabaseError as e:
+				error, = e.args
+				if error.code == 942:
+					print "Table " + table + " does not exist"
+			except Exception as e:
+				print "Have seen unknown error:", e
+				print "Terminating!"
+				sys.exit(-1)
 
 	def prepareCollections(self):
 		# we need to create several tables that contain flows and
@@ -1054,33 +1095,35 @@ class OracleBackend(Backend):
 
 		# tables for storing bucketized flow data
 		for s in config.flow_bucket_sizes:
-			createString = "CREATE TABLE IF NOT EXISTS "
-			createString += common.DB_FLOW_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket NUMBER(10) UNSIGNED NOT NULL"
+			primary = "bucket"
+			createString = "CREATE TABLE "
+			createString += common.DB_FLOW_PREFIX + str(s) + " (bucket NUMBER(10) NOT NULL"
 			for v in config.flow_aggr_values:
+				primary += "," + v
 				createString += ", %s %s NOT NULL" % (v, common.ORACLE_TYPE_MAPPER[v])
 			for s in config.flow_aggr_sums + [ "flows" ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
 				for s in config.flow_aggr_sums + [ "flows" ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
-			createString += ", PRIMARY KEY(_id))"
+			createString += ", PRIMARY KEY(" + primary + "))"
 			self.execute(createString)
 
 		# tables for storing aggregated timebased data
 		for s in config.flow_bucket_sizes:
-			createString = "CREATE TABLE IF NOT EXISTS "
-			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket NUMBER(10) UNSIGNED NOT NULL"
+			createString = "CREATE TABLE "
+			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (bucket NUMBER(10) NOT NULL"
 			for s in config.flow_aggr_sums + [ "flows" ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
 				for s in config.flow_aggr_sums + [ "flows" ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
-			createString += ", PRIMARY KEY(_id))"
+			createString += ", PRIMARY KEY(bucket))"
 			self.execute(createString)
 		
 		# create precomputed index that describe the whole data set
 		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
-			createString = "CREATE TABLE IF NOT EXISTS %s (_id NUMBER(10) UNSIGNED NOT NULL" % table
+			createString = "CREATE TABLE %s (id NUMBER(10) NOT NULL" % table
 			for s in config.flow_aggr_sums + [ "flows" ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
@@ -1093,14 +1136,14 @@ class OracleBackend(Backend):
 					for s in config.flow_aggr_sums + [ "flows" ]: 
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 
-			createString += ", PRIMARY KEY(_id))"
+			createString += ", PRIMARY KEY(id))"
 			self.execute(createString)
 
 		# create tables for storing incremental indexes
 		for bucket_size in config.flow_bucket_sizes:
 			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 				table = index + "_" + str(bucket_size)
-				createString = "CREATE TABLE IF NOT EXISTS %s (_id NUMBER(10) UNSIGNED NOT NULL, bucket NUMBER(10) UNSIGNED NOT NULL" % table
+				createString = "CREATE TABLE %s (id NUMBER(10) NOT NULL, bucket NUMBER(10) NOT NULL" % table
 				for s in config.flow_aggr_sums + [ "flows" ]:
 					createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
@@ -1113,7 +1156,7 @@ class OracleBackend(Backend):
 						for s in config.flow_aggr_sums + [ "flows" ]: 
 							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 	
-				createString += ", PRIMARY KEY(_id, bucket))"
+				createString += ", PRIMARY KEY(id, bucket))"
 				self.execute(createString)
 
 
@@ -1127,68 +1170,25 @@ class OracleBackend(Backend):
 
 		
 	def update(self, collectionName, statement, document, insertIfNotExists):
-		# special handling for the _id field
-		typeString = "_id"
-		value = str(statement["_id"])
-		if self.doCache: 
-			if value == "total":
-				# special value 0 encodes the total field
-				cacheLine = (0,)
-			else:
-				cacheLine = (value,)
-			valueString = "%s"
-		else:
-			if value == "total":
-				valueString = "0"
-			else:
-				valueString = str(value)
+		fieldDict = {}
+		for s in statement:
+			if collectionName.startswith("index"):
+				# special handling for total field
+				if statement[s] == "total":
+					fieldDict["id"] = (0, "primary")
+				else:
+					fieldDict["id"] = (statement[s], "primary")
 
-		#if not collectionName ==common.DB_INDEX_NODES and not collectionName == common.DB_INDEX_PORTS:
-		#	print collectionName,  statement, document
-		updateString = ""
 		for part in [ "$set", "$inc" ]:
 			if not part in document:
 				continue
 			for v in document[part]:
-				if self.doCache:
-					cacheLine = cacheLine + (document[part][v],)
-					valueString += ",%s"
+				newV = v.replace('.', '_')
+				if part == "$set":
+					fieldDict[newV] = (document[part][v], "primary")
 				else:
-					valueString += "," + str(document[part][v])
-				v = v.replace('.', '_')
-				typeString += "," + v
-				if part == "$inc":
-					if updateString != "":
-						updateString += ","
-					updateString +=  v + "=" + v + "+VALUES(" + v + ")"
-
-		queryString = "INSERT INTO " + collectionName + "(" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString
-
-		if self.doCache:
-			numElem = 1
-			if collectionName in self.tableInsertCache:
-				cache = self.tableInsertCache[collectionName][0]
-				numElem = self.tableInsertCache[collectionName][1] + 1
-				if queryString in cache:
-					cache[queryString].append(cacheLine)
-				else:
-					cache[queryString] = [ cacheLine ]
-			else:
-				cache = dict()
-				cache[queryString] = [ cacheLine ]
-		
-			self.tableInsertCache[collectionName] = (cache, numElem)
-
-			self.counter += 1
-			#if self.counter % 100000 == 0:
-				#print "Total len:",  len(self.tableInsertCache)
-				#for c in self.tableInsertCache:
-					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
-			
-			if numElem > self.cachingThreshold:
-				self.flushCache(collectionName)
-		else:
-			self.execute(queryString)
+					fieldDict[newV] = (document[part][v], None)
+		self.insert(collectionName, fieldDict)
 
 	def flushCache(self, collectionName=None):
 		if collectionName:
@@ -1225,19 +1225,19 @@ class OracleBackend(Backend):
 				return s
 				
 			tableName = common.DB_FLOW_AGGR_PREFIX + str(s)
-			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket ASC LIMIT 1" % (tableName, startTime, endTime)
+			queryString = "SELECT * FROM (SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket ASC) where ROWNUM <= 1" % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			minBucket = None
 			if len(tmp) > 0:
-				minBucket = tmp[0]["bucket"]
+				minBucket = tmp[0][0]
 
-			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket DESC LIMIT 1" % (tableName, startTime, endTime)
+			queryString = "SELECT * FROM (SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket DESC) WHERE ROWNUM <= 1" % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			maxBucket = None
 			if len(tmp) > 0:
-				maxBucket = tmp[0]["bucket"]
+				maxBucket = tmp[0][0]
 			
 			if not minBucket or not maxBucket:
 				return s
@@ -1263,7 +1263,7 @@ class OracleBackend(Backend):
 		else:
 			raise Exception("Unknown index specified")
 
-		(results, total) =  self.sql_query(tableName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, [ "_id"])
+		(results, total) =  self.sql_query(tableName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, [ "id"])
 		return (results, total)
 
 	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, aggregate = None):
@@ -1387,7 +1387,7 @@ class OracleBackend(Backend):
 				queryString += "DESC "
 
 		if limit:
-			queryString += "LIMIT %d" % (limit)
+			queryString = "SELECT * from (" + queryString + ") WHERE ROWNUM <=" + str(limit)
 
 		print "Oracle: Running Query ..."
 		self.execute(queryString)
@@ -1396,20 +1396,15 @@ class OracleBackend(Backend):
 		result = []
 		total = dict()
 
-		# TODO: Performance. Mysql returns Decimals instead of standard ints when aggregating
-		#       While this is not a problem in itself, ujson cannot encode this
-		#       and the result cannot be transmitted to the browser. We therefore do conversions
-		#       to int, which hurts performance. We should either do
-		#       1.) use MySQLDb.converters.conversions and change the mapping dict
-		#       2.) fix ujson
-		# 	Instead we convert it while encoding ...
-
+		columns = [i[0].lower() for i in self.cursor.description]
 		for row in queryResult:
 			resultDoc = dict()
 			isTotal = False
-			for field in row:
-				if field == "_id":
-					if row[field] == 0:
+			idx = 0
+			for field in columns:
+				fieldValue = row[idx]
+				if field == "id":
+					if fieldValue == 0:
 						isTotal = True
 					fieldParts = []
 				else: 
@@ -1420,7 +1415,7 @@ class OracleBackend(Backend):
 					if len(fieldParts) == 2:
 						if not fieldParts[0] in resultDoc:
 							resultDoc[fieldParts[0]] = dict()
-						resultDoc[fieldParts[0]][fieldParts[1]] = int(row[field])
+						resultDoc[fieldParts[0]][fieldParts[1]] = int(fieldValue)
 					elif len(fieldParts) == 3:
 						# TODO: not implemented ... 
 						pass
@@ -1428,9 +1423,10 @@ class OracleBackend(Backend):
 						raise Exception("Internal Programming Error!")
 				else:
 					if field == "_id":
-						resultDoc["id"] = int(row[field])
+						resultDoc["id"] = int(fieldValue)
 					else: 
-						resultDoc[field] = int(row[field])
+						resultDoc[field] = int(fieldValue)
+				idx += 1
 			if isTotal:
 				total = resultDoc
 			else:

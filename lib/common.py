@@ -67,16 +67,16 @@ MYSQL_TYPE_MAPPER = {
 }
 
 ORACLE_TYPE_MAPPER = {
-	"srcIP"         : "NUMBER(10) UNSIGNED",
-	"dstIP"         : "NUMBER(10) UNSIGNED",
-	"srcPort"       : "NUMBER(5) UNSIGNED",
-	"dstPort"       : "NUMBER(5) UNSIGNED",
-	"proto"         : "NUMBER(3) UNSIGNED",
-	"flows"         : "NUMBER(20) UNSIGNED",
-	"bytes"         : "NUMBER(20) UNSIGNED",
-	"pkts"          : "NUMBER(20) UNSIGNED",
-	"firstSwitched" : "NUMBER(10) UNSIGNED",
-	"lastSwitched"  : "NUMBER(10) UNSIGNED"
+	"srcIP"         : "NUMBER(10)",
+	"dstIP"         : "NUMBER(10)",
+	"srcPort"       : "NUMBER(5)",
+	"dstPort"       : "NUMBER(5)",
+	"proto"         : "NUMBER(3)",
+	"flows"         : "NUMBER(20)",
+	"bytes"         : "NUMBER(20)",
+	"pkts"          : "NUMBER(20)",
+	"firstSwitched" : "NUMBER(10)",
+	"lastSwitched"  : "NUMBER(10)"
 }
 
 def getProto(obj):
