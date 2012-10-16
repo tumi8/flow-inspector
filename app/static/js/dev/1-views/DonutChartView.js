@@ -1,22 +1,25 @@
 var DonutChartView = Backbone.View.extend({
 	className: "donut-chart",
 	events: {},
-	initialize: function() {
+	initialize: function(options) {
 		if(!this.model) {
 			this.model = new DonutChartModel();
 		}
     	
-		this.model.bind("change:value", this.render, this);
+		this.model.bind("change:value", this.changeValue, this);
 		this.model.bind("change:index", this.changeIndex, this);
+		this.model.bind("change:interval", this.changeInterval, this);
+		this.model.bind("change:bucket_size", this.changeBucketSize, this);
     	
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
-		this.index = new IndexQuery(null, { index: this.model.get("index") });
+		this.index = options.index;
 		this.index.bind("reset", this.render, this);
 
 		// fetch at the end because a cached request calls render immediately!
-		this.showLimit = 30;
-		this.index.fetch({data: {"limit": this.showLimit + 1, "sort": this.model.get("value") + " desc"}});
+		if (this.model.get("fetchOnInit")) {
+			this.fetchData();
+		}
 	},
 	render: function() {
 		var container = $(this.el).empty();
@@ -38,7 +41,20 @@ var DonutChartView = Backbone.View.extend({
 		
 		// data is already sorted
 		var data = this.index.models;
-    	
+
+    		// A SVG element.
+		var svg = d3.select(container.get(0))
+			.append("svg:svg")
+				.attr("width", w)
+				.attr("height", h);
+    		
+		// no data there yet, show loader
+		if(data.length === 0) {
+			container.append(this.loaderTemplate());
+			return;
+		}
+
+	
 		if(data.length > this.showLimit) {
 			var others = data[this.showLimit].clone();
 			others.id = -1;
@@ -52,18 +68,6 @@ var DonutChartView = Backbone.View.extend({
 			others.attributes[num_val] = 2 * this.index.totalCounter[num_val] - topNodeValues;
 			var data = data.slice(0, this.showLimit);
 			data[this.showLimit] = others;
-		}
-
-		// A SVG element.
-		var svg = d3.select(container.get(0))
-			.append("svg:svg")
-				.attr("width", w)
-				.attr("height", h);
-    		
-		// no data there yet, show loader
-		if(data.length === 0) {
-			container.append(this.loaderTemplate());
-			return;
 		}
 
 		var group = svg.selectAll("g.arc")
@@ -121,8 +125,39 @@ var DonutChartView = Backbone.View.extend({
 		return this;
 	},
 	changeIndex: function(model, value) {
-		alert("requesting in changeIndex");
 		this.index.index = value;
-		this.index.fetch({data: {"limit": this.showLimit + 1, "sort": this.model.get("value") + " desc"}});
+		this.fetchData();
+	},
+	changeValue: function(model, value) {
+		this.fetchData();
+	},
+	changeInterval: function(mode, value) {
+		this.fetchData();
+	},
+	fetchData: function(model, value) {
+		this.index.models = [];
+		this.render();
+
+		var limit       = this.model.get("limit");
+		var sortField   = this.model.get("value");
+		var interval    = this.model.get("interval");
+		var bucket_size = this.model.get("bucket_size");
+		var data = {
+			"limit": limit + 1,
+			"sort": sortField + " desc"
+		};
+
+		if (interval.length > 0) {
+			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
+			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
+		}
+		if (bucket_size) {
+			data["bucket_size"] = bucket_size;
+		}
+
+		this.index.fetch({data: data});
+	},
+	changeBucketSize: function() {
+		this.fetchData();
 	}
 });

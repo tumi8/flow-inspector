@@ -1,5 +1,0 @@
-#!/bin/bash
-
-#mongoexport -d pcap -c all_flows --csv -f "firstSwitched,lastSwitched,srcIP,srcPort,dstIP,dstPort,proto,pkts,bytes,avgThroughput,maxDiff,avgDiff,medianDiff"
-mongoexport -d pcap -c all_flows --csv -f "firstSwitched,lastSwitched,srcIP,srcPort,dstIP,dstPort,proto,pkts,bytes,avgThroughput,maxDiff,avgDiff,medianDiff,synSeen,synAckSeen,synFromServer"
-

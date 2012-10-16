@@ -6,6 +6,7 @@ var BucketChartView = Backbone.View.extend({
 			this.model = new BucketChartModel();
 		}
 	    	this.model.bind("change:value", this.changeValue, this);
+		this.model.bind("change:interval", this.changeInterval, this);
     		
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
@@ -16,7 +17,7 @@ var BucketChartView = Backbone.View.extend({
 		this.flows = new Flows();
 		this.flows.bind("reset", this.render, this);
 		// fetch at the end because a cached request calls render immediately!
-		this.flows.fetch({ data: { "resolution": 1000}});
+		this.fetchFlows();
 	},
 	render: function() {
 		var container = $(this.el).empty(),
@@ -332,4 +333,19 @@ var BucketChartView = Backbone.View.extend({
 		
 		return axis;
 	},
+	changeInterval: function() {
+		$(this.loaderTemplate()).show();
+		this.fetchFlows();
+	},
+	fetchFlows: function() {
+		var interval = this.model.get("interval");
+		var data = {
+			"resolution": 1000
+		}
+		if (interval.length > 0) {
+			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
+			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
+		}
+		this.flows.fetch({ data: data});
+	}
 });

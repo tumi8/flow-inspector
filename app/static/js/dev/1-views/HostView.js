@@ -1,26 +1,28 @@
-var OverviewView = Backbone.View.extend({
-	className: "overview",
+var HostView = Backbone.View.extend({
+	className: "host-chart",
 	events: {},
-	initialize: function() {
-		if(!this.model) {
-			this.model = new OverviewModel();
+	initialize: function(options) {
+		if(!this.model ) {
+			this.model = new HostViewModel();
 		}
     	
-		this.model.bind("change:value", this.render, this);
+		this.model.bind("change:value", this.changeValue, this);
+		this.model.bind("change:interval", this.changeInterval, this);
+		this.model.bind("change:bucket_size", this.changeBucketSize, this);
+
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
 		// chart formatting
 		this.m = [10, 20, 30, 70];
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
     	
-		this.index = new IndexQuery(null, { index: this.model.get("index") });
+		this.index = options.index;// new IndexQuery(null, { index: this.model.get("index") });
 		this.index.bind("reset", this.render, this);
+
 		// fetch at the end because a cached request calls render immediately!
-
-		this.showLimit = 15 
-
-
-		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
+		if (this.model.get("fetchOnInit")) {
+			this.fetchData();
+		}
 	},
 	render: function() {
 		var
@@ -39,11 +41,6 @@ var OverviewView = Backbone.View.extend({
 			container.append(this.loaderTemplate());
 			return this;
 		}
-		// sort data
-		data.sort(function(a,b) {
-			return b.get(num_val, 0) - a.get(num_val, 0);
-		});
-
 
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")
@@ -61,19 +58,20 @@ var OverviewView = Backbone.View.extend({
 
 
 		// add text to bars
-		this.labelGroup.selectAll("text")
+		this.labelGroup.selectAll()
 			.data(data)
 			.enter()
 				.append("text")
+					.attr("class", "host-overview-y-axis-text")
 					.attr("x", 0)
 					.attr("y", function(d, idx) { return y(idx) + 10; })
 					.attr("text-anchor", "left")
   					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
 					.text(function(d) { return FlowInspector.ipToStr(d.id); });
 
+		var textGroup = this.labelGroup.selectAll('.host-overview-y-axis-text');
+		var offset = textGroup.node().getComputedTextLength() + 15;
 
-		var offset = d3.select('text').node().getComputedTextLength() + 15;
-		//var offset = 15;
 		var x = d3.scale.linear().range([0, w - offset]);
 		x.domain([0, max_value]);
 
@@ -116,8 +114,16 @@ var OverviewView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "tcp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.tcpColor);
+				.attr("fill", FlowInspector.tcpColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "TCP: " + f(d);
+						});
 
+		$(".tcp", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
 
 		// udp bar, starts after the tcp bar
 		bar_enter.append("rect")
@@ -126,7 +132,15 @@ var OverviewView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "udp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.udpColor);
+				.attr("fill", FlowInspector.udpColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "UDP: " + f(d);
+						});
+		$(".udp", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
 
 		// icmp bar, starts after the udp bar
 		bar_enter.append("rect")
@@ -135,7 +149,16 @@ var OverviewView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "icmp", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.icmpColor);
+				.attr("fill", FlowInspector.icmpColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "ICMP: " + f(d);
+						});
+		$(".icmp", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
+
 
 		// others bar, starts after the imcp bar
 		bar_enter.append("rect")
@@ -144,7 +167,16 @@ var OverviewView = Backbone.View.extend({
 				.attr("y", function(d, idx) { return y(idx); })
 				.attr("width", function(d) { return getProtoSpecificX(d, "other", num_val); })
 				.attr("height", barWidth)
-				.attr("fill", FlowInspector.otherColor);
+				.attr("fill", FlowInspector.otherColor)
+				.attr("title", function(d) { 
+							var f = FlowInspector.getTitleFormat(num_val);
+							return "Other: " + f(d);
+						});
+		$(".other", this.el).twipsy({
+			offset: 3,
+			placement: "above"
+		});
+
 
 		bar_enter.append("line")
 			.attr("x1", function(d) { return x(d.get(num_val)) + offset; })
@@ -225,7 +257,36 @@ var OverviewView = Backbone.View.extend({
 		}
 
 		this.index.index = value;
-		this.index.fetch({data: {"limit": this.showLimit, "sort": this.model.get("value") + " desc"}});
+		this.fetchData();
 		return this;
+	},
+	fetchData: function() {
+		this.index.models = [];
+		this.render();
+
+		var limit = this.model.get("limit");
+		var interval = this.model.get("interval");
+		var bucket_size = this.model.get("bucket_size");
+		var data = {
+			"limit": limit, 
+			"sort": this.model.get("value") + " desc"
+		}
+		if (interval.length > 0) {
+			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
+			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
+		}
+		if (bucket_size) {
+			data["bucket_size"] = bucket_size;
+		}
+		this.index.fetch({data: data});
+	},
+	changeInterval: function() {
+		this.fetchData();
+	},
+	changeValue: function() {
+		this.fetchData();
+	},
+	changeBucketSize: function() {
+		this.fetchData();
 	}
 });

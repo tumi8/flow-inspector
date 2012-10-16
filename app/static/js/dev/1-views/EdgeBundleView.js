@@ -1,42 +1,42 @@
 var EdgeBundleView = Backbone.View.extend({
-    events: {},
-    initialize: function(options) {
-    	if(!this.model) {
-    		this.model = new EdgeBundleModel();
-    	}
-    	this.model.bind("change:tension", this.tensionChanged, this);
-    	this.model.bind("change:groupBytes", this.groupBytesChanged, this);
-    	this.model.bind("change:nodeLimit", this.nodeLimitChanged, this);
-    	
-    	this.nodes = options.nodes;
-    	this.flows = options.flows;
-    	this.timeline = options.timeline;
-    	this.nodes.bind("reset", this.updateNodes, this);
-    	this.flows.bind("reset", this.updateFlows, this);
-    	
-    	this.data_nodes = null;
-    	this.data_links = [];
-    },
-    render: function() {
-    	var container = $(this.el).empty();
-    	
-    	if(!this.data_nodes) {
-    		return;
-    	}
-    	
-    	var that = this;
-    	var r = container.width() > container.height() ? container.height() / 2 : container.width() / 2,
-    		r0 = r - 90;
-    	var bundle = d3.layout.bundle();
-    	var cluster = d3.layout.cluster()
-		    .size([360, r0-10]);
+	events: {},
+	initialize: function(options) {
+		if(!this.model) {
+			this.model = new EdgeBundleModel();
+		}
+		this.model.bind("change:tension", this.tensionChanged, this);
+		this.model.bind("change:groupBytes", this.groupBytesChanged, this);
+		this.model.bind("change:nodeLimit", this.nodeLimitChanged, this);
+		
+		this.nodes = options.nodes;
+		this.flows = options.flows;
+		this.timeline = options.timeline;
+		this.nodes.bind("reset", this.updateNodes, this);
+		this.flows.bind("reset", this.updateFlows, this);
+		
+		this.data_nodes = null;
+		this.data_links = [];
+	},
+	render: function() {
+		var container = $(this.el).empty();
+		
+		if(!this.data_nodes) {
+			return;
+		}
+		
+		var that = this;
+		var r = container.width() > container.height() ? container.height() / 2 : container.width() / 2,
+			r0 = r - 90;
+		var bundle = d3.layout.bundle();
+		var cluster = d3.layout.cluster()
+			.size([360, r0-10]);
     		
-    	this.svg = d3.select(container.get(0))
-    	.append("svg")
-			.attr("width", 2*r)
-			.attr("height", 2*r)
-		.append("svg:g")
-			.attr("transform", "translate(" + r + "," + r + ")");	
+		this.svg = d3.select(container.get(0))
+			.append("svg")
+				.attr("width", 2*r)
+				.attr("height", 2*r)
+			.append("svg:g")
+				.attr("transform", "translate(" + r + "," + r + ")");	
 			
 		// Defs
 		var svg_defs = this.svg.append("defs");
@@ -60,31 +60,30 @@ var EdgeBundleView = Backbone.View.extend({
 				return "above";
 			})
 			.on("mouseover", function(d) {
-    			d3.select(this).selectAll("text")
-    				.style("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).darker(); });
-    			d3.select(this).selectAll(".arc")
-    				.attr("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).brighter(3); })
-    				.style("opacity", 1);
+	    			d3.select(this).selectAll("text")
+    					.style("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).darker(); });
+    				d3.select(this).selectAll(".arc")
+    					.attr("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).brighter(3); })
+   	 				.style("opacity", 1);
     				
-                var direction = that.model.get("hoverDirection");
-    			svg_links.style("display", function(d2) {
-                    if((direction === "both" && d2.link.target !== d && d2.link.source !== d) ||
-                        (direction === "outgoing" && d2.link.source !== d) ||
-                        (direction === "incoming" && d2.link.target !== d)) {
-                        
-    				    return "none";
-    				}
-    				return null;
-    			});
-    		})
-    		.on("mouseout", function(d) {
-    			d3.select(this).selectAll("text")
-    				.style("fill", null);
-    			d3.select(this).selectAll(".arc")
-    				.attr("fill", function(d) { return arc_color(d.pkts / arc_max_value); })
-    				.style("opacity", function(d) { return arc_opacity(d.pkts); });
-    			svg_links.style("display", null);
-    		});
+   				var direction = that.model.get("hoverDirection");
+				svg_links.style("display", function(d2) {
+					if((direction === "both" && d2.link.target !== d && d2.link.source !== d) ||
+					(direction === "outgoing" && d2.link.source !== d) ||
+					(direction === "incoming" && d2.link.target !== d)) {
+						return "none";
+					}
+					return null;
+				});
+    		}	)
+ 		.on("mouseout", function(d) {
+			d3.select(this).selectAll("text")
+				.style("fill", null);
+			d3.select(this).selectAll(".arc")
+				.attr("fill", function(d) { return arc_color(d.pkts / arc_max_value); })
+				.style("opacity", function(d) { return arc_opacity(d.pkts); });
+			svg_links.style("display", null);
+		});
 			
 		var arc_color = d3.interpolateRgb("#0064cd", "#c43c35");
 		var arc_max_value = d3.max(nodes, function(d) { return d.pkts; });
@@ -206,45 +205,45 @@ var EdgeBundleView = Backbone.View.extend({
 		});
 			
 		return this;
-    },
-    updateNodes: function() {
-    	if(this.nodes.length <= 0) {
-    		return;
-    	}
+	},
+	updateNodes: function() {
+		if(this.nodes.length <= 0) {
+			return;
+		}
     	
-    	var that = this;
-    	var group_bytes = this.model.get("groupBytes");
-    	var node_limit = this.model.get("nodeLimit");
-    	this.node_map = {};
-    	this.data_nodes = { name: "root", parent: null };
-    	// create special "other" node
-    	var other_nodes = { 
-    		name: "others",
-    		parent: this.data_nodes, 
-    		bytes: 0, 
-    		flows: 0, 
-    		pkts: 0, 
-    		nodes: 0 };
+		var that = this;
+		var group_bytes = this.model.get("groupBytes");
+		var node_limit = this.model.get("nodeLimit");
+		this.node_map = {};
+		this.data_nodes = { name: "root", parent: null };
+		// create special "other" node
+		var other_nodes = { 
+			name: "others",
+			parent: this.data_nodes, 
+			bytes: 0, 
+			flows: 0, 
+			pkts: 0, 
+			nodes: 0 };
     	
-    	var nodes = [];
-    	this.nodes.each(function(node) {
-    		nodes.push(node);
-    	});
+		var nodes = [];
+		this.nodes.each(function(node) {
+			nodes.push(node);
+		});
     	
-    	if(node_limit) {
-    		// sort nodes by number of flows descending if there is a node limit
-    		nodes.sort(function(a,b) {
-    			return b.get("flows") - a.get("flows");
-    		});
-    	}
+		if(node_limit) {
+			// sort nodes by number of flows descending if there is a node limit
+			nodes.sort(function(a,b) {
+				return b.get("flows") - a.get("flows");
+			});
+		}
     	
-    	// insert nodes into tree (generates the tree on the fly)
-    	function insert_node(node) {
+		// insert nodes into tree (generates the tree on the fly)
+		function insert_node(node) {
 			var pos = that.data_nodes;
 			for(var i = 3; i >= group_bytes; i--) {
 				var id = node.id >>> (i*8),
 					name = FlowInspector.ipToStr(id << (i*8));
-					
+				
 				if(i > 0) {
 					name += "/" + (32-i*8);
 				}
@@ -255,23 +254,23 @@ var EdgeBundleView = Backbone.View.extend({
 				
 				var child = null;
 				for(var j = 0; j < pos.children.length; j++) {
-				    if(pos.children[j].name === name) {
-				    	child = pos.children[j];
-				    	break;
-				    }
+					if(pos.children[j].name === name) {
+						child = pos.children[j];
+						break;
+					}
 				}
 				
 				if(!child) {
-				    child = { 
-				    	name: name, 
-				    	parent: pos, 
-				    	flows: 0, 
-				    	bytes: 0,
-				    	pkts: 0};
-				    if(i === 0) {
-				    	child["model"] = node;
-				    }
-				    pos.children.push(child);
+					child = { 
+						name: name, 
+						parent: pos, 
+						flows: 0, 
+						bytes: 0,
+						pkts: 0};
+					if(i === 0) {
+						child["model"] = node;
+					}
+					pos.children.push(child);
 				}
 				
 				// sum up values
@@ -302,45 +301,44 @@ var EdgeBundleView = Backbone.View.extend({
 		if(node_limit) {
 			this.data_nodes.children.push(other_nodes);
 		}
-    },
-    updateFlows: function() {
-    	if(!this.data_nodes) {
-    		this.updateNodes();
-    	}
+	},
+	updateFlows: function() {
+		if(!this.data_nodes) {
+			this.updateNodes();
+		}
     	
-    	var that = this;
-    	this.data_links = [];
-    	
-    	var min_bucket = d3.min(this.flows.models, function(d) { return d.get("bucket"); });
-    	var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
-
-			this.flows.each(function(m) {
-				var source = that.node_map[m.get("srcIP")];
-				var target = that.node_map[m.get("dstIP")];
-				var t = 1.0;
-				if(min_bucket < max_bucket) {
-					t = (m.get("bucket").getTime() - min_bucket.getTime()) / (max_bucket.getTime() - min_bucket.getTime());
-				}
-				
-				// filter flows with target = source
-				if(target !== source) {
-					that.data_links.push({
-						source: source,
-						target: target,
-						model: m,
-						t: t
-					});
-				}
-			});
+		var that = this;
+		this.data_links = [];
 		
-			this.render();
-    },
-    tensionChanged: function(model, tension) {
-    	if(!this.svg) {
-    		return;
-    	}
-    	
-    	var line = d3.svg.line.radial()
+		var min_bucket = d3.min(this.flows.models, function(d) { return d.get("bucket"); });
+		var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
+		
+		this.flows.each(function(m) {
+			var source = that.node_map[m.get("srcIP")];
+			var target = that.node_map[m.get("dstIP")];
+			var t = 1.0;
+			if(min_bucket < max_bucket) {
+				t = (m.get("bucket").getTime() - min_bucket.getTime()) / (max_bucket.getTime() - min_bucket.getTime());
+			}
+				
+			// filter flows with target = source
+			if(target !== source) {
+				that.data_links.push({
+					source: source,
+					target: target,
+					model: m,
+					t: t
+				});
+			}
+		});
+		this.render();
+	},
+	tensionChanged: function(model, tension) {
+		if(!this.svg) {
+			return;
+		}
+
+    		var line = d3.svg.line.radial()
 			.interpolate("bundle")
 			.tension(tension)
 			.radius(function(d) { return d.y; })
@@ -348,13 +346,13 @@ var EdgeBundleView = Backbone.View.extend({
 			
 		this.svg.selectAll("path.link")
 			.attr("d", function(d) { return line(d.bundle); });
-    },
-    groupBytesChanged: function(model, value) {
-    	this.updateNodes();
-    	this.updateFlows();
-    },
-    nodeLimitChanged: function(model, value) {
-    	this.updateNodes();
-    	this.updateFlows();
-    }
+	},
+	groupBytesChanged: function(model, value) {
+		this.updateNodes();
+		this.updateFlows();
+	},
+	nodeLimitChanged: function(model, value) {
+    		this.updateNodes();
+		this.updateFlows();
+	}
 });

@@ -49,7 +49,14 @@
 	    	<h5>Filters</h5>
 	    	<form class="form-stacked">
 	    		<fieldset>
-				<label class="checkbox"><input type="checkbox" id="showOthers">Show Others</label>
+				
+				<div class="help"
+					title="Show Others"
+					data-content="nodes beyond the filter limit are summarized into a super node called 'others'. This checkbox defines whether others is shown or omitted.">
+						<input type="checkbox" id="showOthers">
+						<label for="showOthers">Show Others</label>
+						</input>
+				</div>
 	    			<div class="clearfix help"
 	    				title="Node limit"
 	    				data-content="Limit the number of nodes. Nodes are sorted by the number of flows that belong to them. Then only the first n nodes will be shown individually. The others will be grouped together.">
@@ -87,6 +94,19 @@
 		    				</select>
 		    			</div>
 	    			</div>
+				<div class="help"
+					title="IP address filter"
+					data-content="Filter flows and node lists by IP addresses. Enter one IP address per line (no subnets are allowed at the moment). Addresses can be included in the visualization which means only the listed addresses will be shown. Or they can e excluded which means only flows that don't contain that address are shown.">
+					<div class="clearfix">
+						<label for="filterIPs">IP Addresses</label>
+						<textarea id="filterIPs" rows="10"></textarea>
+					</div>
+					<div class="clearfix">
+						<select id="filterIPsType">
+							<option value="inclusive">include only listed IPs</option>
+							<option value="exclusive">exclude listed IPs</option>
+						</select>
+					</div>
 	    		</fieldset>
 	    	</form>
 	    </aside>
