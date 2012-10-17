@@ -197,6 +197,8 @@ def extract_mongo_query_params():
 @get("/hierarchical-edge-bundle/:##")
 @get("/hive-plot")
 @get("/hive-plot/:##")
+@get("/ip-documentation")
+@get("/ip-documentation/:##")
 @view("index")
 def index():
     # find js files

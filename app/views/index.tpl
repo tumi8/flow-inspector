@@ -24,6 +24,7 @@
 					<li class="graph"><a href="/graph">Graph</a></li>
 					<li class="edge-bundle"><a href="/hierarchical-edge-bundle">Hierarchical Edge Bundle</a></li>
 					<li class="hive-plot"><a href="/hive-plot">Hive Plot</a></li>
+					<li class="ip-documentation"><a href="/ip-documentation">IPDB</a></li>
 				</ul>
 				
 				<ul class="nav secondary-nav">
