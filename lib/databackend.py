@@ -143,7 +143,6 @@ class OracleBackend(Backend):
 			if params == None:
 				self.cursor.execute(string)
 			else:
-				print string, params
 				self.cursor.execute(string, params)
 			self.conn.commit()
 		except (AttributeError, cx_Oracle.OperationalError) as e:

@@ -971,7 +971,6 @@ class OracleBackend(Backend):
 		print "Oracle: Attempting new connect:" 
 		try:
 			connection_string = self.user + "/" + self.password + "@" + self.host + ":" + str(self.port) + "/" + self.databaseName
-			print connection_string
 			self.conn = cx_Oracle.Connection(connection_string)
 
 			self.cursor = cx_Oracle.Cursor(self.conn)
@@ -982,7 +981,6 @@ class OracleBackend(Backend):
 
 	def execute(self, string, params = None):
 		import cx_Oracle
-		print string
 		try: 
 			if params == None:
 				self.cursor.execute(string)

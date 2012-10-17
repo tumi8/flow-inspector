@@ -61,7 +61,6 @@ class HostInformationChecker(AnalysisBase):
 					"LASTSEEN": (ip[1], "UPDATE"),
 					"LASTINFOCHECK" : (currentTime, "UPDATE")
 				}
-				print "inserting...", ipdict
 				self.dataBackend.insert(self.hiCollectionName, ipdict)
 			else:
 				# got more than one entry for this ip. This should not happen and should be 
