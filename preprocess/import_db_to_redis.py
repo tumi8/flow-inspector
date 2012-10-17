@@ -217,7 +217,7 @@ if TYPE == "mongodb":
 while True:
 	# get all flow tables
 	if TYPE == "oracle":
-		c.execute("""SELECT * FROM user_objects WHERE object_type = 'TABLE' AND object_name LIKE 'H_%'""")
+		c.execute("""SELECT * FROM user_objects WHERE object_type = 'TABLE' AND object_name LIKE 'H!_%' ESCAPE '!'""")
 	else:
 		c.execute("""SELECT table_name from information_schema.tables 
 			WHERE table_schema=%s AND table_type='BASE TABLE' AND table_name LIKE 'h\\_%%' ORDER BY table_name ASC""", (args.src_database))
