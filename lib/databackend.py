@@ -123,37 +123,45 @@ class MySQLBackend(Backend):
 class OracleBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName):
 		Backend.__init__(self, host, port, user, password, databaseName)
+		self.doCache = False
+		self.connect()
 
 	def connect(self):
 		import cx_Oracle
 		try:
 			connection_string = self.user + "/" + self.password + "@" + self.host + ":" + str(self.port) + "/" + self.databaseName
 			self.conn = cx_Oracle.Connection(connection_string)
-			self.cursor = cx_Oracle.Cursor(conn)
+			self.cursor = cx_Oracle.Cursor(self.conn)
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to Oracle database: ", inst 
 			#sys.exit(1)
 
 
-	def execute(self, string):
+	def execute(self, string, params = None):
 		import cx_Oracle
 		try: 
-			self.cursor.execute(string)
-		except (AttributeError, cx_Oracle.OperationalError):
+			if params == None:
+				self.cursor.execute(string)
+			else:
+				print string, params
+				self.cursor.execute(string, params)
+			self.conn.commit()
+		except (AttributeError, cx_Oracle.OperationalError) as e:
+			print e
 			self.connect()
 			self.execute(string)
-
-#	def executemany(self, string, objects):
-#		import cx_Oracle
-#		try:
-#			self.cursor.executemany(string, objects)
-#		except (AttributeError, cx_Oracle.OperationalError):
-#			self.connect()
-#			self.executemany(strin, objects)
-
+		except cx_Oracle.DatabaseError as e:
+			print e
+			error, = e.args
+			if error.code == 955:
+				print "Table already exists!"
+			else:
+				print e
+				print "DataBackend: Have seen unknown error. Terminating!"
+				sys.exit(-1)
 
 	def prepareCollection(self, name, fieldDict):
-		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
+		createString = "CREATE TABLE  " + name + " ("
 		first = True
 		primary = ""
 		for field in fieldDict:
@@ -181,29 +189,62 @@ class OracleBackend(Backend):
 		notMatchedInsert = ""
 		notMatchedValues = ""
 		primary = ""
+		params = {}
 		for field in fieldDict:
 			if selectString != "":
 				selectString += ","
-			if matchedString != "":
-				matchedString += ","
 			if notMatchedInsert != "":
 				notMatchedInsert += ","
 			if notMatchedValues != "":
 				notMatchedValues += ","
-			selectString += str(fieldDict[field])  + " as " + field
-			matchedString += field + "=" + str(fieldDict[field][0])
+			selectString += ":"+field  + " as " + field
+			params[field] = str(fieldDict[field][0])
+			if fieldDict[field][1] != "PRIMARY":
+				if matchedString != "":
+					matchedString += ","
+				if fieldDict[field][1] == None or fieldDict[field][1] == "ADD":
+						matchedString += field + "=" + "SOURCE." + field + "+" + "target." + field
+				elif fieldDict[field][1] == "UPDATE":
+						matchedString += field + "=" + "target." + field
+				elif fieldDict[field][1] == "KEEP":
+						matchedString += field + "=" + "SOURCE." + field
+
 			notMatchedInsert += "target." + field
 			notMatchedValues += "SOURCE." + field
-			if fieldDict[field][1] != None:
-				primary = field
+			if fieldDict[field][1] == "PRIMARY":
+				if primary != "":
+					primary += " AND "
+				primary += "target." + field + "=SOURCE." + field
 		
-		queryString += selectString + " FROM dual) SOURCE ON (target." + primary + " = SOURCE." + primary + ")"
+		queryString += selectString + " FROM dual) SOURCE ON (" + primary + ")"
 		queryString += "WHEN MATCHED THEN UPDATE SET " + matchedString
 		queryString += " WHEN NOT MATCHED THEN INSERT (" + notMatchedInsert + ") VALUES (" + notMatchedValues + ")" 
+		if self.doCache:
+			numElem = 1
+			if collectionName in self.tableInsertCache:
+				cache = self.tableInsertCache[collectionName][0]
+				numElem = self.tableInsertCache[collectionName][1] + 1
+				if queryString in cache:
+					cache[queryString].append(params)
+				else:
+					cache[queryString] = [ params ]
+			else:
+				cache = dict()
+				cache[queryString] = [ params ]
 		
-		print queryString
+			self.tableInsertCache[collectionName] = (cache, numElem)
 
-		self.execute(queryString)
+			self.counter += 1
+			#if self.counter % 100000 == 0:
+				#print "Total len:",  len(self.tableInsertCache)
+				#for c in self.tableInsertCache:
+					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
+			
+			if numElem > self.cachingThreshold:
+				self.flushCache(collectionName)
+		else:
+			self.execute(queryString, params)
+
 
 
 def getBackendObject(backend, host, port, user, password, databaseName):

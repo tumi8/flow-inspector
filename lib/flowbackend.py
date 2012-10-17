@@ -982,6 +982,7 @@ class OracleBackend(Backend):
 
 	def execute(self, string, params = None):
 		import cx_Oracle
+		print string
 		try: 
 			if params == None:
 				self.cursor.execute(string)
@@ -999,7 +1000,7 @@ class OracleBackend(Backend):
 				print "Table already exists!"
 			else:
 				print e
-				print "Have seen unknown error. Terminating!"
+				print "FlowBackend: Have seen unknown error. Terminating!"
 				sys.exit(-1)
 
 
@@ -1034,13 +1035,19 @@ class OracleBackend(Backend):
 				notMatchedValues += ","
 			selectString += ":"+field  + " as " + field
 			params[field] = str(fieldDict[field][0])
-			if fieldDict[field][1] == None:
+			if fieldDict[field][1] != "PRIMARY":
 				if matchedString != "":
 					matchedString += ","
-				matchedString += field + "=" + "SOURCE." + field + "+" + "target." + field
+				if fieldDict[field][1] == None or fieldDict[field][1] == "ADD":
+						matchedString += field + "=" + "SOURCE." + field + "+" + "target." + field
+				elif fieldDict[field][1] == "UPDATE":
+						matchedString += field + "=" + "target." + field
+				elif fieldDict[field][1] == "KEEP":
+						matchedString += field + "=" + "SOURCE." + field
+
 			notMatchedInsert += "target." + field
 			notMatchedValues += "SOURCE." + field
-			if fieldDict[field][1] != None:
+			if fieldDict[field][1] == "PRIMARY":
 				if primary != "":
 					primary += " AND "
 				primary += "target." + field + "=SOURCE." + field
@@ -1175,9 +1182,9 @@ class OracleBackend(Backend):
 			if collectionName.startswith("index"):
 				# special handling for total field
 				if statement[s] == "total":
-					fieldDict["id"] = (0, "primary")
+					fieldDict["id"] = (0, "PRIMARY")
 				else:
-					fieldDict["id"] = (statement[s], "primary")
+					fieldDict["id"] = (statement[s], "PRIMARY")
 
 		for part in [ "$set", "$inc" ]:
 			if not part in document:
@@ -1185,7 +1192,7 @@ class OracleBackend(Backend):
 			for v in document[part]:
 				newV = v.replace('.', '_')
 				if part == "$set":
-					fieldDict[newV] = (document[part][v], "primary")
+					fieldDict[newV] = (document[part][v], "PRIMARY")
 				else:
 					fieldDict[newV] = (document[part][v], None)
 		self.insert(collectionName, fieldDict)
@@ -1209,7 +1216,7 @@ class OracleBackend(Backend):
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
 		self.execute("SELECT MIN(bucket) as bucket FROM %s" % (tableName))
-		return self.cursor.fetchall()[0]["bucket"]
+		return self.cursor.fetchall()[0][0]
 		
 	def getMaxBucket(self, bucketSize = None):
 		if not bucketSize:
@@ -1217,7 +1224,7 @@ class OracleBackend(Backend):
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
 		self.execute("SELECT MAX(bucket) as bucket FROM %s" % (tableName))
-		return self.cursor.fetchall()[0]["bucket"]
+		return self.cursor.fetchall()[0][0]
 
 	def getBucketSize(self, startTime, endTime, resolution):
 		for i,s in enumerate(config.flow_bucket_sizes):

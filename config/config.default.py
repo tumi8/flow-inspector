@@ -34,6 +34,16 @@ data_backend_user = "username"
 data_backend_password = "password"
 data_backend_name = "flows"
 
+# Destination Data Backend (for miscelanous data)
+#----------------------------------------------------------------
+host_info = "oracle"
+data_backend_host = "127.0.0.1"
+data_backend_port = 3306
+data_backend_user = "username"
+data_backend_password = "password"
+data_backend_name = "hostinfo"
+
+
 # Flow settings
 #----------------------------------------------------------------
 # The different bucket sizes in seconds to aggregate.

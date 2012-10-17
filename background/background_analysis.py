@@ -33,6 +33,7 @@ if __name__ == "__main__":
 	# use smallest bucket size 
 	slidingBucketSize = config.flow_bucket_sizes[0]
 	for bucket in range(startBucket, endBucket, slidingBucketSize):
-		#networkScanDetector.analyze(startBucket, startBucket)
-		#hostInformationChecker.analyze(startBucket, endBucket)
-		simonTest.analyze(bucket, bucket)
+		print "Analyzing data in bucket: ", bucket
+		#networkScanDetector.analyze(startbucket, bucket)
+		hostInformationChecker.analyze(bucket, bucket)
+		#simonTest.analyze(bucket, bucket)
