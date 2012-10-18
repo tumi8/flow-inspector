@@ -66,6 +66,7 @@ ORACLE_LEGACY_COLUMNMAP = {
 
 ORACLE_COLUMNMAP = {
 	COL_ID.upper()             : COL_ID,
+	COL_BUCKET.upper()         : COL_BUCKET,
 	COL_FLOWS.upper()          : COL_FLOWS,
 	COL_SRC_IP.upper()         : COL_SRC_IP,
 	COL_DST_IP.upper()         : COL_DST_IP,
@@ -76,9 +77,14 @@ ORACLE_COLUMNMAP = {
 	COL_PKTS.upper()           : COL_PKTS,
 	COL_FIRST_SWITCHED.upper() : COL_FIRST_SWITCHED,
 	COL_LAST_SWITCHED.upper()  : COL_LAST_SWITCHED,
+	"SRC"                      : "src",
+	"DST"                      : "dst",
+	COL_PROTO_TCP.upper()      : COL_PROTO_TCP,
+	COL_PROTO_UDP.upper()      : COL_PROTO_UDP,
+	COL_PROTO_ICMP.upper()     : COL_PROTO_ICMP,
+	COL_PROTO_OTHER.upper()    : COL_PROTO_OTHER
+	
 }
-
-
 
 MYSQL_TYPE_MAPPER = {
 	COL_SRC_IP         : "INTEGER(10) UNSIGNED",

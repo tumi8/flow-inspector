@@ -1230,14 +1230,14 @@ class OracleBackend(Backend):
 				return s
 				
 			tableName = common.DB_FLOW_AGGR_PREFIX + str(s)
-			queryString = "SELECT * FROM (SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKET + " <= %d ORDER BY "+ common.COL_BUCKET + " ASC) where ROWNUM <= 1" % (tableName, startTime, endTime)
+			queryString = ("SELECT * FROM (SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKET + " <= %d ORDER BY "+ common.COL_BUCKET + " ASC) where ROWNUM <= 1") % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			minBucket = None
 			if len(tmp) > 0:
 				minBucket = tmp[0][0]
 
-			queryString = "SELECT * FROM (SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKET + " <= %d ORDER BY " + common.COL_BUCKET + " DESC) WHERE ROWNUM <= 1" % (tableName, startTime, endTime)
+			queryString = ("SELECT * FROM (SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKET + " <= %d ORDER BY " + common.COL_BUCKET + " DESC) WHERE ROWNUM <= 1") % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			maxBucket = None
@@ -1401,20 +1401,29 @@ class OracleBackend(Backend):
 		result = []
 		total = dict()
 
-		columns = [common.ORACLE_COLUMN_MAP[i[0]] for i in self.cursor.description]
+		columns = [i[0] for i in self.cursor.description]
 
 		for row in queryResult:
 			resultDoc = dict()
 			isTotal = False
 			idx = 0
 			for field in columns:
+				if field in common.ORACLE_COLUMNMAP:
+					field = common.ORACLE_COLUMNMAP
 				fieldValue = row[idx]
-				if field == "id":
+				if field == common.COL_ID:
 					if fieldValue == 0:
 						isTotal = True
 					fieldParts = []
 				else: 
-					fieldParts = field.split('_')
+					tmp = field.split('_')
+					fieldParts = []
+					for f in tmp:
+						if f in common.ORACLE_COLUMNMAP:
+							fieldParts.append(common.ORACLE_COLUMNMAP[f])
+						else:
+							fieldParts.append(f)
+						
 				if len(fieldParts) > 1:
 					# maximum depth is 3 
 					# TODO: hacky ... 
