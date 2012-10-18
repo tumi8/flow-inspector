@@ -16,6 +16,8 @@ var UndocumentedTableView = Backbone.View.extend({
 		this.undocumentedModel.bind("reset", this.render, this);
 
 		this.loaderTemplate = _.template($("#loader-template").html());
+
+		this.undocumentedModel.fetch();
 	},
 	render: function() {
 		var container = $(this.el).empty()
@@ -34,7 +36,7 @@ var UndocumentedTableView = Backbone.View.extend({
 
 		thead.append("tr")
 			.selectAll("th")
-			.data(this.flows.dataTypes)
+			.data(this.undocumentedModel.dataDescription)
 			.enter()
 			.append("th")
 				.text(function(type) { return type; });
@@ -46,15 +48,15 @@ var UndocumentedTableView = Backbone.View.extend({
 		var that = this;
 		var cells = rows.selectAll("td")
 				.data(function(row) {
-					return that.flows.dataTypes.map(function(type) {
+					return that.undocumentedModel.dataTypes.map(function(type) {
 						var v = row.attributes[type];
-						if (type == "firstTs" || type == "lastTs") {
-							 var tmp = new Date(v);
-							 v = tmp.toString('HH:MM');
+						if (type == "IP") {
+							v = FlowInspector.ipToStr(v);
 						}
 						return {type: type, value: v};
 					});
 				})
+
 				.enter()
 				.append("td")
 					.text(function(d) { return d.value; });

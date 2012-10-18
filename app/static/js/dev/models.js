@@ -277,11 +277,13 @@ var UndocumentedIPs = CachedCollection.extend({
 	url: function() {
 		return "/api/hostinfo/";
 	},
+	dataTypes: [ "IP", "LASTSEEN", "LASTINFOCHECK" ],
+	dataDescription: [ "IP Address", "Last Flow Seen", "Last Check in HostInfoDB" ],
 	parse: function(response) {
 		response.results.forEach(function(d) {
 			// convert unix timestamp to JS Date
-			d.lastSeen = new Date(d.lastSeen * 1000);
-			d.lastChecked  = new Date(d.lastChecked  * 1000);
+			d.LASTSEEN = new Date(d.LASTSEEN * 1000);
+			d.LASTINFOCHECK  = new Date(d.LASTINFOCHECK  * 1000);
 		});
 		return response.results;
 	}
