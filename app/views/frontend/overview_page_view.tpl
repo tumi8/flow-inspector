@@ -7,16 +7,16 @@
 			<h2>Host Overview</h2>
 			<ul class="pills hostview-value">
 				<li data-value="flows"><a href="javascript:void(0)">Flows</a></li>
-				<li data-value="pkts"><a href="javascript:void(0)">Packets</a></li>
-				<li data-value="bytes"><a href="javascript:void(0)">Bytes</a></li>
+				<li data-value="packetDeltaCount"><a href="javascript:void(0)">Packets</a></li>
+				<li data-value="octetDeltaCount"><a href="javascript:void(0)">Bytes</a></li>
 			</ul>
 			<div class="viz-hostview"></div>
 
 			<h2>Distribution of nodes and ports</h2>
 			<ul class="pills donut-chart-value">
 				<li data-value="flows"><a href="javascript:void(0)">Flows</a></li>
-				<li data-value="pkts"><a href="javascript:void(0)">Packets</a></li>
-				<li data-value="bytes"><a href="javascript:void(0)">Bytes</a></li>
+				<li data-value="packetDeltaCount"><a href="javascript:void(0)">Packets</a></li>
+				<li data-value="octetDeltaCount"><a href="javascript:void(0)">Bytes</a></li>
 			</ul>
 			<div class="row">
 				<div class="span8">
@@ -29,8 +29,8 @@
 			<h2>Traffic Overview</h2>
 			<ul class="pills bucketview-value">
 				<li data-value="flows"><a href="javascript:void(0)">Flows</a></li>
-				<li data-value="pkts"><a href="javascript:void(0)">Packets</a></li>
-				<li data-value="bytes"><a href="javascript:void(0)">Bytes</a></li>
+				<li data-value="packetDeltaCount"><a href="javascript:void(0)">Packets</a></li>
+				<li data-value="octetDeltaCount"><a href="javascript:void(0)">Bytes</a></li>
 			</ul>
 			<div class="viz-buckets"></div>
 		</div>

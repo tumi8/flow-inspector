@@ -28,8 +28,8 @@
 	    				data-content="A numerical value to map nodes to a position on the axis. You can choose between the total number of flows, number of pakets or traffic in bytes corresponding to a node. Zero lies in the center of the Hive plot and the maximal value lies at the other end.">
 	    				<label for="mapNumericalValue">Numerical value</label>
 	    				<select id="mapNumericalValue">
-	    					<option value="bytes">Bytes</option>
-	    					<option value="pkts">Pakets</option>
+	    					<option value="octetDeltaCount">Bytes</option>
+	    					<option value="packetDeltaCount">Pakets</option>
 	    					<option value="flows">Flows</option>
 	    				</select>
 	    			</div>
