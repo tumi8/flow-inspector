@@ -250,9 +250,9 @@ class MongoBackend(Backend):
 			bucketSize = config.flow_bucket_sizes[0]
 		coll = self.dst_db[common.DB_FLOW_PREFIX + str(bucketSize)]
 		min_bucket = coll.find_one(
-			fields={ "bucket": 1, "_id": 0 }, 
-			sort=[("bucket", pymongo.ASCENDING)])
-		return min_bucket["bucket"]
+			fields={ common.COL_BUCKET: 1, "_id": 0 }, 
+			sort=[(common.COL_BUCKET, pymongo.ASCENDING)])
+		return min_bucket[common.COL_BUCKET]
 
 	def getMaxBucket(self, bucketSize = None):
 		import pymongo
@@ -261,9 +261,9 @@ class MongoBackend(Backend):
 			bucketSize = config.flow_bucket_sizes[0]
 		coll = self.dst_db[common.DB_FLOW_PREFIX + str(bucketSize)]
 		max_bucket = coll.find_one(
-			fields={ "bucket": 1, "_id": 0 }, 
-			sort=[("bucket", pymongo.DESCENDING)])
-		return max_bucket["bucket"]
+			fields={ common.COL_BUCKET: 1, "_id": 0 }, 
+			sort=[(common.COL_BUCKET, pymongo.DESCENDING)])
+		return max_bucket[common.COL_BUCKET]
 
 
 	def getBucketSize(self, start_time, end_time, resolution):
@@ -274,18 +274,18 @@ class MongoBackend(Backend):
 				
 			coll = self.getCollection(common.DB_FLOW_AGGR_PREFIX + str(s))
 			min_bucket = coll.find_one(
-				{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
-				fields={ "bucket": 1, "_id": 0 }, 
-				sort=[("bucket", pymongo.ASCENDING)])
+				{ common.COL_BUCKET: { "$gte": start_time, "$lte": end_time} }, 
+				fields={ common.COL_BUCKET: 1, "_id": 0 }, 
+				sort=[(common.COL_BUCKET, pymongo.ASCENDING)])
 			max_bucket = coll.find_one(
-				{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
-				fields={ "bucket": 1, "_id": 0 }, 
-				sort=[("bucket", pymongo.DESCENDING)])
+				{ common.COL_BUCKET: { "$gte": start_time, "$lte": end_time} }, 
+				fields={ common.COL_BUCKET: 1, "_id": 0 }, 
+				sort=[(common.COL_BUCKET, pymongo.DESCENDING)])
 				
 			if not min_bucket or not max_bucket:
 				return s
 			
-			num_slots = (max_bucket["bucket"]-min_bucket["bucket"]) / s + 1
+			num_slots = (max_bucket[common.COL_BUCKET]-min_bucket[common.COL_BUCKET]) / s + 1
 			if num_slots <= resolution:
 				return s
 
@@ -307,20 +307,20 @@ class MongoBackend(Backend):
 		collection = self.dst_db[collectionName]
 		cursor = collection.find(spec, fields=fields).batch_size(1000)
 		if sort: 
-			cursor.sort("bucket", sort)
+			cursor.sort(common.COL_BUCKET, sort)
 		else:
-			cursor.sort("bucket", pymongo.ASCENDING)
+			cursor.sort(common.COL_BUCKET, pymongo.ASCENDING)
 
 		buckets = []
 		if (fields != None and len(fields) > 0) or len(includePorts) > 0 or len(excludePorts) > 0 or len(includeIps) > 0 or len(excludeIps) > 0:
 			current_bucket = -1
 			aggr_buckets = {}
 			for doc in cursor:
-				if doc["bucket"] > current_bucket:
+				if doc[common.COL_BUCKET] > current_bucket:
 					for key in aggr_buckets:
 						buckets.append(aggr_buckets[key])
 					aggr_buckets = {}
-					current_bucket = doc["bucket"]
+					current_bucket = doc[common.COL_BUCKET]
 					
 				# biflow?
 				if biflow and common.COL_SRC_IP in fields and common.COL_DST_IP in fields:
@@ -336,16 +336,16 @@ class MongoBackend(Backend):
 					key += str(doc.get(a, "x"))
 				
 				if key not in aggr_buckets:
-					bucket = { "bucket": current_bucket }
+					bucket = { common.COL_BUCKET: current_bucket }
 					for a in fields:
 						bucket[a] = doc.get(a, None)
-					for s in ["flows"] + config.flow_aggr_sums:
+					for s in [common.COL_FLOWS] + config.flow_aggr_sums:
 						bucket[s] = 0
 					aggr_buckets[key] = bucket
 				else:
 					bucket = aggr_buckets[key]
 				
-				for s in ["flows"] + config.flow_aggr_sums:
+				for s in [common.COL_FLOWS] + config.flow_aggr_sums:
 					bucket[s] += doc.get(s, 0)
 				
 			for key in aggr_buckets:
@@ -396,19 +396,19 @@ class MongoBackend(Backend):
 	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
 		def createNewIndexEntry(row):
 			# top level
-			r = { "id": row[key[0]], "flows": 0 }
+			r = { "id": row[key[0]], common.COL_FLOWS: 0 }
 			for s in config.flow_aggr_sums:
 				r[s] = row[s]
 	
 			# protocol specific
 			for p in common.AVAILABLE_PROTOS:
-				r[p] = { "flows": 0 }
+				r[p] = { common.COL_FLOWS: 0 }
 				for s in config.flow_aggr_sums:	
 					r[p][s] = 0
 			# src and dst specific		
 			for dest in ["src", "dst"]:
 				r[dest] = {}
-				r[dest]["flows" ] = 0
+				r[dest][common.COL_FLOWS ] = 0
 				for s in config.flow_aggr_sums:
 					r[dest][s] = 0
 			return r
@@ -424,12 +424,12 @@ class MongoBackend(Backend):
 		# this is important because the limit parameter might remove
 		# some information
 		total = {}
-		total["flows"] = 0
+		total[common.COL_FLOWS] = 0
 		for s in config.flow_aggr_sums:
 			total[s] = 0
 		for proto in common.AVAILABLE_PROTOS:
 			total[proto] = {}
-			total[proto]["flows"] = 0
+			total[proto][common.COL_FLOWS] = 0
 			for s in config.flow_aggr_sums:
 				total[proto][s] = 0
 	
@@ -442,9 +442,9 @@ class MongoBackend(Backend):
 				raise HTTPError(output = "Unknown dynamic index")
 	
 			# update total counters
-			total["flows"] += row["flows"]
+			total[common.COL_FLOWS] += row[common.COL_FLOWS]
 			if common.COL_PROTO in row:
-				total[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
+				total[common.getProtoFromValue(row[common.COL_PROTO])][common.COL_FLOWS] += row[common.COL_FLOWS]
 			for s in config.flow_aggr_sums:
 				total[s] += row[s]
 				if common.COL_PROTO in row:
@@ -458,14 +458,14 @@ class MongoBackend(Backend):
 				else:
 					r = createNewIndexEntry(row)
 	
-				r["flows"] += row["flows"]
-				r[key[1]]["flows"] += row["flows"]
+				r[common.COL_FLOWS] += row[common.COL_FLOWS]
+				r[key[1]][common.COL_FLOWS] += row[common.COL_FLOWS]
 				for s in config.flow_aggr_sums:
 					r[s] += row[s]
 					r[key[1]][s] += row[s]
 	
 				if common.COL_PROTO in row:
-					r[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
+					r[common.getProtoFromValue(row[common.COL_PROTO])][common.COL_FLOWS] += row[common.COL_FLOWS]
 					for s in config.flow_aggr_sums:
 						r[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
 	
@@ -556,13 +556,13 @@ class MysqlBackend(Backend):
 		# tables for storing bucketized flow data
 		for s in config.flow_bucket_sizes:
 			createString = "CREATE TABLE IF NOT EXISTS "
-			createString += common.DB_FLOW_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket INTEGER(10) UNSIGNED NOT NULL"
+			createString += common.DB_FLOW_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL," + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
 			for v in config.flow_aggr_values:
 				createString += ", %s %s NOT NULL" % (v, common.MYSQL_TYPE_MAPPER[v])
 			for s in config.flow_aggr_sums + [ "flows" ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
-				for s in config.flow_aggr_sums + [ "flows" ]: 
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 			createString += ", PRIMARY KEY(_id))"
 			self.execute(createString)
@@ -570,11 +570,11 @@ class MysqlBackend(Backend):
 		# tables for storing aggregated timebased data
 		for s in config.flow_bucket_sizes:
 			createString = "CREATE TABLE IF NOT EXISTS "
-			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL, bucket INTEGER(10) UNSIGNED NOT NULL"
-			for s in config.flow_aggr_sums + [ "flows" ]:
+			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL," + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
+			for s in config.flow_aggr_sums + [common.COL_FLOWS]:
 				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
-				for s in config.flow_aggr_sums + [ "flows" ]: 
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 			createString += ", PRIMARY KEY(_id))"
 			self.execute(createString)
@@ -582,16 +582,16 @@ class MysqlBackend(Backend):
 		# create precomputed index that describe the whole data set
 		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 			createString = "CREATE TABLE IF NOT EXISTS %s (_id INTEGER(10) UNSIGNED NOT NULL" % table
-			for s in config.flow_aggr_sums + [ "flows" ]:
+			for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
-				for s in config.flow_aggr_sums + [ "flows" ]: 
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 			for direction in [ "src", "dst" ]:
-				for s in config.flow_aggr_sums + [ "flows" ]:
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 					createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ "flows" ]: 
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 
 			createString += ", PRIMARY KEY(_id))"
@@ -602,16 +602,16 @@ class MysqlBackend(Backend):
 			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 				table = index + "_" + str(bucket_size)
 				createString = "CREATE TABLE IF NOT EXISTS %s (_id INTEGER(10) UNSIGNED NOT NULL, bucket INTEGER(10) UNSIGNED NOT NULL" % table
-				for s in config.flow_aggr_sums + [ "flows" ]:
+				for s in config.flow_aggr_sums + [common.COL_FLOWS]:
 					createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ "flows" ]: 
+					for s in config.flow_aggr_sums + [common.COL_FLOWS ]: 
 						createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 				for direction in [ "src", "dst" ]:
-					for s in config.flow_aggr_sums + [ "flows" ]:
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 					for proto in common.AVAILABLE_PROTOS:
-						for s in config.flow_aggr_sums + [ "flows" ]: 
+						for s in config.flow_aggr_sums + [common.COL_FLOWS ]: 
 							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 	
 				createString += ", PRIMARY KEY(_id, bucket))"
@@ -709,16 +709,16 @@ class MysqlBackend(Backend):
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
-		self.execute("SELECT MIN(bucket) as bucket FROM %s" % (tableName))
-		return self.cursor.fetchall()[0]["bucket"]
+		self.execute("SELECT MIN(" + common.COL_BUCKET +") as " + common.COL_BUCKET + " FROM %s" % (tableName))
+		return self.cursor.fetchall()[0][common.COL_BUCKET]
 		
 	def getMaxBucket(self, bucketSize = None):
 		if not bucketSize:
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
-		self.execute("SELECT MAX(bucket) as bucket FROM %s" % (tableName))
-		return self.cursor.fetchall()[0]["bucket"]
+		self.execute("SELECT MAX(" + common.COL_BUCKET + ") as " +common.COL_BUCKET + " FROM %s" % (tableName))
+		return self.cursor.fetchall()[0][common.COL_BUCKET]
 
 	def getBucketSize(self, startTime, endTime, resolution):
 		for i,s in enumerate(config.flow_bucket_sizes):
@@ -726,19 +726,19 @@ class MysqlBackend(Backend):
 				return s
 				
 			tableName = common.DB_FLOW_AGGR_PREFIX + str(s)
-			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket ASC LIMIT 1" % (tableName, startTime, endTime)
+			queryString = "SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKEt + " <= %d ORDER BY " + common.COL_BUCKET + " ASC LIMIT 1" % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			minBucket = None
 			if len(tmp) > 0:
-				minBucket = tmp[0]["bucket"]
+				minBucket = tmp[0][common.COL_BUCKET]
 
-			queryString = "SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket DESC LIMIT 1" % (tableName, startTime, endTime)
+			queryString = "SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKET + " <= %d ORDER BY " + common.COL_BUCKET + " DESC LIMIT 1" % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			maxBucket = None
 			if len(tmp) > 0:
-				maxBucket = tmp[0]["bucket"]
+				maxBucket = tmp[0][common.COL_BUCKET]
 			
 			if not minBucket or not maxBucket:
 				return s
@@ -772,7 +772,7 @@ class MysqlBackend(Backend):
 		if fields != None: 
 			for field in fields:
 				if field in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ "flows" ]:
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 						if fieldList != "":
 							fieldList += ","
 						fieldList += field + "_" + s
@@ -780,8 +780,8 @@ class MysqlBackend(Backend):
 					if fieldList != "":
 						fieldList += ","
 					fieldList += field
-			if not "bucket" in fields:
-				fieldList += ",bucket"
+			if not common.COL_BUCKET in fields:
+				fieldList += "," + common.COL_BUCKET
 		elif aggregate != None:
 			# aggregate all fields
 			fieldList = ""
@@ -789,7 +789,7 @@ class MysqlBackend(Backend):
 				if fieldList != "":
 					fieldList = ","
 				fieldList += field 
-			for field in config.flow_aggr_sums + [ "flows" ]:
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				fieldList += ",SUM(" + field + ") as " + field
 				for p in common.AVAILABLE_PROTOS:
 					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
@@ -800,14 +800,14 @@ class MysqlBackend(Backend):
 		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
 		if startBucket != None and startBucket > 0:
 			isWhere = True
-			queryString += "WHERE bucket >= %d " % (startBucket)
+			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (startBucket)
 		if endBucket != None and endBucket < sys.maxint:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
 			else: 
 				queryString += "AND "
-			queryString += "bucket <= %d " % (endBucket)
+			queryString += common.COL_BUCKET + " <= %d " % (endBucket)
 
 		firstIncludePort = True
 		for port in includePorts:
@@ -1102,14 +1102,14 @@ class OracleBackend(Backend):
 		for s in config.flow_bucket_sizes:
 			primary = "bucket"
 			createString = "CREATE TABLE "
-			createString += common.DB_FLOW_PREFIX + str(s) + " (bucket NUMBER(10) NOT NULL"
+			createString += common.DB_FLOW_PREFIX + str(s) + " (" + common.COL_BUCKET + " NUMBER(10) NOT NULL"
 			for v in config.flow_aggr_values:
 				primary += "," + v
 				createString += ", %s %s NOT NULL" % (v, common.ORACLE_TYPE_MAPPER[v])
-			for s in config.flow_aggr_sums + [ "flows" ]:
+			for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
-				for s in config.flow_aggr_sums + [ "flows" ]: 
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 			createString += ", PRIMARY KEY(" + primary + "))"
 			self.execute(createString)
@@ -1117,28 +1117,28 @@ class OracleBackend(Backend):
 		# tables for storing aggregated timebased data
 		for s in config.flow_bucket_sizes:
 			createString = "CREATE TABLE "
-			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (bucket NUMBER(10) NOT NULL"
-			for s in config.flow_aggr_sums + [ "flows" ]:
+			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (" + common.COL_BUCKET + " NUMBER(10) NOT NULL"
+			for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
-				for s in config.flow_aggr_sums + [ "flows" ]: 
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
-			createString += ", PRIMARY KEY(bucket))"
+			createString += ", PRIMARY KEY(" + common.COL_BUCKET + "))"
 			self.execute(createString)
 		
 		# create precomputed index that describe the whole data set
 		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 			createString = "CREATE TABLE %s (id NUMBER(10) NOT NULL" % table
-			for s in config.flow_aggr_sums + [ "flows" ]:
+			for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
-				for s in config.flow_aggr_sums + [ "flows" ]: 
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 			for direction in [ "src", "dst" ]:
-				for s in config.flow_aggr_sums + [ "flows" ]:
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 					createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ "flows" ]: 
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 
 			createString += ", PRIMARY KEY(id))"
@@ -1148,20 +1148,20 @@ class OracleBackend(Backend):
 		for bucket_size in config.flow_bucket_sizes:
 			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 				table = index + "_" + str(bucket_size)
-				createString = "CREATE TABLE %s (id NUMBER(10) NOT NULL, bucket NUMBER(10) NOT NULL" % table
-				for s in config.flow_aggr_sums + [ "flows" ]:
+				createString = "CREATE TABLE " + table + " (id NUMBER(10) NOT NULL, " + common.COL_BUCKET + " NUMBER(10) NOT NULL"
+				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 					createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ "flows" ]: 
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 						createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 				for direction in [ "src", "dst" ]:
-					for s in config.flow_aggr_sums + [ "flows" ]:
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS]:
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 					for proto in common.AVAILABLE_PROTOS:
-						for s in config.flow_aggr_sums + [ "flows" ]: 
+						for s in config.flow_aggr_sums + [common.COL_FLOWS ]: 
 							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 	
-				createString += ", PRIMARY KEY(id, bucket))"
+				createString += ", PRIMARY KEY(id," + common.COL_BUCKET + "))"
 				self.execute(createString)
 
 
@@ -1213,7 +1213,7 @@ class OracleBackend(Backend):
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
-		self.execute("SELECT MIN(bucket) as bucket FROM %s" % (tableName))
+		self.execute("SELECT MIN(" + common.COL_BUCKET + ") as " + common.COL_BUCKET + " FROM %s" % (tableName))
 		return self.cursor.fetchall()[0][0]
 		
 	def getMaxBucket(self, bucketSize = None):
@@ -1221,7 +1221,7 @@ class OracleBackend(Backend):
 			# use minimal bucket size
 			bucketSize = config.flow_bucket_sizes[0]
 		tableName = common.DB_FLOW_PREFIX + str(bucketSize)
-		self.execute("SELECT MAX(bucket) as bucket FROM %s" % (tableName))
+		self.execute("SELECT MAX(" + common.COL_BUCKET + ") as " + common.COL_BUCKET + " FROM %s" % (tableName))
 		return self.cursor.fetchall()[0][0]
 
 	def getBucketSize(self, startTime, endTime, resolution):
@@ -1230,14 +1230,14 @@ class OracleBackend(Backend):
 				return s
 				
 			tableName = common.DB_FLOW_AGGR_PREFIX + str(s)
-			queryString = "SELECT * FROM (SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket ASC) where ROWNUM <= 1" % (tableName, startTime, endTime)
+			queryString = "SELECT * FROM (SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKET + " <= %d ORDER BY "+ common.COL_BUCKET + " ASC) where ROWNUM <= 1" % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			minBucket = None
 			if len(tmp) > 0:
 				minBucket = tmp[0][0]
 
-			queryString = "SELECT * FROM (SELECT bucket FROM %s WHERE bucket >= %d AND bucket <= %d ORDER BY bucket DESC) WHERE ROWNUM <= 1" % (tableName, startTime, endTime)
+			queryString = "SELECT * FROM (SELECT " + common.COL_BUCKET + " FROM %s WHERE " + common.COL_BUCKET + " >= %d AND " + common.COL_BUCKET + " <= %d ORDER BY " + common.COL_BUCKET + " DESC) WHERE ROWNUM <= 1" % (tableName, startTime, endTime)
 			self.execute(queryString);
 			tmp = self.cursor.fetchall()
 			maxBucket = None
@@ -1276,7 +1276,7 @@ class OracleBackend(Backend):
 		if fields != None: 
 			for field in fields:
 				if field in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ "flows" ]:
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 						if fieldList != "":
 							fieldList += ","
 						fieldList += field + "_" + s
@@ -1284,8 +1284,8 @@ class OracleBackend(Backend):
 					if fieldList != "":
 						fieldList += ","
 					fieldList += field
-			if not "bucket" in fields:
-				fieldList += ",bucket"
+			if not common.COL_BUCKET in fields:
+				fieldList += "," + common.COL_BUCKET
 		elif aggregate != None:
 			# aggregate all fields
 			fieldList = ""
@@ -1293,7 +1293,7 @@ class OracleBackend(Backend):
 				if fieldList != "":
 					fieldList = ","
 				fieldList += field 
-			for field in config.flow_aggr_sums + [ "flows" ]:
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				fieldList += ",SUM(" + field + ") as " + field
 				for p in common.AVAILABLE_PROTOS:
 					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
@@ -1304,14 +1304,14 @@ class OracleBackend(Backend):
 		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
 		if startBucket != None and startBucket > 0:
 			isWhere = True
-			queryString += "WHERE bucket >= %d " % (startBucket)
+			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (startBucket)
 		if endBucket != None and endBucket < sys.maxint:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
 			else: 
 				queryString += "AND "
-			queryString += "bucket <= %d " % (endBucket)
+			queryString += common.COL_BUCKET + " <= %d " % (endBucket)
 
 		firstIncludePort = True
 		for port in includePorts:
@@ -1401,12 +1401,7 @@ class OracleBackend(Backend):
 		result = []
 		total = dict()
 
-		columns = [i[0].lower() for i in self.cursor.description]
-		#TODO: this is hacky ..
-		if 'srcip' in columns:
-			columns[columns.index('srcip')] = "srcIP"
-		if 'dstip' in columns:
-			columns[columns.index('dstip')] = "dstIP"
+		columns = [common.ORACLE_COLUMN_MAP[i[0]] for i in self.cursor.description]
 
 		for row in queryResult:
 			resultDoc = dict()

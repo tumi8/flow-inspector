@@ -129,7 +129,7 @@ class FlowHandler:
 				else:
 					self.cache_hits += 1
 			if doc == None:
-				doc = { "$set": { "bucket": bucket }, "$inc": {} }
+				doc = { "$set": { common.COL_BUCKET: bucket }, "$inc": {} }
 			
 				# set unknown ports to None
 				if self.filter_ports:
@@ -151,8 +151,8 @@ class FlowHandler:
 				for s in self.aggr_sum:
 					doc["$inc"][s] = 0
 					doc["$inc"][proto + "." + s] = 0
-				doc["$inc"]["flows"] = 0
-				doc["$inc"][proto + ".flows" ] = 0
+				doc["$inc"][common.COL_FLOWS] = 0
+				doc["$inc"][proto + "." + common.COL_FLOWS ] = 0
 				
 				if self.cache != None:
 					# insert into cache
@@ -185,9 +185,9 @@ class FlowHandler:
 						doc["$inc"][keyString] += val
 					
 			# count number of aggregated flows in the bucket
-			doc["$inc"]["flows"] += intervalFactor
+			doc["$inc"][common.COL_FLOWS] += intervalFactor
  
-			keyString = proto + ".flows"
+			keyString = proto + "." + common.COL_FLOWS
 			if not keyString in doc["$inc"]:
 				doc["$inc"][keyString] = intervalFactor
 			else:
@@ -313,7 +313,7 @@ for s in config.flow_bucket_sizes:
 
 # create indexes
 for handler in handlers:
-	handler.collection.createIndex("bucket")
+	handler.collection.createIndex(common.COL_BUCKET)
 
 print "%s: Preprocessing started." % (datetime.datetime.now())
 print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())

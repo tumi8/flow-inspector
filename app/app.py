@@ -238,9 +238,9 @@ def api_bucket_query():
 		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(bucket_size))
 
 	if fields != None:
-		query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
+		query_fields = fields + [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums
 	else:
-		query_fields = ["bucket", "flows"] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
+		query_fields = [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
 
 	buckets = collection.bucket_query(spec, query_fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
 	

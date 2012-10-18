@@ -51,9 +51,9 @@ data_backend_name = "hostinfo"
 # This list is assumed be sorted ascending!
 flow_bucket_sizes = [60, 10*60, 60*60, 24*60*60]
 # Those values have to match in order to aggregate two flows
-flow_aggr_values = ["srcIP", "dstIP", "srcPort", "dstPort", "proto"]
+flow_aggr_values = ["sourceIPv4Address", "destinationIPv4Address", "sourceTransportPort", "destinationTransportPort", "protocolIdentifier"]
 # Those columns will be summed up
-flow_aggr_sums = ["pkts", "bytes"]
+flow_aggr_sums = ["packetDeltaCount", "octetDeltaCount"]
 # Special treatment for ports:
 # Only consider known port numbers, set the others to null
 # before aggregation.

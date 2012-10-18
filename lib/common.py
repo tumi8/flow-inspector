@@ -2,15 +2,22 @@ import os
 
 
 # flow time interval column names
-COL_FIRST_SWITCHED = "firstSwitched"
-COL_LAST_SWITCHED = "lastSwitched"
+COL_FIRST_SWITCHED = "flowStartSeconds"
+COL_LAST_SWITCHED = "flowEndSeconds"
 # column names of IP addresses
-COL_SRC_IP = "srcIP"
-COL_DST_IP = "dstIP"
+COL_SRC_IP = "sourceIPv4Address"
+COL_DST_IP = "destinationIPv4Address"
 # column names of ports and protocol
-COL_SRC_PORT = "srcPort"
-COL_DST_PORT = "dstPort"
-COL_PROTO = "proto"
+COL_SRC_PORT = "sourceTransportPort"
+COL_DST_PORT = "destinationTransportPort"
+COL_PROTO = "protocolIdentifier"
+COL_BUCKET = "bucket"
+
+
+COL_BYTES = "octetDeltaCount"
+COL_PKTS = "packetDeltaCount"
+COL_FLOWS = "flows"
+COL_ID = "id"
 
 COL_PROTO_TCP = "tcp"
 COL_PROTO_UDP = "udp"
@@ -38,48 +45,65 @@ PORTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'config', 'service-na
 
 REDIS_QUEUE_KEY = "entry:queue"
 
+HOST_INFORMATION_COLLECTION = "HOST_INFORMATION_CHECKER"
+
 # Oracle is a professional environment. We therefore need to perform
 # some special mappings for table column names: Oracle is case sensitive
 # and does not cope with anything that is not upper case *sigh*
-ORACLE_COLUMNMAP = {
-	"ID"	: "id",
-	"FLOWS" : "flows",
-        "SRCIP" : "srcIP",
-        "DSTIP" : "dstIP",
-        "SRCPORT" : "srcPort",
-        "DSTPORT" : "dstPort",
-        "PROTO" : "proto",
-        "BYTES" : "bytes",
-        "PKTS"  : "pkts",
-        "FIRSTSWITCHED" : "firstSwitched",
-        "LASTSWITCHED" : "lastSwitched",
+ORACLE_LEGACY_COLUMNMAP = {
+	"ID"	        : COL_ID,
+	"FLOWS"         : COL_FLOWS,
+        "SRCIP"         : COL_SRC_IP,
+        "DSTIP"         : COL_DST_IP,
+        "SRCPORT"       : COL_SRC_PORT,
+        "DSTPORT"       : COL_DST_PORT,
+        "PROTO"         : COL_PROTO,
+        "BYTES"         : COL_BYTES,
+        "PKTS"          : COL_PKTS,
+        "FIRSTSWITCHED" : COL_FIRST_SWITCHED,
+        "LASTSWITCHED"  : COL_LAST_SWITCHED,
 }
+
+ORACLE_COLUMNMAP = {
+	COL_ID.upper()             : COL_ID,
+	COL_FLOWS.upper()          : COL_FLOWS,
+	COL_SRC_IP.upper()         : COL_SRC_IP,
+	COL_DST_IP.upper()         : COL_DST_IP,
+	COL_SRC_PORT.upper()       : COL_SRC_PORT,
+	COL_DST_PORT.upper()       : COL_DST_PORT,
+	COL_PROTO.upper()          : COL_PROTO,
+	COL_BYTES.upper()          : COL_BYTES,
+	COL_PKTS.upper()           : COL_PKTS,
+	COL_FIRST_SWITCHED.upper() : COL_FIRST_SWITCHED,
+	COL_LAST_SWITCHED.upper()  : COL_LAST_SWITCHED,
+}
+
 
 
 MYSQL_TYPE_MAPPER = {
-	"srcIP"         : "INTEGER(10) UNSIGNED",
-	"dstIP"         : "INTEGER(10) UNSIGNED",
-	"srcPort"       : "SMALLINT(5) UNSIGNED",
-	"dstPort"       : "SMALLINT(5) UNSIGNED",
-	"proto"         : "TINYINT(3) UNSIGNED",
-	"flows"         : "BIGINT(20) UNSIGNED",
-	"bytes"         : "BIGINT(20) UNSIGNED",
-	"pkts"          : "BIGINT(20) UNSIGNED",
-	"firstSwitched" : "INTEGER(10) UNSIGNED",
-	"lastSwitched"  : "INTEGER(10) UNSIGNED"
+	COL_SRC_IP         : "INTEGER(10) UNSIGNED",
+	COL_DST_IP         : "INTEGER(10) UNSIGNED",
+	COL_SRC_PORT       : "SMALLINT(5) UNSIGNED",
+	COL_DST_PORT       : "SMALLINT(5) UNSIGNED",
+	COL_PROTO          : "TINYINT(3) UNSIGNED",
+	COL_FLOWS          : "BIGINT(20) UNSIGNED",
+	COL_BYTES          : "BIGINT(20) UNSIGNED",
+	COL_PKTS           : "BIGINT(20) UNSIGNED",
+	COL_FIRST_SWITCHED : "INTEGER(10) UNSIGNED",
+	COL_LAST_SWITCHED  : "INTEGER(10) UNSIGNED"
 }
 
 ORACLE_TYPE_MAPPER = {
-	"srcIP"         : "NUMBER(10)",
-	"dstIP"         : "NUMBER(10)",
-	"srcPort"       : "NUMBER(5)",
-	"dstPort"       : "NUMBER(5)",
-	"proto"         : "NUMBER(3)",
-	"flows"         : "NUMBER(20)",
-	"bytes"         : "NUMBER(20)",
-	"pkts"          : "NUMBER(20)",
-	"firstSwitched" : "NUMBER(10)",
-	"lastSwitched"  : "NUMBER(10)"
+	COL_SRC_IP         : "NUMBER(10)",
+	COL_DST_IP         : "NUMBER(10)",
+	COL_SRC_PORT       : "NUMBER(5)",
+	COL_DST_PORT       : "NUMBER(5)",
+	COL_PROTO          : "NUMBER(3)",
+	COL_FLOWS          : "NUMBER(20)",
+	COL_BYTES          : "NUMBER(20)",
+	COL_PKTS           : "NUMBER(20)",
+	COL_FIRST_SWITCHED : "NUMBER(10)",
+	COL_LAST_SWITCHED  : "NUMBER(10)"
 }
 
 def getProto(obj):
@@ -117,18 +141,18 @@ def update_node_index(obj, collection, aggr_sum):
 		doc["$inc"]["src." + s] = obj.get(s, 0)
 		doc["$inc"]["src." + proto + "." + s] = obj.get(s,0)
 
-	if "flows" in obj:
-		flows = obj["flows"]
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if "bucket" in obj:
+	if COL_BUCKET in obj:
 		doc["$set"] = {}
-		doc["$set"]["bucket"] = obj["bucket"]
+		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
 
-	doc["$inc"]["flows"] = flows
-	doc["$inc"][proto + ".flows"] = flows
-	doc["$inc"]["src.flows"] = flows
-	doc["$inc"]["src." + proto + ".flows"] = flows
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"][proto + "." + COL_FLOWS] = flows
+	doc["$inc"]["src." + COL_FLOWS] = flows
+	doc["$inc"]["src." + proto + "." + COL_FLOWS] = flows
 	
 	# insert if not exists, else update sums
 	collection.update({ "_id": obj[COL_SRC_IP] }, doc, True)
@@ -142,19 +166,19 @@ def update_node_index(obj, collection, aggr_sum):
 		doc["$inc"]["dst." + s] = obj.get(s, 0)
 		doc["$inc"]["dst." + proto + "." + s] = obj.get(s,0)
 
-	if "flows" in obj:
-		flows = obj["flows"]
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if "bucket" in obj:
+	if COL_BUCKET in obj:
 		doc["$set"] = {}
-		doc["$set"]["bucket"] = obj["bucket"]
+		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
 
 
-	doc["$inc"]["flows"] = flows
-	doc["$inc"][proto + ".flows"] = flows 
-	doc["$inc"]["dst.flows"] = flows 
-	doc["$inc"]["dst." + proto + ".flows"] = flows
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"][proto + "." + COL_FLOWS] = flows 
+	doc["$inc"]["dst." + COL_FLOWS] = flows 
+	doc["$inc"]["dst." + proto + "." + COL_FLOWS] = flows
 					
 	# insert if not exists, else update sums
 	collection.update({ "_id": obj[COL_DST_IP] }, doc, True)
@@ -162,17 +186,17 @@ def update_node_index(obj, collection, aggr_sum):
 	# update total counters
 	doc = { "$inc": {} }
 
-	if "flows" in obj:
-		flows = obj["flows"]
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if "bucket" in obj:
+	if COL_BUCKET in obj:
 		doc["$set"] = {}
-		doc["$set"]["bucket"] = obj["bucket"]
+		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
 
 
-	doc["$inc"]["flows"] = flows 
-	doc["$inc"][proto + ".flows"] = flows 
+	doc["$inc"][COL_FLOWS] = flows 
+	doc["$inc"][proto + "." + COL_FLOWS]= flows 
 
 
 	for s in aggr_sum:
@@ -199,17 +223,17 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 		doc["$inc"][s] = obj.get(s, 0)
 		doc["$inc"]["src." + s] = obj.get(s, 0)
 
-	if "flows" in obj:
-		flows = obj["flows"]
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if "bucket" in obj:
+	if COL_BUCKET in obj:
 		doc["$set"] = {}
-		doc["$set"]["bucket"] = obj["bucket"]
+		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
 
 
-	doc["$inc"]["flows"] = flows
-	doc["$inc"]["src.flows"] = flows
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"]["src." + COL_FLOWS] = flows
 
 	# set unknown ports to None
 	port = obj.get(COL_SRC_PORT, None)
@@ -231,17 +255,17 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 		doc["$inc"][s] = obj.get(s, 0)
 		doc["$inc"]["dst." + s] = obj.get(s, 0)
 
-	if "flows" in obj:
-		flows = obj["flows"]
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if "bucket" in obj:
+	if COL_BUCKET in obj:
 		doc["$set"] = {}
-		doc["$set"]["bucket"] = obj["bucket"]
+		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
 
 	
-	doc["$inc"]["flows"] = flows
-	doc["$inc"]["dst.flows"] = flows
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"]["dst." + COL_FLOWS] = flows
 	
 	# insert if not exists, else update sums
 	collection.update({ "_id": port }, doc, True)
@@ -249,16 +273,16 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 	# update total counters
 	doc = { "$inc": {} }
 
-	if "flows" in obj:
-		flows = obj["flows"]
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if "bucket" in obj:
+	if COL_BUCKET in obj:
 		doc["$set"] = {}
-		doc["$set"]["bucket"] = obj["bucket"]
+		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
 
 
-	doc["$inc"]["flows"] = flows 
+	doc["$inc"][COL_FLOWS] = flows 
 	for s in aggr_sum:
 		doc["$inc"][s] = obj.get(s, 0)
 
