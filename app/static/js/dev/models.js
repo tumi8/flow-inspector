@@ -12,18 +12,6 @@ var Flow = Backbone.Model.extend({
 	}
 });
 
-var PcapFlow = Backbone.Model.extend({
-	parse: function(json) {
-		// convert unix timestamp to JS Date
-		json.firstTs = new Date(json.firstTs * 1000);
-		json.lastTs = new Date(json.lastTs * 1000);
-		return json;
-	}
-});
-
-var PcapStatsPoint = Backbone.Model.extend({
-});
-
 var BucketChartModel = Backbone.Model.extend({
 	defaults: {
 		value: "flows",
@@ -92,6 +80,11 @@ var FlowTableModel = Backbone.Model.extend({
 	}
 });
 
+var UndocumentedTableModel = Backbone.Model.extend({
+	defaults: {
+		entryLimit: 255
+	}
+});
 
 var EdgeBundleModel = Backbone.Model.extend({
 	defaults: {
@@ -121,7 +114,7 @@ var HivePlotModel = Backbone.Model.extend({
 
 var IndexEntry = Backbone.Model.extend({});
 
-var PCAPLiveLine = Backbone.Model.extend({});
+var UndocumentedIP = Backbone.Model.extend({});
 
 var CachedCollection = Backbone.Collection.extend({
     sync: function(method, model, options) {
@@ -278,54 +271,19 @@ var DynamicIndexQuery = CachedCollection.extend({
 });
 
 
-var PcapFlows = CachedCollection.extend({
+var UndocumentedIPs = CachedCollection.extend({
 	cache_timeout: 60*10,
-	model: PcapFlow,
+	model: UndocumentedIP,
 	url: function() {
-		return "/api/bucket/query/";
+		return "/api/hostinfo/";
 	},
 	parse: function(response) {
 		response.results.forEach(function(d) {
 			// convert unix timestamp to JS Date
-			d.firstSwitched = new Date(d.firstSwitched * 1000);
-			d.lastSwitched  = new Date(d.lastSwitched  * 1000);
+			d.lastSeen = new Date(d.lastSeen * 1000);
+			d.lastChecked  = new Date(d.lastChecked  * 1000);
 		});
 		return response.results;
 	}
 });
-
-var PcapStats = CachedCollection.extend({
-	cache_timeout: 60*10,
-	model: PcapStatsPoint,
-	url: function() {
-		return "/pcap/stats";
-	},
-	parse: function(response) {
-		return response.results;
-	}
-});
-
-
-var PCAPLiveLines = Backbone.Collection.extend({
-	model : PCAPLiveLine,
-	initialize : function(models, options) {
-	},
-	url : "/pcap/live-feed",
-	isRunning : true, 
-	parse : function(response) {
-		this.isRunning = response.running;
-		return response.results;
-	},
-	add: function(models, options) {
-		var newModels = [];
-		_.each(models, function(model) {
-			if (_.isUndefined(this.get(model.id))) {
-				newModels.push(model);
-			}
-		}, this);
-		return Backbone.Collection.prototype.add.call(this, newModels, options);
-	}
-});
-
-
 
