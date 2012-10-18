@@ -301,17 +301,17 @@ if __name__ == "__main__":
 			connections += 1
 
 		# flight-specific code 
-		if len(flights) > 200000:
-			filename = os.path.join(outputDir, "%s:%u_%s:%u_%s.dat" % (srcIP, srcPort, dstIP, dstPort, proto))
-			f = open(filename, 'w+')
-			f.write("flight_number start end duration pkts bytes\n")
-			id = 1
-			for chunk in flights:
-				f.write("%u %f %f %f %u %u\n" % (id, chunk["start"], chunk["end"], chunk["end"] - chunk["start"], chunk["pkts"], chunk["bytes"]))
-				id += 1
-			f.close()
-			plot_general("Throughput for flights", "flight no", filename, filename + ".svg", columns=["($4/$6)"])
-			os.unlink(filename)
+#		if len(flights) > 200000:
+#			filename = os.path.join(outputDir, "%s:%u_%s:%u_%s.dat" % (srcIP, srcPort, dstIP, dstPort, proto))
+#			f = open(filename, 'w+')
+#			f.write("flight_number start end duration pkts bytes\n")
+#			id = 1
+#			for chunk in flights:
+#				f.write("%u %f %f %f %u %u\n" % (id, chunk["start"], chunk["end"], chunk["end"] - chunk["start"], chunk["pkts"], chunk["bytes"]))
+#				id += 1
+#			f.close()
+#			plot_general("Throughput for flights", "flight no", filename, filename + ".svg", columns=["($4/$6)"])
+#			os.unlink(filename)
 
 	pktFile.close()
 	plot_general("Packets", "Packet size", pktFilename, pktFilename + ".png", columns = [2], plotType="points")
