@@ -6,38 +6,19 @@ import datetime
 import config
 import common
 import time
-
-hostDBFields = {
-	"hostIP": "IP"
-}
+import hostinfodb
 
 def int2ip(i):
 	# konvertiert einen Integer in eine IP im dotted-quad Format
 	return str(i//2**24)+"."+str((i//2**16)%256)+"."+str((i//2**8)%256)+"."+str(i%256)
 
-class HostInfoDB:
-	def __init__(self):
-		try:
-			import cx_Oracle
-			connection_string = config.host_info_user + "/" + config.host_info_password + "@" + config.host_info_host + ":" + str(config.host_info_port) + "/" +config.host_info_name
-			self.conn = cx_Oracle.Connection(connection_string)
-			self.cursor = cx_Oracle.Cursor(self.conn)
-		except Exception, e:
-			print >> sys.stderr, "Could not connect to HostInfoDB: ", e
-			sys.exit(-1)
-
-	def run_query(self, tableName, query):
-		return []
-		query = query % (tableName)
-		self.cursor.execute(query)
-		return self.fetchall()
 
 class HostInformationChecker(AnalysisBase):
 	def __init__(self, flowbackend, databackend):
 		AnalysisBase.__init__(self, flowbackend, databackend)
-		self.hostInfoDB = HostInfoDB()
+		self.hostInfoDB = hostinfodb.HostInfoDB()
 
-		self.hiCollectionName = "HOST_INFORMATION_CHECKER"
+		self.hiCollectionName = common.HOST_INFORMATION_COLLECTION
 
 		self.analysisResultDict = {
 			"IP" : ("NUMBER(10)", "PRIMARY"),
