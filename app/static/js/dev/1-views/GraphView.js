@@ -102,10 +102,10 @@ var GraphView = Backbone.View.extend({
 		// create special "other" node
 		var other_nodes = { 
   			name: "others", 
-			bytes: 0, 
-			flows: 0, 
-			pkts: 0, 
 			nodes: 0 };
+		other_nodes[FlowInspector.COL_BYTES] = 0;
+		other_nodes[FlowInspector.COL_FLOWS] = 0;
+		other_nodes[FlowInspector.COL_PKTS] =  0;
 		var that = this;
     	
 		var nodes = [];
@@ -125,9 +125,9 @@ var GraphView = Backbone.View.extend({
 			else if (showOthers) {
 				// add node to other nodes
 				other_nodes.nodes++;
-				other_nodes.flows += m.get("flows");
-				other_nodes.bytes += m.get("bytes");
-				other_nodes.pkts += m.get("pkts");
+				other_nodes[FlowInspector.COL_FLOWS] += m.get(FlowInspector.COL_FLOWS);
+				other_nodes[FlowInspector.COL_BYTES] += m.get(FlowInspector.COL_BYTES);
+				other_nodes[FlowInspector.COL_PKTS]  += m.get(FlowInspector.COL_PKTS);
 				that.node_map[m.id] = other_nodes;
 			}
 		});
@@ -158,8 +158,8 @@ var GraphView = Backbone.View.extend({
     		var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
     	
 		this.flows.each(function(m) {
-			var source = that.node_map[m.get("srcIP")];
-			var target = that.node_map[m.get("dstIP")];
+			var source = that.node_map[m.get(FlowInspector.COL_SRC_IP)];
+			var target = that.node_map[m.get(FlowInspector.COL_DST_IP)];
 			if (source === undefined || target === undefined) {
 				return;
 			}

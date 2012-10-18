@@ -153,7 +153,7 @@ var GraphPageView = PageView.extend({
 		var showOthers = this.graphModel.get("showOthers");
     	
 		var data = { 
-			"fields": "srcIP,dstIP",
+			"fields": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP,
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size,

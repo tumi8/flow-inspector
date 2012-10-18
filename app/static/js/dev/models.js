@@ -88,7 +88,7 @@ var UndocumentedTableModel = Backbone.Model.extend({
 
 var EdgeBundleModel = Backbone.Model.extend({
 	defaults: {
-		tension: 0.9,
+		tension: 0.99,
 		groupBytes: 0,
 		nodeLimit: 50,
 		filterPorts: "",
@@ -100,7 +100,7 @@ var EdgeBundleModel = Backbone.Model.extend({
 var HivePlotModel = Backbone.Model.extend({
 	defaults: {
 		axisScale: "linear",
-		numericalValue: "bytes",
+		numericalValue: FlowInspector.COL_BYTES,
 		mapAxis1: "",
 		mapAxis2: "",
 		mapAxis3: "0.0.0.0/0",

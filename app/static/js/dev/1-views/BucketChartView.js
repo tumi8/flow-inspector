@@ -57,8 +57,8 @@ var BucketChartView = Backbone.View.extend({
 		this.labelGroup = this.svg.append("svg:g");
 
 		// Set the scale domain
-		var min_bucket = d3.min(data, function(d) { return d.get("bucket"); });
-		var max_bucket = d3.max(data, function(d) { return d.get("bucket"); });
+		var min_bucket = d3.min(data, function(d) { return d.get(FlowInspector.COL_BUCKET); });
+		var max_bucket = d3.max(data, function(d) { return d.get(FlowInspector.COL_BUCKET); });
     		var max_value = d3.max(data, function(d) { return d.get(num_val); });
 		x.domain([min_bucket, new Date(max_bucket.getTime() + bucket_size*1000)]);
 		y.domain([0, max_value]);
@@ -76,7 +76,7 @@ var BucketChartView = Backbone.View.extend({
     		
 		var bar_enter =	bar.enter().append("g")
 			.attr("class", "bar")
-			.attr("transform", function(d) { return "translate(" + x(d.get("bucket")) + ",0)"; })
+			.attr("transform", function(d) { return "translate(" + x(d.get(FlowInspector.COL_BUCKET)) + ",0)"; })
 			.attr("title", titleFormat)
 /*
 			.on("mouseover", function(d) {
@@ -108,34 +108,34 @@ var BucketChartView = Backbone.View.extend({
 
 		// tcp bar
 		bar_enter.append("rect")
-			.attr("class", "tcp")
+			.attr("class", FlowInspector.COL_PROTO_TCP)
 			.attr("width", x(new Date(min_bucket.getTime() + bucket_size*1000)))
-			.attr("height", function(d) { return h - getProtoSpecificY(d, "tcp", num_val); })
-			.attr("y", function(d) { return getProtoSpecificY(d, "tcp", num_val); })
+			.attr("height", function(d) { return h - getProtoSpecificY(d, FlowInspector.COL_PROTO_TCP, num_val); })
+			.attr("y", function(d) { return getProtoSpecificY(d, FlowInspector.COL_PROTO_TCP, num_val); })
 			.attr("fill", FlowInspector.tcpColor);
 
 		// udp bar
 		bar_enter.append("rect")
-			.attr("class", "udp")
+			.attr("class", FlowInspector.COL_PROTO_UDP)
 			.attr("width", x(new Date(min_bucket.getTime() + bucket_size*1000)))
-			.attr("height", function(d) { return h - getProtoSpecificY(d, "udp", num_val);  })
-			.attr("y", function(d){ return getProtoSpecificY(d, "udp", num_val) - (h - getProtoSpecificY(d, "tcp", num_val));})
+			.attr("height", function(d) { return h - getProtoSpecificY(d, FlowInspector.COL_PROTO_UDP, num_val);  })
+			.attr("y", function(d){ return getProtoSpecificY(d, FlowInspector.COL_PROTO_UDP, num_val) - (h - getProtoSpecificY(d, FlowInspector.COL_PROTO_TCP, num_val));})
 			.attr("fill", FlowInspector.udpColor);
 
 		// icmp bar
 		bar_enter.append("rect")
-			.attr("class", "icmp")
+			.attr("class", FlowInspector.COL_PROTO_ICMP)
 			.attr("width", x(new Date(min_bucket.getTime() + bucket_size*1000)))
-			.attr("height", function(d) { return h - getProtoSpecificY(d, "icmp", num_val); })
-			.attr("y", function(d) { return getProtoSpecificY(d, "icmp", num_val) - (h - getProtoSpecificY(d, "tcp", num_val)) - (h - getProtoSpecificY(d, "udp", num_val));})
+			.attr("height", function(d) { return h - getProtoSpecificY(d, FlowInspector.COL_PROTO_ICMP, num_val); })
+			.attr("y", function(d) { return getProtoSpecificY(d, FlowInspector.COL_PROTO_ICMP, num_val) - (h - getProtoSpecificY(d, FlowInspector.COL_PROTO_TCP, num_val)) - (h - getProtoSpecificY(d, FlowInspector.COL_PROTO_UDP, num_val));})
 			.attr("fill", FlowInspector.icmpColor);
 
 		// other bar
 		bar_enter.append("rect")
-			.attr("class", "other")
+			.attr("class", FlowInspector.COL_PROTO_OTHER)
 			.attr("width", x(new Date(min_bucket.getTime() + bucket_size*1000)))
-			.attr("height", function(d) { return h - getProtoSpecificY(d, "other", num_val); })
-			.attr("y", function(d) { return getProtoSpecificY(d, "other", num_val) - (h - getProtoSpecificY(d, "tcp", num_val)) - (h - getProtoSpecificY(d, "udp", num_val)) - (h - getProtoSpecificY(d, "icmp", num_val));})
+			.attr("height", function(d) { return h - getProtoSpecificY(d, FlowInspector.COL_PROTO_OTHER, num_val); })
+			.attr("y", function(d) { return getProtoSpecificY(d, FlowInspector.COL_PROTO_OTHER, num_val) - (h - getProtoSpecificY(d, FlowInspector.COL_PROTO_TCP, num_val)) - (h - getProtoSpecificY(d, FlowInspector.COL_PROTO_UDP, num_val)) - (h - getProtoSpecificY(d, FlowInspector.COL_PROTO_ICMP, num_val));})
 			.attr("fill", FlowInspector.otherColor);
 
 		bar_enter.append("line")
@@ -231,8 +231,8 @@ var BucketChartView = Backbone.View.extend({
 		titleFormat = FlowInspector.getTitleFormat(this.model.get("value"));
 		
 		// Set the scale domain
-		var min_bucket = d3.min(data, function(d) { return d.get("bucket"); });
-		var max_bucket = d3.max(data, function(d) { return d.get("bucket"); });
+		var min_bucket = d3.min(data, function(d) { return d.get(FlowInspector.COL_BUCKET); });
+		var max_bucket = d3.max(data, function(d) { return d.get(FlowInspector.COL_BUCKET); });
 		var max_value = d3.max(data, function(d) { return d.get(value); });
 		x.domain([min_bucket, new Date(max_bucket.getTime() + bucket_size*1000)]);
 		y.domain([0, max_value]);
@@ -271,8 +271,8 @@ var BucketChartView = Backbone.View.extend({
 			.transition()
 			.duration(1000)
 			.attr("width", x(new Date(min_bucket.getTime() + bucket_size*1000)))
-			.attr("height", function(d) { return h - getProtoSpecificY(d, "tcp", value); })
-			.attr("y", function(d) { return getProtoSpecificY(d, "tcp", value); })
+			.attr("height", function(d) { return h - getProtoSpecificY(d, FlowInspector.COL_PROTO_TCP, value); })
+			.attr("y", function(d) { return getProtoSpecificY(d, FlowInspector.COL_PROTO_TCP, value); })
 
 		bar.selectAll("rect.udp")
 			.transition()
@@ -324,10 +324,10 @@ var BucketChartView = Backbone.View.extend({
 			.tickSize(2);
     		
 		var value = this.model.get("value");
-		if(value === "pkts") {
+		if(value === FlowInspector.COL_PKTS) {
 			axis.tickFormat(FlowInspector.getTitleFormat(value));
 		}
-		else if(value === "bytes") {
+		else if(value === FlowInspector.COL_BYTES) {
 			axis.tickFormat(FlowInspector.getTitleFormat(value));
 		}
 		
