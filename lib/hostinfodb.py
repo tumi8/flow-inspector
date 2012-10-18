@@ -18,8 +18,8 @@ class HostInfoDB:
 			sys.exit(-1)
 
 	def run_query(self, tableName, query):
-		return []
 		query = query % (tableName)
+		print query
 		self.cursor.execute(query)
-		return self.fetchall()
+		return self.cursor.fetchall()
 

@@ -35,6 +35,9 @@ class Backend:
 	def insert(self, collectionName, fieldDict):
 		pass
 
+	def data_query(self, collectionNames, fields):
+		pass
+
 class MySQLBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName):
 		import MySQLdb
@@ -177,7 +180,7 @@ class OracleBackend(Backend):
 
 
 	def query(self, tablename, string):
-		string = string % (tableName)
+		string = string % (tablename)
 		self.execute(string)
 		return self.cursor.fetchall()
 
@@ -243,6 +246,16 @@ class OracleBackend(Backend):
 				self.flushCache(collectionName)
 		else:
 			self.execute(queryString, params)
+
+
+	def data_query(self, collectionName, fields):
+		queryString = "SELECT * FROM %s"
+		rows =  self.query(collectionName, queryString)
+		desc = [d[0] for d in self.cursor.description]
+		result = [dict(zip(desc,line)) for line in rows]
+		return result
+
+		
 
 
 

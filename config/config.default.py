@@ -75,9 +75,7 @@ pre_cache_size_aggr = 5
 # non zero.
 max_flow_age = 60*60*24*7
  
-
-# PCAP processor settings
+# Host Information Datbase (optional)
 #----------------------------------------------------------------
-pcap_output_dir = '/opt/data/pcap_output/'
-gnuplot_path='/usr/bin/gnuplot'
+host_information_table = "somename"
 

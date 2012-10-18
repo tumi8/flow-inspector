@@ -278,8 +278,10 @@ def api_index(name):
 
 @get("/api/hostinfo/")
 def api_hostinfo():
-	pass
-
+	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	data = dataBackend.data_query(common.HOST_INFORMATION_COLLECTION, None)
+	return { "results": data }
+	
 @get("/static/:path#.+#")
 def server_static(path):
 	return static_file(path, root=os.path.join(os.path.dirname(__file__), "static"))

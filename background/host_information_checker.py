@@ -29,22 +29,18 @@ class HostInformationChecker(AnalysisBase):
 
 	def analyze(self, startBucket, endBucket):
 		tableName = common.DB_FLOW_PREFIX + str(self.flowBackend.getBucketSize(startBucket, endBucket, 1000))
-		srcIPs = self.flowBackend.run_query(tableName, "SELECT srcIP, max(bucket) as bucket from %s GROUP BY srcIP");
+		srcIPs = self.flowBackend.run_query(tableName, "SELECT " + common.COL_SRC_IP + ", max(" + common.COL_BUCKET + ") as " + common.COL_BUCKET + " from %s GROUP BY " + common.COL_SRC_IP);
 		for ip in srcIPs:
-			hostInfo = self.hostInfoDB.run_query(tableName, "SELECT * FROM %s WHERE IP = " + int2ip(ip[0]))
+			hostInfo = self.hostInfoDB.run_query(config.host_information_table, "select case when exists(select 1 from %s where ip='" + int2ip(ip[0]) + "') then 'Y' else 'N' end as rec_exists from dual")
 			currentTime = int(time.time())
-			if len(hostInfo) == 1:
+			if hostInfo[0][0] == 'Y':
 				# that's what we expect. An entry was found!
 				pass
-			elif len(hostInfo) == 0:
+			else:
 				ipdict = {
 					"IP" : (ip[0], "PRIMARY"),
 					"LASTSEEN": (ip[1], "UPDATE"),
 					"LASTINFOCHECK" : (currentTime, "UPDATE")
 				}
 				self.dataBackend.insert(self.hiCollectionName, ipdict)
-			else:
-				# got more than one entry for this ip. This should not happen and should be 
-				# reported separately
-				print "Found multiple entries for host:", int2ip(ip[0])
 

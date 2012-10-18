@@ -957,6 +957,9 @@ class OracleBackend(Backend):
 		self.counter = 0
 
 		self.doCache = True
+
+		self.conn = None
+		self.cursor = None
 		self.connect()
 
 		self.tableNames = [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]
@@ -971,6 +974,10 @@ class OracleBackend(Backend):
 		print "Oracle: Attempting new connect:" 
 		try:
 			connection_string = self.user + "/" + self.password + "@" + self.host + ":" + str(self.port) + "/" + self.databaseName
+			if self.cursor:
+				self.cursor.close()
+			if self.conn:
+				self.conn.close()
 			self.conn = cx_Oracle.Connection(connection_string)
 
 			self.cursor = cx_Oracle.Cursor(self.conn)
@@ -981,6 +988,7 @@ class OracleBackend(Backend):
 
 	def execute(self, string, params = None):
 		import cx_Oracle
+		print string, params
 		try: 
 			if params == None:
 				self.cursor.execute(string)
@@ -1005,8 +1013,12 @@ class OracleBackend(Backend):
 	def executemany(self, string, objects):
 		import cx_Oracle
 		try:
-			self.cursor.executemany(string, objects)
+			print "Startint commit ..."
 			self.conn.commit()
+			print "ending commit ..."
+			print "Starting execute ..."
+			self.cursor.executemany(string, objects)
+			print "Ending execute ..."
 		except (AttributeError, cx_Oracle.OperationalError):
 			self.connect()
 			self.executemany(string, objects)
@@ -1409,7 +1421,7 @@ class OracleBackend(Backend):
 			idx = 0
 			for field in columns:
 				if field in common.ORACLE_COLUMNMAP:
-					field = common.ORACLE_COLUMNMAP
+					field = common.ORACLE_COLUMNMAP[field]
 				fieldValue = row[idx]
 				if field == common.COL_ID:
 					if fieldValue == 0:
@@ -1448,10 +1460,10 @@ class OracleBackend(Backend):
 				result.append(resultDoc)
 
 		print "Got Results: ", len(result)
-		#print "Total: ", total
+		print "Total: ", total
 		#print "Result: ", result
-		#for r in result: 
-		#	print r
+		for r in result: 
+			print r
 		return (result, total)
 
 	def run_query(self, collectionName, query):

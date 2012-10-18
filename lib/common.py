@@ -113,7 +113,7 @@ ORACLE_TYPE_MAPPER = {
 }
 
 def getProto(obj):
-	return getProtoFromValue(obj.get("proto", 0))
+	return getProtoFromValue(obj.get(COL_PROTO, 0))
 
 def getProtoFromValue(proto):
 	if proto == 17 or proto == "UDP":
