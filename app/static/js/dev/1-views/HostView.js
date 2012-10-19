@@ -27,8 +27,10 @@ var HostView = Backbone.View.extend({
 	render: function() {
 		var
 			container = $(this.el).empty()
-			w = container.width(),
-			h = 200,
+			w = container.width() / 1.8,
+			cw = container.width(),
+			yOffset = 30
+			h = 350,
 			data = this.index.models,
 			num_val = this.model.get("value"),
 			stroke = this.stroke
@@ -44,17 +46,86 @@ var HostView = Backbone.View.extend({
 
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")
-			.attr("width", w + this.m[1] + this.m[3])
-			.attr("height", h + this.m[0] + this.m[2]);
+			.attr("width", cw + this.m[1] + this.m[3])
+			.attr("height", h + this.m[0] + this.m[2] + yOffset);
 
 		this.labelGroup = this.svg.append("svg:g");
 		this.barGroup = this.svg.append("svg:g");
+		this.lineGroup = this.svg.append("svg:g");
 
-
-		var y = d3.scale.linear().range([0, h]);
+		var y = d3.scale.linear().range([yOffset,  h + yOffset]);
 		var min_value = d3.min(data, function(d) { return d.get(num_val); });
 		var max_value = d3.max(data, function(d) { return d.get(num_val); });
 		y.domain([0, data.length]);
+		
+		// draw grid layout
+		this.lineGroup.selectAll()
+			.data(data)
+			.enter()
+				.append("svg:line")
+					.attr("x1", 0)
+					.attr("x2", cw - 75)
+					.attr("y1", function(d, idx) { return y(idx) + 18; })
+					.attr("y2", function(d, idx) { return y(idx) + 18; })
+					.style("stroke", "rgb(0,0,0)");
+
+		this.lineGroup.append("svg:line")
+			.attr("x1", 0)
+			.attr("x2", cw - 75)
+			.attr("y1", 18)
+			.attr("y2", 18)
+			.style("stroke", "rgb(0,0,0)")
+
+		this.lineGroup.append("svg:line")
+			.attr("x1", w)
+			.attr("x2", w)
+			.attr("y1", 0)
+			.attr("y3", 0)
+
+		this.labelGroup.append("text")
+			.attr("x", 0)
+			.attr("y", this.m[0])
+			.attr("text-anchor", "center")
+			.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+			.text("IP Address")
+
+		var perGroup = (cw - w - 75) / 5;
+		var tOffset = w + 30;
+		this.labelGroup.append("text")
+			.attr("x", tOffset)
+			.attr("y", this.m[0])
+			.attr("text-anchor", "center")
+			.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+			.text("TCP")
+
+		this.labelGroup.append("text")
+			.attr("x", tOffset + perGroup)
+			.attr("y", this.m[0])
+			.attr("text-anchor", "center")
+			.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+			.text("UDP")
+
+		this.labelGroup.append("text")
+			.attr("x", tOffset + 2*perGroup)
+			.attr("y", this.m[0])
+			.attr("text-anchor", "center")
+			.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+			.text("ICMP")
+
+		this.labelGroup.append("text")
+			.attr("x", tOffset + 3*perGroup)
+			.attr("y", this.m[0])
+			.attr("text-anchor", "center")
+			.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+			.text("Other")
+
+
+		this.labelGroup.append("text")
+			.attr("x", tOffset + 4*perGroup)
+			.attr("y", this.m[0])
+			.attr("text-anchor", "center")
+			.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+			.text("Total")
 
 
 		// add text to bars
@@ -76,8 +147,15 @@ var HostView = Backbone.View.extend({
 		x.domain([0, max_value]);
 
 
+		this.labelGroup.append("text")
+			.attr("x", offset )
+			.attr("y", this.m[0])
+			.attr("text-anchor", "center")
+			.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+			.text("Traffic")
+
 		// draw the bars
-		var barWidth = h / data.length - 2;
+		var barWidth = h / data.length / 2;
 		var bar = this.barGroup.selectAll("rect")
 			.data(data);
 
@@ -106,6 +184,72 @@ var HostView = Backbone.View.extend({
 			return x(val);
 		}
 			
+		this.labelGroup.selectAll()
+			.data(data)
+			.enter()
+				.append("text")
+					.attr("x", tOffset)
+					.attr("y", function(d, idx) { return y(idx) + 10; })
+					.attr("text-anchor", "left")
+  					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+					.text(function(d) {
+							var f = FlowInspector.getTitleFormat(num_val, "tcp");
+							return f(d);
+					});
+
+		this.labelGroup.selectAll()
+			.data(data)
+			.enter()
+				.append("text")
+					.attr("x", tOffset + perGroup)
+					.attr("y", function(d, idx) { return y(idx) + 10; })
+					.attr("text-anchor", "left")
+  					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+					.text(function(d) {
+							var f = FlowInspector.getTitleFormat(num_val, "udp");
+							return f(d);
+					});
+
+
+		this.labelGroup.selectAll()
+			.data(data)
+			.enter()
+				.append("text")
+					.attr("x", tOffset + 2*perGroup)
+					.attr("y", function(d, idx) { return y(idx) + 10; })
+					.attr("text-anchor", "left")
+  					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+					.text(function(d) {
+							var f = FlowInspector.getTitleFormat(num_val, "icmp");
+							return f(d);
+					});
+
+		this.labelGroup.selectAll()
+			.data(data)
+			.enter()
+				.append("text")
+					.attr("x", tOffset + 3*perGroup)
+					.attr("y", function(d, idx) { return y(idx) + 10; })
+					.attr("text-anchor", "left")
+  					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+					.text(function(d) {
+							var f = FlowInspector.getTitleFormat(num_val, "other");
+							return f(d);
+					});
+
+		this.labelGroup.selectAll()
+			.data(data)
+			.enter()
+				.append("text")
+					.attr("x", tOffset + 4*perGroup)
+					.attr("y", function(d, idx) { return y(idx) + 10; })
+					.attr("text-anchor", "left")
+  					.attr("style", "font-size: 12; font-family: Helvetica, sans-serif")
+					.text(function(d) {
+							var f = FlowInspector.getTitleFormat(num_val);
+							return f(d);
+					});
+
 
 		// tcp bar, starts of the left side of the graph
 		bar_enter.append("rect")
@@ -189,13 +333,13 @@ var HostView = Backbone.View.extend({
 		var legendXOffset = 65;
 
 		this.labelGroup.append("text")
-			.attr("x", w-5)
+			.attr("x", cw-5)
 			.attr("y", h-5)
 			.attr("text-anchor", "end")
 			.text("#" + num_val);
 
 		this.labelGroup.append("text")
-			.attr("x", w-5)
+			.attr("x", cw-5)
 			.attr("y", h - 65)
 			.attr("text-anchor", "end")
 			.text("tcp");
@@ -203,12 +347,12 @@ var HostView = Backbone.View.extend({
 		this.labelGroup.append("rect")
 			.attr("width", 20)
 			.attr("height", 10)
-			.attr("x", w - legendXOffset)
+			.attr("x", cw - legendXOffset)
 			.attr("y", h - 75)
 			.attr("fill", FlowInspector.tcpColor);
 
     		this.labelGroup.append("text")
-			.attr("x", w-5)
+			.attr("x", cw-5)
 			.attr("y", h - 50 )
 			.attr("text-anchor", "end")
 			.text("udp");
@@ -216,13 +360,13 @@ var HostView = Backbone.View.extend({
 		this.labelGroup.append("rect")
 			.attr("width", 20)
 			.attr("height", 10)
-			.attr("x", w - legendXOffset)
+			.attr("x", cw - legendXOffset)
 			.attr("y", h - 60)
 			.attr("fill", FlowInspector.udpColor);
 
 
     		this.labelGroup.append("text")
-			.attr("x", w-5)
+			.attr("x", cw-5)
 			.attr("y", h - 35)
 			.attr("text-anchor", "end")
 			.text("icmp");
@@ -230,13 +374,13 @@ var HostView = Backbone.View.extend({
 		this.labelGroup.append("rect")
 			.attr("width", 20)
 			.attr("height", 10)
-			.attr("x", w - legendXOffset)
+			.attr("x", cw - legendXOffset)
 			.attr("y", h - 45)
 			.attr("fill", FlowInspector.icmpColor);
 
 
     		this.labelGroup.append("text")
-			.attr("x", w-5)
+			.attr("x", cw-5)
 			.attr("y", h - 20)
 			.attr("text-anchor", "end")
 			.text("other");
@@ -244,7 +388,7 @@ var HostView = Backbone.View.extend({
 		this.labelGroup.append("rect")
 			.attr("width", 20)
 			.attr("height", 10)
-			.attr("x", w - legendXOffset)
+			.attr("x", cw - legendXOffset)
 			.attr("y", h - 30)
 			.attr("fill", FlowInspector.otherColor);
 

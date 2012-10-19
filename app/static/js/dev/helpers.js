@@ -155,12 +155,14 @@ FlowInspector.isIPValid = function(ipaddr)  {
 	return false;
 }
 
-FlowInspector.getTitleFormat = function(value) {
+FlowInspector.getTitleFormat = function(value, protocol) {
 	if(value === FlowInspector.COL_PKTS) {
 		return function(d) { 
 			var val = 0;
 			// if get is a function, call it, otherwise take d's value
-			if (typeof d.get == 'function') {
+			if (protocol  !== undefined) {
+				val = d.get(protocol)[value];
+			} else if (typeof d.get == 'function') {
 				val = d.get(value);
 			} else {
 				val = d;
@@ -180,7 +182,9 @@ FlowInspector.getTitleFormat = function(value) {
 		return function(d) { 
 			var val = 0;
 			// if get is a function, call it, otherwise take d's value
-			if (typeof d.get == 'function') {
+			if (protocol  !== undefined) {
+				val = d.get(protocol)[value];
+			} else if (typeof d.get == 'function') {
 				val = d.get(value);
 			} else {
 				val = d;
@@ -209,11 +213,13 @@ FlowInspector.getTitleFormat = function(value) {
 	return function(d) { 
 		var val = 0;
 		// if get is a function, call it, otherwise take d's value
-		if (typeof d.get == 'function') {
+		if (protocol  !== undefined) {
+			val = d.get(protocol)[value];
+		} else 	if (typeof d.get == 'function') {
 			val = d.get(value);
 		} else {
 			val = d;
 		}
-		return Math.floor(val) + FlowInspector.COL_FLOWS };
+		return Math.floor(val)  };
 }
 

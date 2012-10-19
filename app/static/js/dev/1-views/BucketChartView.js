@@ -23,9 +23,10 @@ var BucketChartView = Backbone.View.extend({
 		var container = $(this.el).empty(),
 		num_val = this.model.get("value"),
 		w = container.width() - this.m[1] - this.m[3],
-		h = 200 - this.m[0] - this.m[2],
+		yOffset = 70,
+		h = 200 - this.m[0] - this.m[2] + yOffset,
 		x = d3.time.scale().range([0, w]),
-		y = d3.scale.linear().range([h, 0]),
+		y = d3.scale.linear().range([h, yOffset]),
 		stroke = this.stroke,
 		data = this.flows.models,
 		bucket_size = this.flows.bucket_size,
@@ -43,7 +44,7 @@ var BucketChartView = Backbone.View.extend({
 			.data([data])
 			.append("svg:svg")
 				.attr("width", w + this.m[1] + this.m[3])
-				.attr("height", h + this.m[0] + this.m[2])
+				.attr("height", h + this.m[0] + this.m[2] + yOffset )
     			.append("svg:g")
    				.attr("transform", "translate(" + this.m[3] + "," + this.m[0] + ")");
     	
@@ -220,9 +221,10 @@ var BucketChartView = Backbone.View.extend({
 	
 		var container = $(this.el),
 		w = container.width() - this.m[1] - this.m[3],
-		h = 200 - this.m[0] - this.m[2],
+		yOffset = 70,
+		h = 200 - this.m[0] - this.m[2] + yOffset,
 		x = d3.time.scale().range([0, w]),
-		y = d3.scale.linear().range([h, 0]),
+		y = d3.scale.linear().range([h, yOffset]),
 		stroke = this.stroke,
 		data = this.flows.models,
 		bucket_size = this.flows.bucket_size,
