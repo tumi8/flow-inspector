@@ -276,8 +276,8 @@ while True:
 			obj = dict()
 			for j, col in enumerate(c.description):
 				if col[0] not in common.IGNORE_COLUMNS:
-					if TYPE == "oracle" and col[0] in common.ORACLE_LEGACY_COLUMNMAP:
-						obj[common.ORACLE_LEGACY_COLUMNMAP[col[0]]] = row[j]
+					if col[0].upper() in common.LEGACY_COLUMNMAP:
+						obj[common.LEGACY_COLUMNMAP[col[0].upper()]] = row[j]
 					else:
 						obj[col[0]] = row[j]
 						

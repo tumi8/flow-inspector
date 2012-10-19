@@ -50,7 +50,7 @@ HOST_INFORMATION_COLLECTION = "HOST_INFORMATION_CHECKER"
 # Oracle is a professional environment. We therefore need to perform
 # some special mappings for table column names: Oracle is case sensitive
 # and does not cope with anything that is not upper case *sigh*
-ORACLE_LEGACY_COLUMNMAP = {
+LEGACY_COLUMNMAP = {
 	"ID"	        : COL_ID,
 	"FLOWS"         : COL_FLOWS,
         "SRCIP"         : COL_SRC_IP,

@@ -502,11 +502,14 @@ class MysqlBackend(Backend):
 		self.cachingThreshold = 10000
 		self.counter = 0
 
+		self.connect()
+
 		self.doCache = True
 
 	def connect(self):
 		import MySQLdb
 		import _mysql_exceptions
+		print "Connecting ..."
 		try:
 			dns = dict(
 				db = self.databaseName,
@@ -525,21 +528,30 @@ class MysqlBackend(Backend):
 	def execute(self, string):
 		import MySQLdb
 		import _mysql_exceptions
-		
 		try: 
 			self.cursor.execute(string)
-		except (AttributeError, MySQLdb.OperationalError):
+		except MySQLdb.OperationalError as e:
+			print "Tried statement: ", string
+			if error.code == 1061:
+				# index does already exist.
+				return
+			print "Got error: ", e
+			error, = e.args
+			print "Trying again ..."
 			self.connect()
 			self.execute(string)
 
 	def executemany(self, string, objects):
 		import MySQLdb
 		import _mysql_exceptions
+		#print string
 		try:
 			self.cursor.executemany(string, objects)
-		except (AttributeError, MySQLdb.OperationalError):
+		except (AttributeError, MySQLdb.OperationalError) as e:
+			print string
+			print e
 			self.connect()
-			self.executemany(strin, objects)
+			self.executemany(string, objects)
 
 	
 	def clearDatabase(self):
@@ -555,28 +567,30 @@ class MysqlBackend(Backend):
 
 		# tables for storing bucketized flow data
 		for s in config.flow_bucket_sizes:
+			primary = common.COL_BUCKET
 			createString = "CREATE TABLE IF NOT EXISTS "
-			createString += common.DB_FLOW_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL," + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
+			createString += common.DB_FLOW_PREFIX + str(s) + " (" + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
 			for v in config.flow_aggr_values:
+				primary += "," + v
 				createString += ", %s %s NOT NULL" % (v, common.MYSQL_TYPE_MAPPER[v])
 			for s in config.flow_aggr_sums + [ "flows" ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
 				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
-			createString += ", PRIMARY KEY(_id))"
+			createString += ", PRIMARY KEY(" + primary + "))"
 			self.execute(createString)
 
 		# tables for storing aggregated timebased data
 		for s in config.flow_bucket_sizes:
 			createString = "CREATE TABLE IF NOT EXISTS "
-			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (_id VARBINARY(120) NOT NULL," + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
+			createString += common.DB_FLOW_AGGR_PREFIX + str(s) + " (" + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
 			for s in config.flow_aggr_sums + [common.COL_FLOWS]:
 				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
 				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 					createString += ", %s %s DEFAULT 0" % (proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
-			createString += ", PRIMARY KEY(_id))"
+			createString += ", PRIMARY KEY(" + common.COL_BUCKET + "))"
 			self.execute(createString)
 		
 		# create precomputed index that describe the whole data set
@@ -601,7 +615,7 @@ class MysqlBackend(Backend):
 		for bucket_size in config.flow_bucket_sizes:
 			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 				table = index + "_" + str(bucket_size)
-				createString = "CREATE TABLE IF NOT EXISTS %s (_id INTEGER(10) UNSIGNED NOT NULL, bucket INTEGER(10) UNSIGNED NOT NULL" % table
+				createString = "CREATE TABLE IF NOT EXISTS " + table + " (_id INTEGER(10) UNSIGNED NOT NULL," + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
 				for s in config.flow_aggr_sums + [common.COL_FLOWS]:
 					createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
@@ -614,13 +628,13 @@ class MysqlBackend(Backend):
 						for s in config.flow_aggr_sums + [common.COL_FLOWS ]: 
 							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 	
-				createString += ", PRIMARY KEY(_id, bucket))"
+				createString += ", PRIMARY KEY(_id," + common.COL_BUCKET + "))"
 				self.execute(createString)
 
 
 	def createIndex(self, tableName, fieldName):
 		try:
-			self.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
+			self.execute("CREATE INDEX %s on %s (%s)" % (fieldName + "_index", tableName, fieldName))
 		except:
 			# most common cause: index does already exists
 			# TODO check for errors
@@ -629,20 +643,25 @@ class MysqlBackend(Backend):
 		
 	def update(self, collectionName, statement, document, insertIfNotExists):
 		# special handling for the _id field
-		typeString = "_id"
-		value = str(statement["_id"])
-		if self.doCache: 
-			if value == "total":
-				# special value 0 encodes the total field
-				cacheLine = (0,)
+		if collectionName.startswith('index'):
+			typeString = "_id"
+			value = str(statement["_id"])
+			if self.doCache: 
+				if value == "total":
+					# special value 0 encodes the total field
+					cacheLine = (0,)
+				else:
+					cacheLine = (value,)
+				valueString = "%s"
 			else:
-				cacheLine = (value,)
-			valueString = "%s"
+				if value == "total":
+					valueString = "0"
+				else:
+					valueString = str(value)
 		else:
-			if value == "total":
-				valueString = "0"
-			else:
-				valueString = str(value)
+			typeString = ""
+			valueString = ""
+			cacheLine = ()
 
 		#if not collectionName ==common.DB_INDEX_NODES and not collectionName == common.DB_INDEX_PORTS:
 		#	print collectionName,  statement, document
@@ -653,11 +672,17 @@ class MysqlBackend(Backend):
 			for v in document[part]:
 				if self.doCache:
 					cacheLine = cacheLine + (document[part][v],)
-					valueString += ",%s"
+					if valueString != "":
+						valueString += ","
+					valueString += "%s"
 				else:
-					valueString += "," + str(document[part][v])
+					if valueString != "":
+						valueString += ","
+					valueString += str(document[part][v])
 				v = v.replace('.', '_')
-				typeString += "," + v
+				if typeString != "":
+					typeString += "," 
+				typeString += v
 				if part == "$inc":
 					if updateString != "":
 						updateString += ","
