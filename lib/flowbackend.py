@@ -46,66 +46,67 @@ class Collection:
 		"""
 		self.backendObject.update(self.collectionName, statement, document, insertIfNotExist)
 
-	def bucket_query(self, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def bucket_query(self, query_params):
 		"""
-		Queries the database for a set of flows that match the given properties
+		Queries the database for a set of flows that match the given properties. "query_param" is a dictionary with the following entries:
 		- spec - mongo specific spec for the query. already encodes the arguments (applies only to mongo)
 		- fields - database fields that should be queried and returned by the database
 		- sort - list of fields that should be sorted, including the sort direction
 		- count - maximum number of flows that should be returned
-		- startBucket: start interval for flows
-		- endBucket: end interval for flow queries
+		- start_bucket: start interval for flows
+		- end_bucket: end interval for flow queries
 		- resolution: desired time resolution
-		- bucketSize: size of buckets to be queried
+		- bucket_size: size of buckets to be queried
 		- biflow: whether we should have biflow aggregation or not
-		- includePorts: only select flows that involve the ports in this list
-		- excludePorts: only select flows that do not involve the ports in this list
-		- inludeIPs: only select flows that involve the ips in this list
-		- excludeIPs: only select flows that do not involve the ips in this list
-		- batchSize: database should select the flows in batch sizes of batchSize (ignored for most backends)
+		- include_ports: only select flows that involve the ports in this list
+		- exclude_ports: only select flows that do not involve the ports in this list
+		- inlude_ips: only select flows that involve the ips in this list
+		- exclude_ips: only select flows that do not involve the ips in this list
+		- batch_size: database should select the flows in batch sizes of batchSize (ignored for most backends)
 		"""
-		return self.backendObject.bucket_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+		return self.backendObject.bucket_query(self.collectionName, query_params)
 
-	def index_query(self, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def index_query(self, query_params):
 		"""
-		Queries the database for static indexes on all flows in the database
+		Queries the database for static indexes on all flows in the database. query_params is a dict with the following entries:
 		- spec - mongo specific spec for the query. already encodes the arguments (applies only to mongo)
 		- fields - database fields that should be queried and returned by the database
 		- sort - list of fields that should be sorted, including the sort direction
 		- count - maximum number of flows that should be returned
-		- startBucket: start interval for flows
-		- endBucket: end interval for flow queries
+		- start_bucket: start interval for flows
+		- end_bucket: end interval for flow queries
 		- resolution: desired time resolution
-		- bucketSize: size of buckets to be queried
+		- bucket_size: size of buckets to be queried
 		- biflow: whether we should have biflow aggregation or not
-		- includePorts: only select flows that involve the ports in this list
-		- excludePorts: only select flows that do not involve the ports in this list
-		- inludeIPs: only select flows that involve the ips in this list
-		- excludeIPs: only select flows that do not involve the ips in this list
-		- batchSize: database should select the flows in batch sizes of batchSize (ignored for most backends)
+		- include_ports: only select flows that involve the ports in this list
+		- exclude_ports: only select flows that do not involve the ports in this list
+		- inlude_ips: only select flows that involve the ips in this list
+		- exclude_ips: only select flows that do not involve the ips in this list
+		- batch_size: database should select the flows in batch sizes of batchSize (ignored for most backends)
 		"""
-		return self.backendObject.index_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+		return self.backendObject.index_query(self.collectionName, query_params)
  
-	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def dynamic_index_query(self, name, query_params):
 		"""
 		Queries the database for dynamic indexes which are calculated based on the start and end intervals
 		- name - index name (ports or nodes)
+		query_params is a dict with the following entries:
 		- spec - mongo specific spec for the query. already encodes the arguments (applies only to mongo)
 		- fields - database fields that should be queried and returned by the database
 		- sort - list of fields that should be sorted, including the sort direction
 		- count - maximum number of flows that should be returned
-		- startBucket: start interval for flows
-		- endBucket: end interval for flow queries
+		- start_bucket: start interval for flows
+		- end_bucket: end interval for flow queries
 		- resolution: desired time resolution
-		- bucketSize: size of buckets to be queried
+		- bucket_size: size of buckets to be queried
 		- biflow: whether we should have biflow aggregation or not
-		- includePorts: only select flows that involve the ports in this list
-		- excludePorts: only select flows that do not involve the ports in this list
-		- inludeIPs: only select flows that involve the ips in this list
-		- excludeIPs: only select flows that do not involve the ips in this list
-		- batchSize: database should select the flows in batch sizes of batchSize (ignored for most backends)
+		- include_ports: only select flows that involve the ports in this list
+		- exclude_ports: only select flows that do not involve the ports in this list
+		- inlude_ips: only select flows that involve the ips in this list
+		- exclude_ips: only select flows that do not involve the ips in this list
+		- batch_size: database should select the flows in batch sizes of batchSize (ignored for most backends)
 		"""
-		return self.backendObject.index_query(self.collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+		return self.backendObject.index_query(self.collectionName, query_params)
  
 
 	def find_one(self, spec, fields=None, sort=None):
@@ -199,21 +200,21 @@ class Backend:
 		"""
 		pass
 
-	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def bucket_query(self, collectionName, query_params):
 		"""
 		Queries flows from the database and collection "colletionName". See
 		class Collection for full documentation of the parameters.
 		"""
 		pass
 
-	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def index_query(self, collectionName, query_params):
 		"""
 		Queries static indexes on the full database. See class Collection for 
 		full documentation.
 		"""
 		pass
 
-	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def dynamic_index_query(self, name, query_params):
 		pass 
 	
 	def find_one(self, collectionName, spec, fields, sort):
@@ -302,9 +303,18 @@ class MongoBackend(Backend):
 		collection = self.dst_db[collectionName]
 		collection.update(statement, document, insertIfNotExists)
 
-	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def bucket_query(self, collectionName,  query_params):
 		import pymongo
 		collection = self.dst_db[collectionName]
+		fields = query_params["fields"]
+		spec = query_params["spec"]
+		sort = query_params["sort"]
+		include_ips = query_params["include_ips"]
+		exclude_ips = query_params["exclude_ips"]
+		include_ports = query_params["include_ports"]
+		exclude_ports = query_params["exclude_ports"]
+		biflow = query_params["biflow"]
+
 		cursor = collection.find(spec, fields=fields).batch_size(1000)
 		if sort: 
 			cursor.sort(common.COL_BUCKET, sort)
@@ -312,7 +322,7 @@ class MongoBackend(Backend):
 			cursor.sort(common.COL_BUCKET, pymongo.ASCENDING)
 
 		buckets = []
-		if (fields != None and len(fields) > 0) or len(includePorts) > 0 or len(excludePorts) > 0 or len(includeIps) > 0 or len(excludeIps) > 0:
+		if (fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0 or len(include_ips) > 0 or len(exclude_ips) > 0:
 			current_bucket = -1
 			aggr_buckets = {}
 			for doc in cursor:
@@ -357,7 +367,12 @@ class MongoBackend(Backend):
 				buckets.append(doc)
 		return buckets
 
-	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def index_query(self, collectionName, query_params):
+		spec = query_params["spec"]
+		sort = query_params["sort"]
+		limit = query_params["limit"]
+
+
 		collection = self.dst_db[collectionName]
 		# query without the total field	
 		full_spec = {}
@@ -393,7 +408,13 @@ class MongoBackend(Backend):
 	
 		return (result, total)
 
-	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def dynamic_index_query(self, name, query_params):
+		spec = query_params["spec"]
+		fields = query_params["fields"]
+		sort = query_params["sort"]
+		limit = query_params["limit"]
+
+
 		def createNewIndexEntry(row):
 			# top level
 			r = { "id": row[key[0]], common.COL_FLOWS: 0 }
@@ -772,27 +793,46 @@ class MysqlBackend(Backend):
 			if numSlots <= resolution:
 				return s
 
-	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def bucket_query(self, collectionName, query_params):
 		print "MySQL: Constructing query ... "
-		(result, total) = self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+		(result, total) = self.sql_query(collectionName, query_params)
 		print "MySQL: Returning data to app ..."
 		return result
 
-	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
-		return self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+	def index_query(self, collectionName, query_params):
+		return self.sql_query(collectionName, query_params)
 
-	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def dynamic_index_query(self, name, query_params):
 		if name == "nodes":
-			tableName = common.DB_INDEX_NODES + "_" + str(bucketSize)
+			tableName = common.DB_INDEX_NODES + "_" + str(query_params["bucket_size"])
 		elif name == "ports":
-			tableName = common.DB_INDEX_PORTS + "_" + str(bucketSize)
+			tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
 		else:
 			raise Exception("Unknown index specified")
 
-		(results, total) =  self.sql_query(tableName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, [ "_id"])
+		query_params["aggregate"] = [ "_id" ] 
+		(results, total) =  self.sql_query(tableName, query_params)
 		return (results, total)
 
-	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, aggregate = None):
+	def sql_query(self, collectionName, query_params):
+		spec = query_params["spec"] 
+		fields = query_params["fields"]
+		sort  = query_params["sort"]
+		limit = query_params["limit"] 
+		count = query_params["count"]
+		startBucket = query_params["start_bucket"]
+		endBucket = query_params["end_bucket"]
+		resolution = query_params["resolution"]
+		bucketSize = query_params["bucket_size"]
+		biflow = query_params["biflow"]
+		includePorts = query_params["include_ports"]
+		excludePorts = query_params["exclude_ports"]
+		includeIPs = query_params["include_ips"]
+		excludeIPs = query_params["exclude_ips"]
+		batchSize = query_params["batch_size"]  
+		aggregate = query_params["aggregate"]
+
+
 		fieldList = ""
 		if fields != None: 
 			for field in fields:
@@ -1288,27 +1328,45 @@ class OracleBackend(Backend):
 			if numSlots <= resolution:
 				return s
 
-	def bucket_query(self, collectionName,  spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def bucket_query(self, collectionName,  query_params):
 		print "Oracle: Constructing query ... "
-		(result, total) = self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+		(result, total) = self.sql_query(collectionName, query_params)
 		print "Oracle: Returning data to app ..."
 		return result
 
-	def index_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
-		return self.sql_query(collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize)
+	def index_query(self, collectionName, query_params):
+		return self.sql_query(collectionName, query_params)
 
-	def dynamic_index_query(self, name, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize):
+	def dynamic_index_query(self, name, query_params):
 		if name == "nodes":
-			tableName = common.DB_INDEX_NODES + "_" + str(bucketSize)
+			tableName = common.DB_INDEX_NODES + "_" + str(query_params["bucket_size"])
 		elif name == "ports":
-			tableName = common.DB_INDEX_PORTS + "_" + str(bucketSize)
+			tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
 		else:
 			raise Exception("Unknown index specified")
 
-		(results, total) =  self.sql_query(tableName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, [ "id"])
+		query_params["aggregate"] = [ "id" ]
+		(results, total) =  self.sql_query(tableName, query_params)
 		return (results, total)
 
-	def sql_query(self, collectionName, spec, fields, sort, limit, count, startBucket, endBucket, resolution, bucketSize, biflow, includePorts, excludePorts, includeIPs, excludeIPs, batchSize, aggregate = None):
+	def sql_query(self, collectionName, query_params):
+		spec = query_params["spec"] 
+		fields = query_params["fields"]
+		sort  = query_params["sort"]
+		limit = query_params["limit"] 
+		count = query_params["count"]
+		startBucket = query_params["start_bucket"]
+		endBucket = query_params["end_bucket"]
+		resolution = query_params["resolution"]
+		bucketSize = query_params["bucket_size"]
+		biflow = query_params["biflow"]
+		includePorts = query_params["include_ports"]
+		excludePorts = query_params["exclude_ports"]
+		includeIPs = query_params["include_ips"]
+		excludeIPs = query_params["exclude_ips"]
+		batchSize = query_params["batch_size"]  
+		aggregate = query_params["aggregate"]
+
 		fieldList = ""
 		if fields != None: 
 			for field in fields:

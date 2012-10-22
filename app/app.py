@@ -37,6 +37,7 @@ dataBackend = databackend.getBackendObject(config.data_backend, config.data_back
 
 def extract_mongo_query_params():
 	# construct query
+
 	limit = 0
 	if "limit" in request.GET:
 		try:
@@ -185,8 +186,25 @@ def extract_mongo_query_params():
 		spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
 		spec[common.COL_DST_IP] = { "$in": exclude_ips } 
 
-	
-	return (spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)
+	result = {}
+	result["spec"] = spec
+	result["fields"] = fields
+	result["sort"] = sort
+	result["limit"] = limit
+	result["count"] = count
+	result["start_bucket"] = start_bucket
+	result["end_bucket"] = end_bucket
+	result["resolution"] = resolution
+	result["bucket_size"] = bucket_size
+	result["biflow"] = biflow
+	result["include_ports"] = include_ports
+	result["exclude_ports"] = exclude_ports
+	result["include_ips"] = include_ips
+	result["exclude_ips"] = exclude_ips
+	result["batch_size"] = 1000
+	result["aggregate"] = None
+
+	return result
 			
 @get("/")
 @get("/dashboard")
@@ -227,32 +245,36 @@ def index():
 @get("/api/bucket/query")
 @get("/api/bucket/query/")
 def api_bucket_query():
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	query_params = extract_mongo_query_params()
+	fields = query_params["fields"]
+	bucket_size = query_params["bucket_size"]
 
 	# get proper collection
 	collection = None
-	if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
+	if (query_params["fields"] != None and len(query_params["fields"]) > 0)  or len(query_params["include_ports"]) > 0 or len(query_params["exclude_ports"]) > 0:
 		collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
 	else:
 		# use preaggregated collection
-		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(bucket_size))
+		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(query_params["bucket_size"]))
 
-	if fields != None:
+	if query_params["fields"] != None:
 		query_fields = fields + [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums
 	else:
 		query_fields = [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
 
-	buckets = collection.bucket_query(spec, query_fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
+	query_params["fields"] = query_fields
+
+	buckets = collection.bucket_query(query_params)
 	
 	return { 
-		"bucket_size": bucket_size,
+		"bucket_size": query_params["bucket_size"],
 		"results": buckets
 	}
 
 @get("/api/dynamic/index/:name")
 def api_dynamic_index(name):
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
-	(results, total) = db.dynamic_index_query(name, spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
+	query_params = extract_mongo_query_params()
+	(results, total) = db.dynamic_index_query(name, query_params)
 
 	return { "totalCounter" : total, "results": results }
 
@@ -260,7 +282,7 @@ def api_dynamic_index(name):
 @get("/api/index/:name")
 @get("/api/index/:name/")
 def api_index(name):
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	query_params =  extract_mongo_query_params()
 
 	collection = None
 	if name == "nodes":
@@ -272,13 +294,13 @@ def api_index(name):
 		raise HTTPError(404, "Index name not known.")
 
 
-	(result, total) = collection.index_query(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
+	(result, total) = collection.index_query(query_params)
 
 	return { "totalCounter": total, "results": result }
 
 @get("/api/hostinfo/")
 def api_hostinfo():
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	quer_params =  extract_mongo_query_params()
 	data = dataBackend.data_query(common.HOST_INFORMATION_COLLECTION, None)
 	return { "results": data }
 	
