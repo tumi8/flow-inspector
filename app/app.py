@@ -157,8 +157,8 @@ def extract_mongo_query_params():
 
 	# only stated fields will be available, all others will be aggregated toghether	
 	# filter for known aggregation values
-	if fields != None:
-		fields = [v for v in fields if v in config.flow_aggr_values]
+	#if fields != None:
+	#	fields = [v for v in fields if v in config.flow_aggr_values]
 
 	spec = {}
 	if start_bucket > 0 or end_bucket < sys.maxint:
@@ -186,6 +186,15 @@ def extract_mongo_query_params():
 		spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
 		spec[common.COL_DST_IP] = { "$in": exclude_ips } 
 
+	black_others = False
+	if "black_others" in request.GET:
+		black_others = True
+
+	aggregate = []
+	if "aggregate" in request.GET:
+		aggregate = request.GET["aggregate"].strip()
+		aggregate = map(lambda v: v.strip(), aggregate.split(","))
+
 	result = {}
 	result["spec"] = spec
 	result["fields"] = fields
@@ -202,7 +211,8 @@ def extract_mongo_query_params():
 	result["include_ips"] = include_ips
 	result["exclude_ips"] = exclude_ips
 	result["batch_size"] = 1000
-	result["aggregate"] = None
+	result["aggregate"] = aggregate
+	result["black_others"] = black_others
 
 	return result
 			

@@ -50,7 +50,7 @@ var GraphView = Backbone.View.extend({
 			.data(this.data_links)
 		.enter().append("line")
 			.attr("class", "link")
-			//.style("stroke-width", function(d) { return Math.sqrt(d.value); })
+			.style("stroke-width", function(d) { return Math.sqrt(d.value); })
 			.attr("x1", function(d) { return d.source.x; })
 			.attr("y1", function(d) { return d.source.y; })
 			.attr("x2", function(d) { return d.target.x; })
@@ -94,7 +94,7 @@ var GraphView = Backbone.View.extend({
 		if(this.nodes.length <= 0) {
 			return;
 		}
-    	
+
 		this.data_nodes = [];
 		this.node_map = {};
 		var node_limit = this.model.get("nodeLimit");
@@ -113,6 +113,8 @@ var GraphView = Backbone.View.extend({
 			nodes.push(node);
 		});
     	
+		// nodes should be sorted by the server (requested by GraphPageView or 
+		// any other Page that embedds GraphView
 		nodes.forEach(function(m, i) {
 			if(!node_limit || i < node_limit) {
 				var node = {
@@ -141,9 +143,9 @@ var GraphView = Backbone.View.extend({
 		if(node_limit && showOthers) {
 			this.data_nodes.push(other_nodes);
 		}
-    	
+
 		this.render();
-    	
+
     		this.hilbertLayout();
 	},
 	updateFlows: function() {
@@ -163,6 +165,8 @@ var GraphView = Backbone.View.extend({
 			if (source === undefined || target === undefined) {
 				return;
 			}
+			console.log(m);
+			console.log(min_bucket);
 			var t = 1.0;
 			if(min_bucket < max_bucket) {
 				t = (m.get("bucket").getTime() - min_bucket.getTime()) / (max_bucket.getTime() - min_bucket.getTime());
@@ -175,7 +179,7 @@ var GraphView = Backbone.View.extend({
 				t: t
 			});
 		});
-		
+
 		this.render();
 	},
 	stop: function() {

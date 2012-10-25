@@ -561,6 +561,9 @@ class MysqlBackend(Backend):
 			print "Trying again ..."
 			self.connect()
 			self.execute(string)
+		except MySQLdb.ProgrammingError as e:
+			print "Programming Error: ", e
+			return {}
 
 	def executemany(self, string, objects):
 		import MySQLdb
@@ -820,21 +823,49 @@ class MysqlBackend(Backend):
 		sort  = query_params["sort"]
 		limit = query_params["limit"] 
 		count = query_params["count"]
-		startBucket = query_params["start_bucket"]
+		start_bucket = query_params["start_bucket"]
 		endBucket = query_params["end_bucket"]
 		resolution = query_params["resolution"]
 		bucketSize = query_params["bucket_size"]
 		biflow = query_params["biflow"]
 		includePorts = query_params["include_ports"]
 		excludePorts = query_params["exclude_ports"]
-		includeIPs = query_params["include_ips"]
+		include_ips = query_params["include_ips"]
 		excludeIPs = query_params["exclude_ips"]
 		batchSize = query_params["batch_size"]  
 		aggregate = query_params["aggregate"]
+		black_others = query_params["black_others"]
 
 
 		fieldList = ""
-		if fields != None: 
+		if aggregate != None and aggregate != []:
+			# aggregate all fields
+			for field in aggregate:
+				if fieldList != "":
+					fieldList += ","
+				if black_others:
+					# black SQL magic. Select only the values of srcIP, dstIP that match the include_ips fields
+					# (same with scrPort,dstPorts). Set all other values to 0
+					includeList = None
+					if field == common.COL_SRC_IP or field == common.COL_DST_IP:
+						includeList = include_ips
+					elif field == common.COL_SRC_PORT or field == common.COL_DST_PORT:
+						includeList = include_ports
+					if includeList:
+						fieldString = "CASE " + field + " "
+						for includeField in includeList:
+							fieldString += " WHEN " + str(includeField) + " THEN " + field
+						fieldList += fieldString + " ELSE 0 END as " + field
+					else:
+						fieldList += "MIN(" + field +  ") "
+				else:
+					# just take the field
+					fieldList += field 
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+				fieldList += ",SUM(" + field + ") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
+		elif fields != None: 
 			for field in fields:
 				if field in common.AVAILABLE_PROTOS:
 					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
@@ -847,25 +878,14 @@ class MysqlBackend(Backend):
 					fieldList += field
 			if not common.COL_BUCKET in fields:
 				fieldList += "," + common.COL_BUCKET
-		elif aggregate != None:
-			# aggregate all fields
-			fieldList = ""
-			for field in aggregate:
-				if fieldList != "":
-					fieldList = ","
-				fieldList += field 
-			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-				fieldList += ",SUM(" + field + ") as " + field
-				for p in common.AVAILABLE_PROTOS:
-					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
 		else:
 			fieldList = "*"
 
 		isWhere = False
 		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
-		if startBucket != None and startBucket > 0:
+		if start_bucket != None and start_bucket > 0:
 			isWhere = True
-			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (startBucket)
+			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (start_bucket)
 		if endBucket != None and endBucket < sys.maxint:
 			if not isWhere:
 				queryString += "WHERE " 
@@ -905,7 +925,7 @@ class MysqlBackend(Backend):
 			queryString += ") "
 
 		firstIncludeIP = True
-		for ip in includeIPs:
+		for ip in include_ips:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
@@ -956,6 +976,7 @@ class MysqlBackend(Backend):
 			queryString += "LIMIT %d" % (limit)
 
 		print "MySQL: Running Query ..."
+		print queryString
 		self.execute(queryString)
 		queryResult =  self.cursor.fetchall()
 		print "MySQL: Encoding Query ..."
@@ -1355,14 +1376,14 @@ class OracleBackend(Backend):
 		sort  = query_params["sort"]
 		limit = query_params["limit"] 
 		count = query_params["count"]
-		startBucket = query_params["start_bucket"]
+		start_bucket = query_params["start_bucket"]
 		endBucket = query_params["end_bucket"]
 		resolution = query_params["resolution"]
 		bucketSize = query_params["bucket_size"]
 		biflow = query_params["biflow"]
 		includePorts = query_params["include_ports"]
 		excludePorts = query_params["exclude_ports"]
-		includeIPs = query_params["include_ips"]
+		include_ips = query_params["include_ips"]
 		excludeIPs = query_params["exclude_ips"]
 		batchSize = query_params["batch_size"]  
 		aggregate = query_params["aggregate"]
@@ -1397,9 +1418,9 @@ class OracleBackend(Backend):
 
 		isWhere = False
 		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
-		if startBucket != None and startBucket > 0:
+		if start_bucket != None and start_bucket > 0:
 			isWhere = True
-			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (startBucket)
+			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (start_bucket)
 		if endBucket != None and endBucket < sys.maxint:
 			if not isWhere:
 				queryString += "WHERE " 
@@ -1439,7 +1460,7 @@ class OracleBackend(Backend):
 			queryString += ") "
 
 		firstIncludeIP = True
-		for ip in includeIPs:
+		for ip in include_ips:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True

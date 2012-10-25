@@ -151,13 +151,15 @@ var GraphPageView = PageView.extend({
 		var filter_ports = $.trim(this.graphModel.get("filterPorts"));
 		var filter_ports_type = this.graphModel.get("filterPortsType");
 		var showOthers = this.graphModel.get("showOthers");
+		var nodeLimit = this.graphModel.get("nodeLimit")
     	
 		var data = { 
-			"fields": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP,
+			"fields": FlowInspector.COL_BUCKET,
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size,
-			"biflow": 1
+			"biflow": 1,
+			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP
 		};
     	
 		var ports = filter_ports.split("\n");
@@ -181,7 +183,7 @@ var GraphPageView = PageView.extend({
 			}
 		}
 		
-		if (!showOthers) {
+		if (nodeLimit > 0) {
 			// we only need to take flows to the top nodes within the nodeLimit
 			// into account. So if we have the nodes, we can limit our flow extraction 
 			// to them ...
@@ -195,6 +197,7 @@ var GraphPageView = PageView.extend({
 				});
 				data["include_ips"] = filter_ips;
 			}
+			data["black_others"] = true;
 		}
 
 		this.flows.fetch({ data: data });
