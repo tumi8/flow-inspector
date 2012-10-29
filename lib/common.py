@@ -127,6 +127,15 @@ def getProtoFromValue(proto):
 
 	return result
 
+def getValueFromProto(proto):
+	if proto == COL_PROTO_UDP:
+		return 17
+	if proto == COL_PROTO_TCP:
+		return 6
+	if proto == COL_PROTO_ICMP:
+		return 1
+	return 0
+
 def update_node_index(obj, collection, aggr_sum):
 	"""Update the node index collection in MongoDB with the current flow.
 	

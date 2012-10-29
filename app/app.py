@@ -122,7 +122,18 @@ def extract_mongo_query_params():
 	biflow = False
 	if "biflow" in request.GET:
 		biflow = True
-		
+
+
+	# protocol filter
+	include_protos = []
+	if "include_protos" in request.GET:
+		include_protos = request.GET["include_protos"].strip()
+		include_protos = map(lambda v: v.strip(), include_protos.split(","))
+	exclude_protos = []
+	if "exclude_protos" in request.GET:
+		exclude_protos = request.GET["exclude_protos"].strip()
+		exclude_protos = map(lambda v: v.strip(), exclude_protos.split(","))
+
 	
 	# port filter
 	include_ports = []
@@ -210,6 +221,8 @@ def extract_mongo_query_params():
 	result["exclude_ports"] = exclude_ports
 	result["include_ips"] = include_ips
 	result["exclude_ips"] = exclude_ips
+	result["include_protos"] = include_protos
+	result["exclude_protos"] = exclude_protos
 	result["batch_size"] = 1000
 	result["aggregate"] = aggregate
 	result["black_others"] = black_others
@@ -274,10 +287,12 @@ def api_bucket_query():
 
 	query_params["fields"] = query_fields
 
-	buckets = collection.bucket_query(query_params)
+	(buckets, total, min_bucket, max_bucket) = collection.bucket_query(query_params)
 	
 	return { 
 		"bucket_size": query_params["bucket_size"],
+		"global_min_bucket": min_bucket,
+		"global_max_bucket": max_bucket,
 		"results": buckets
 	}
 

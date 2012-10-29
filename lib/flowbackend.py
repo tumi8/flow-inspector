@@ -315,6 +315,9 @@ class MongoBackend(Backend):
 		exclude_ports = query_params["exclude_ports"]
 		biflow = query_params["biflow"]
 
+		min_bucket = self.getMinBucket();
+		max_bucket = self.getMaxBucket();
+
 		cursor = collection.find(spec, fields=fields).batch_size(1000)
 		if sort: 
 			cursor.sort(common.COL_BUCKET, sort)
@@ -365,7 +368,8 @@ class MongoBackend(Backend):
 			for doc in cursor:
 				del doc["_id"]
 				buckets.append(doc)
-		return buckets
+
+		return (result, None, min_bucket, max_bucket);
 
 	def index_query(self, collectionName, query_params):
 		spec = query_params["spec"]
@@ -553,11 +557,11 @@ class MysqlBackend(Backend):
 			self.cursor.execute(string)
 		except MySQLdb.OperationalError as e:
 			print "Tried statement: ", string
+			print "Got error: ", e
+			error, = e.args
 			if error.code == 1061:
 				# index does already exist.
 				return
-			print "Got error: ", e
-			error, = e.args
 			print "Trying again ..."
 			self.connect()
 			self.execute(string)
@@ -798,9 +802,11 @@ class MysqlBackend(Backend):
 
 	def bucket_query(self, collectionName, query_params):
 		print "MySQL: Constructing query ... "
+		min_bucket = self.getMinBucket()
+		max_bucket = self.getMaxBucket()
 		(result, total) = self.sql_query(collectionName, query_params)
 		print "MySQL: Returning data to app ..."
-		return result
+		return (result, total, min_bucket, max_bucket);
 
 	def index_query(self, collectionName, query_params):
 		return self.sql_query(collectionName, query_params)
@@ -831,7 +837,9 @@ class MysqlBackend(Backend):
 		includePorts = query_params["include_ports"]
 		excludePorts = query_params["exclude_ports"]
 		include_ips = query_params["include_ips"]
-		excludeIPs = query_params["exclude_ips"]
+		exclude_ips = query_params["exclude_ips"]
+		include_protos = query_params["include_protos"]
+		exclude_protos = query_params["exclude_protos"]
 		batchSize = query_params["batch_size"]  
 		aggregate = query_params["aggregate"]
 		black_others = query_params["black_others"]
@@ -941,7 +949,7 @@ class MysqlBackend(Backend):
 
 
 		firstExcludeIP = True
-		for ip in excludeIPs:
+		for ip in exclude_ips:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
@@ -954,6 +962,37 @@ class MysqlBackend(Backend):
 			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
 		if not firstExcludeIP:
 			queryString += ") "
+
+		firstIncludeProto = True
+		for proto in include_protos:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstIncludeProto: 
+					queryString += "AND ("
+					firstIncludeProto = False
+				else:
+					queryString += "OR "
+			queryString += "%s = %d " % (common.COL_PROTO, common.getValueFromProto(proto))
+		if not firstIncludeProto:
+			queryString += ") "
+
+		firstExcludeProto = True
+		for proto in exclude_protos:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstExcludeProto: 
+					queryString += "AND ("
+					firstExcludeProto = False
+				else:
+					queryString += "OR "
+			queryString += "%s != %d " % (common.COL_PROTO, common.getValueFromProto(proto))
+		if not firstExcludeProto:
+			queryString += ") "
+
 
 		if aggregate:
 			queryString += "GROUP BY "
@@ -1351,9 +1390,11 @@ class OracleBackend(Backend):
 
 	def bucket_query(self, collectionName,  query_params):
 		print "Oracle: Constructing query ... "
+		min_bucket = self.getMinBucket();
+		max_bucket = self.getMaxBucket();
 		(result, total) = self.sql_query(collectionName, query_params)
 		print "Oracle: Returning data to app ..."
-		return result
+		return (result, total, min_bucket, max_bucket);
 
 	def index_query(self, collectionName, query_params):
 		return self.sql_query(collectionName, query_params)
@@ -1384,7 +1425,7 @@ class OracleBackend(Backend):
 		includePorts = query_params["include_ports"]
 		excludePorts = query_params["exclude_ports"]
 		include_ips = query_params["include_ips"]
-		excludeIPs = query_params["exclude_ips"]
+		exclude_ips = query_params["exclude_ips"]
 		batchSize = query_params["batch_size"]  
 		aggregate = query_params["aggregate"]
 
@@ -1476,7 +1517,7 @@ class OracleBackend(Backend):
 
 
 		firstExcludeIP = True
-		for ip in excludeIPs:
+		for ip in exclude_ips:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
