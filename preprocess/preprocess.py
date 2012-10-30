@@ -312,8 +312,8 @@ for s in config.flow_bucket_sizes:
 	))
 
 # create indexes
-for handler in handlers:
-	handler.collection.createIndex(common.COL_BUCKET)
+#for handler in handlers:
+	#handler.collection.createIndex(common.COL_BUCKET)
 
 print "%s: Preprocessing started." % (datetime.datetime.now())
 print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())
