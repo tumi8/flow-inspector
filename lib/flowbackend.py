@@ -13,6 +13,7 @@ Author: Lothar Braun
 import sys
 import config
 import common
+import time
 
 class Collection:
 	"""
@@ -1078,7 +1079,7 @@ class OracleBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName):
 		Backend.__init__(self, host, port, user, password, databaseName)
 		self.tableInsertCache = dict()
-		self.cachingThreshold = 10000
+		self.cachingThreshold = 100000
 		self.counter = 0
 
 		self.doCache = True
@@ -1086,6 +1087,10 @@ class OracleBackend(Backend):
 		self.conn = None
 		self.cursor = None
 		self.connect()
+
+		self.executeTimes = 0
+		self.executeManyTimes = 0
+		self.executeManyObjects = 0
 
 		self.tableNames = [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]
 		for s in config.flow_bucket_sizes:
@@ -1112,14 +1117,28 @@ class OracleBackend(Backend):
 
 
 	def execute(self, string, params = None):
+		self.executeTimes += 1
+		print "Execute: ", self.executeTimes
+		maxtime = 10
+
 		import cx_Oracle
 		print string, params
 		try: 
+			start_time = time.time()
 			if params == None:
 				self.cursor.execute(string)
 			else:
 				self.cursor.execute(string, params)
+			end_time = time.time()
+			if end_time - start_time > maxtime:
+				print "Execute: execute time was ", end_time - start_time
+
+			start_time = time.time()
 			self.conn.commit()
+			end_time = time.time()
+			if end_time - start_time > maxtime:
+				print "Execute: commit time was ", end_time - start_time
+
 		except (AttributeError, cx_Oracle.OperationalError) as e:
 			print e
 			self.connect()
@@ -1135,15 +1154,28 @@ class OracleBackend(Backend):
 				sys.exit(-1)
 
 
-	def executemany(self, string, objects):
+	def executemany(self, string, objects, table = None):
+		self.executeManyTimes += 1
+		self.executeManyObjects += len(objects)
+		print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
+		maxtime = 5 
+
 		import cx_Oracle
 		try:
-			print "Startint commit ..."
-			self.conn.commit()
-			print "ending commit ..."
-			print "Starting execute ..."
+			#print "starting execute ..."
+			start_time = time.time()
 			self.cursor.executemany(string, objects)
-			print "Ending execute ..."
+			end_time = time.time()
+			if end_time - start_time > maxtime:
+				print "ExecuteMany: executemany time was ", end_time - start_time
+			#print "ending execute ..."
+			start_time = time.time()
+			#print "starting commit ..."
+			self.conn.commit()
+			#print "ending commit ..."
+			end_time = time.time()
+			if end_time - start_time > maxtime:
+				print "ExecuteMany: commit time was ", end_time - start_time
 		except (AttributeError, cx_Oracle.OperationalError):
 			self.connect()
 			self.executemany(string, objects)
@@ -1333,17 +1365,19 @@ class OracleBackend(Backend):
 		self.insert(collectionName, fieldDict)
 
 	def flushCache(self, collectionName=None):
+		print "flushing cache ..."
 		if collectionName:
 			cache = self.tableInsertCache[collectionName][0]
 			for queryString in cache:
 				cacheLines = cache[queryString]
-				self.executemany(queryString, cacheLines)
+				self.executemany(queryString, cacheLines, collectionName)
 			del self.tableInsertCache[collectionName]
 		else:
 			# flush all collections
 			while len( self.tableInsertCache) > 0:
 				collection = self.tableInsertCache.keys()[0]
 				self.flushCache(collection)
+		print "flushed cache!"
 
 	def getMinBucket(self, bucketSize = None):
 		if not bucketSize:
@@ -1426,11 +1460,41 @@ class OracleBackend(Backend):
 		excludePorts = query_params["exclude_ports"]
 		include_ips = query_params["include_ips"]
 		exclude_ips = query_params["exclude_ips"]
+		include_protos = query_params["include_protos"]
+		exclude_protos = query_params["exclude_protos"]
 		batchSize = query_params["batch_size"]  
 		aggregate = query_params["aggregate"]
+		black_others = query_params["black_others"]
 
 		fieldList = ""
-		if fields != None: 
+		if aggregate != None and aggregate != []:
+			# aggregate all fields
+			for field in aggregate:
+				if fieldList != "":
+					fieldList += ","
+				if black_others:
+					# black SQL magic. Select only the values of srcIP, dstIP that match the include_ips fields
+					# (same with scrPort,dstPorts). Set all other values to 0
+					includeList = None
+					if field == common.COL_SRC_IP or field == common.COL_DST_IP:
+						includeList = include_ips
+					elif field == common.COL_SRC_PORT or field == common.COL_DST_PORT:
+						includeList = include_ports
+					if includeList:
+						fieldString = "CASE " + field + " "
+						for includeField in includeList:
+							fieldString += " WHEN " + str(includeField) + " THEN " + field
+						fieldList += fieldString + " ELSE 0 END as " + field
+					else:
+						fieldList += "MIN(" + field +  ") "
+				else:
+					# just take the field
+					fieldList += field 
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+				fieldList += ",SUM(" + field + ") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
+		elif fields != None: 
 			for field in fields:
 				if field in common.AVAILABLE_PROTOS:
 					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
@@ -1443,17 +1507,6 @@ class OracleBackend(Backend):
 					fieldList += field
 			if not common.COL_BUCKET in fields:
 				fieldList += "," + common.COL_BUCKET
-		elif aggregate != None:
-			# aggregate all fields
-			fieldList = ""
-			for field in aggregate:
-				if fieldList != "":
-					fieldList = ","
-				fieldList += field 
-			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-				fieldList += ",SUM(" + field + ") as " + field
-				for p in common.AVAILABLE_PROTOS:
-					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
 		else:
 			fieldList = "*"
 
@@ -1531,6 +1584,37 @@ class OracleBackend(Backend):
 		if not firstExcludeIP:
 			queryString += ") "
 
+		firstIncludeProto = True
+		for proto in include_protos:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstIncludeProto: 
+					queryString += "AND ("
+					firstIncludeProto = False
+				else:
+					queryString += "OR "
+			queryString += "%s = %d " % (common.COL_PROTO, common.getValueFromProto(proto))
+		if not firstIncludeProto:
+			queryString += ") "
+
+		firstExcludeProto = True
+		for proto in exclude_protos:
+			if not isWhere:
+				queryString += "WHERE " 
+				isWhere = True
+			else:
+				if firstExcludeProto: 
+					queryString += "AND ("
+					firstExcludeProto = False
+				else:
+					queryString += "OR "
+			queryString += "%s != %d " % (common.COL_PROTO, common.getValueFromProto(proto))
+		if not firstExcludeProto:
+			queryString += ") "
+
+
 		if aggregate:
 			queryString += "GROUP BY "
 			firstField = True
@@ -1547,6 +1631,7 @@ class OracleBackend(Backend):
 				queryString += "ASC "
 			else: 
 				queryString += "DESC "
+
 
 		if limit:
 			queryString = "SELECT * from (" + queryString + ") WHERE ROWNUM <=" + str(limit)
