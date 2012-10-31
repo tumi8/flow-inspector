@@ -165,8 +165,6 @@ var GraphView = Backbone.View.extend({
 			if (source === undefined || target === undefined) {
 				return;
 			}
-			console.log(m);
-			console.log(min_bucket);
 			var t = 1.0;
 			if(min_bucket < max_bucket) {
 				t = (m.get("bucket").getTime() - min_bucket.getTime()) / (max_bucket.getTime() - min_bucket.getTime());

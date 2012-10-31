@@ -232,6 +232,8 @@ def extract_mongo_query_params():
 @get("/")
 @get("/dashboard")
 @get("/dashboard/:##")
+@get("/flow-details")
+@get("/flow-details/:##")
 @get("/graph")
 @get("/graph/:##")
 @get("/query-page")
@@ -274,11 +276,11 @@ def api_bucket_query():
 
 	# get proper collection
 	collection = None
-	if (query_params["fields"] != None and len(query_params["fields"]) > 0)  or len(query_params["include_ports"]) > 0 or len(query_params["exclude_ports"]) > 0:
+	if (query_params["fields"] != None and len(query_params["fields"]) > 0)  or len(query_params["include_ports"]) > 0 or len(query_params["exclude_ports"]) > 0 or len(query_params["aggregate"]) > 0:
 		collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
 	else:
 		# use preaggregated collection
-		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(query_params["bucket_size"]))
+		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(bucket_size))
 
 	if query_params["fields"] != None:
 		query_fields = fields + [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums
@@ -318,6 +320,10 @@ def api_index(name):
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
 
+	# static indexes don't konw about start and end times
+	# remove them from the query params
+	query_params["start_bucket"] = None
+	query_params["end_bucket"] = None
 
 	(result, total) = collection.index_query(query_params)
 

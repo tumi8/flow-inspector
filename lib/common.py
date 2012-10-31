@@ -7,6 +7,10 @@ COL_LAST_SWITCHED = "flowEndSeconds"
 # column names of IP addresses
 COL_SRC_IP = "sourceIPv4Address"
 COL_DST_IP = "destinationIPv4Address"
+
+COL_IPADDRESS = "ipaddress"
+COL_PORT = "port"
+
 # column names of ports and protocol
 COL_SRC_PORT = "sourceTransportPort"
 COL_DST_PORT = "destinationTransportPort"

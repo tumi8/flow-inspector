@@ -15,7 +15,14 @@ var Flow = Backbone.Model.extend({
 var BucketChartModel = Backbone.Model.extend({
 	defaults: {
 		value: "flows",
-		interval: []
+		interval: [],
+
+		filterProtocols: "",
+		filterProtocolsType: "inclusive",
+		filterPorts: "",
+		filterPortsType: "inclusive",
+		filterIPs: "",
+		filterIPsType: "inclusive"
 	}
 });
 
@@ -26,7 +33,14 @@ var HostViewModel = Backbone.Model.extend({
 		fetchOnInit: false,
 		limit: 15,
 		bucket_size: null,
-		interval: []
+		interval: [],
+
+		filterProtocols: "",
+		filterProtocolsType: "inclusive",
+		filterPorts: "",
+		filterPortsType: "inclusive",
+		filterIPs: "",
+		filterIPsType: "inclusive"
 	}
 });
 
@@ -38,7 +52,14 @@ var DonutChartModel = Backbone.Model.extend({
 		fetchOnInit: false,
 		bucket_size: null,
 		interval: [],
-		limit: 30
+		limit: 30,
+
+		filterProtocols: "",
+		filterProtocolsType: "inclusive",
+		filterPorts: "",
+		filterPortsType: "inclusive",
+		filterIPs: "",
+		filterIPsType: "inclusive"
 	}
 });
 

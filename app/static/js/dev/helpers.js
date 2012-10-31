@@ -19,6 +19,11 @@ FlowInspector.COL_LAST_SWITCHED = "flowEndSeconds"
 // column names of IP addresses
 FlowInspector.COL_SRC_IP = "sourceIPv4Address"
 FlowInspector.COL_DST_IP = "destinationIPv4Address"
+
+// column names for indexes (bidirectional)
+FlowInspector.COL_IPADDRESS = "ipaddress"
+FlowInspector.COL_PORT = "port"
+
 // column names of ports and protocol
 FlowInspector.COL_SRC_PORT = "sourceTransportPort"
 FlowInspector.COL_DST_PORT = "destinationTransportPort"
@@ -56,19 +61,21 @@ FlowInspector.ipToStr = function(ip) {
 FlowInspector.strToIp = function(str) {
 	var parts = str.split(".");
 	if(parts.length !== 4) {
-		return false;
+		return null;
 	}
 	
 	var ip = 0;
 	for(var i = 0; i < 4; i++) {
 		var j = parseInt(parts[i]);
+		console.log("j: " + j)
 		// check for range and Nan
 		if(j !== j || j < 0 || j > 255) {
-			return false;
+			return null;
 		}
 		ip = (ip << 8) + j;
+		console.log("ip: " + ip);
 	}
-	return ip;
+	return (ip >>> 0);
 };
 
 /**

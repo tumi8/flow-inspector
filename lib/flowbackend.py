@@ -85,6 +85,8 @@ class Collection:
 		- exclude_ips: only select flows that do not involve the ips in this list
 		- batch_size: database should select the flows in batch sizes of batchSize (ignored for most backends)
 		"""
+
+		# remove any bucket requests
 		return self.backendObject.index_query(self.collectionName, query_params)
  
 	def dynamic_index_query(self, name, query_params):
@@ -831,7 +833,7 @@ class MysqlBackend(Backend):
 		limit = query_params["limit"] 
 		count = query_params["count"]
 		start_bucket = query_params["start_bucket"]
-		endBucket = query_params["end_bucket"]
+		end_bucket = query_params["end_bucket"]
 		resolution = query_params["resolution"]
 		bucketSize = query_params["bucket_size"]
 		biflow = query_params["biflow"]
@@ -846,62 +848,20 @@ class MysqlBackend(Backend):
 		black_others = query_params["black_others"]
 
 
-		fieldList = ""
-		if aggregate != None and aggregate != []:
-			# aggregate all fields
-			for field in aggregate:
-				if fieldList != "":
-					fieldList += ","
-				if black_others:
-					# black SQL magic. Select only the values of srcIP, dstIP that match the include_ips fields
-					# (same with scrPort,dstPorts). Set all other values to 0
-					includeList = None
-					if field == common.COL_SRC_IP or field == common.COL_DST_IP:
-						includeList = include_ips
-					elif field == common.COL_SRC_PORT or field == common.COL_DST_PORT:
-						includeList = include_ports
-					if includeList:
-						fieldString = "CASE " + field + " "
-						for includeField in includeList:
-							fieldString += " WHEN " + str(includeField) + " THEN " + field
-						fieldList += fieldString + " ELSE 0 END as " + field
-					else:
-						fieldList += "MIN(" + field +  ") "
-				else:
-					# just take the field
-					fieldList += field 
-			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-				fieldList += ",SUM(" + field + ") as " + field
-				for p in common.AVAILABLE_PROTOS:
-					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
-		elif fields != None: 
-			for field in fields:
-				if field in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-						if fieldList != "":
-							fieldList += ","
-						fieldList += field + "_" + s
-				else:
-					if fieldList != "":
-						fieldList += ","
-					fieldList += field
-			if not common.COL_BUCKET in fields:
-				fieldList += "," + common.COL_BUCKET
-		else:
-			fieldList = "*"
+		# create filter strings
 
 		isWhere = False
-		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
+		queryString = ""
 		if start_bucket != None and start_bucket > 0:
 			isWhere = True
 			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (start_bucket)
-		if endBucket != None and endBucket < sys.maxint:
+		if end_bucket != None and end_bucket < sys.maxint:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
 			else: 
 				queryString += "AND "
-			queryString += common.COL_BUCKET + " <= %d " % (endBucket)
+			queryString += common.COL_BUCKET + " <= %d " % (end_bucket)
 
 		firstIncludePort = True
 		for port in includePorts:
@@ -928,8 +888,8 @@ class MysqlBackend(Backend):
 					queryString += "AND ("
 					firstExcludePort = False
 				else:
-					queryString += "OR "
-			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
+					queryString += "AND "
+			queryString += "%s != %d AND %s != %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
 		if not firstExcludePort:
 			queryString += ") "
 
@@ -959,8 +919,8 @@ class MysqlBackend(Backend):
 					queryString += "AND ("
 					firstExcludeIP = False
 				else:
-					queryString += "OR "
-			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
+					queryString += "AND "
+			queryString += "%s != %d AND %s != %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
 		if not firstExcludeIP:
 			queryString += ") "
 
@@ -989,13 +949,91 @@ class MysqlBackend(Backend):
 					queryString += "AND ("
 					firstExcludeProto = False
 				else:
-					queryString += "OR "
+					queryString += "AND "
 			queryString += "%s != %d " % (common.COL_PROTO, common.getValueFromProto(proto))
 		if not firstExcludeProto:
 			queryString += ") "
 
+		# build the aggregation keys here
+		doIPAddress = False
+		doPort = False
+		fieldList = ""
+		if aggregate != None and aggregate != []:
+			# aggregate all fields
+			for field in aggregate:
+				if fieldList != "":
+					fieldList += ","
+				if black_others:
+					# black SQL magic. Select only the values of srcIP, dstIP that match the include_ips fields
+					# (same with scrPort,dstPorts). Set all other values to 0
+					includeList = None
+					if field == common.COL_SRC_IP or field == common.COL_DST_IP:
+						includeList = include_ips
+					elif field == common.COL_SRC_PORT or field == common.COL_DST_PORT:
+						includeList = include_ports
+					if includeList:
+						fieldString = "CASE " + field + " "
+						for includeField in includeList:
+							fieldString += " WHEN " + str(includeField) + " THEN " + field
+						fieldList += fieldString + " ELSE 0 END as " + field
+					else:
+						fieldList += "MIN(" + field +  ") "
+				else:
+					# just take the field
+					if field == common.COL_IPADDRESS:
+						doIPAddress = True
+					elif field == common.COL_PORT:
+						doPort = True	
+					else:
+						fieldList += field 
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+				fieldList += ",SUM(" + field + ") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
+		elif fields != None: 
+			for field in fields:
+				if field in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+						if fieldList != "":
+							fieldList += ","
+						fieldList += field + "_" + s
+				else:
+					if fieldList != "":
+						fieldList += ","
+					fieldList += field
+			if not common.COL_BUCKET in fields:
+				fieldList += "," + common.COL_BUCKET
+		else:
+			fieldList = "*"
 
-		if aggregate:
+		if doIPAddress and doPort:
+			# we cannot have both of them. discard this request
+			raise Exception("Logical error: doIPAddress and doPorts have been both set")
+
+		if doIPAddress or doPort:
+			if doIPAddress:
+				bothDirection = common.COL_IPADDRESS
+				srcDirection = common.COL_SRC_IP
+				dstDirection = common.COL_DST_IP
+			else:
+				bothDirection = common.COL_PORT
+				srcDirection = common.COL_SRC_PORT
+				dstDirection = common.COL_DST_PORT
+			# we need to merge srcIP and dstIPs
+			srcQuery = "SELECT " + srcDirection + " as " + bothDirection + " %s FROM %s %s GROUP BY %s " % (fieldList, collectionName, queryString, srcDirection)
+			dstQuery = "SELECT " + dstDirection + " as " + bothDirection + " %s FROM %s %s GROUP BY %s " % (fieldList, collectionName, queryString, dstDirection)
+			addList = ""
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+				addList += ",(a." + field + " + b." + field +") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					addList += ",(a." + p + "_" + field + "+b." + p + "_" + field + ") as " + p + "_" + field
+
+			queryString = "SELECT a.%s as %s%s FROM ((%s) a JOIN (%s) b ON a.%s = b.%s) " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery, bothDirection, bothDirection)
+		else:
+			queryString = "SELECT %s FROM %s %s " % (fieldList, collectionName, queryString)
+
+
+		if aggregate and (not doIPAddress and not doPort):
 			queryString += "GROUP BY "
 			firstField = True
 			for field in aggregate:
@@ -1011,6 +1049,7 @@ class MysqlBackend(Backend):
 				queryString += "ASC "
 			else: 
 				queryString += "DESC "
+
 
 		if limit:
 			queryString += "LIMIT %d" % (limit)
@@ -1434,14 +1473,23 @@ class OracleBackend(Backend):
 		return self.sql_query(collectionName, query_params)
 
 	def dynamic_index_query(self, name, query_params):
-		if name == "nodes":
-			tableName = common.DB_INDEX_NODES + "_" + str(query_params["bucket_size"])
-		elif name == "ports":
-			tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
-		else:
-			raise Exception("Unknown index specified")
+		aggregate = query_params["aggregate"]
+		bucket_size = query_params["bucket_size"]
 
-		query_params["aggregate"] = [ "id" ]
+		if len(aggregate) > 0:
+			# we must calculate all the stuff from our orignial
+			# flow db
+			tableName = common.DB_FLOW_PREFIX + str(bucket_size)
+		else:	
+			# we can use the precomuped indexes. *yay*
+			if name == "nodes":
+				tableName = common.DB_INDEX_NODES + "_" + str(query_params["bucket_size"])
+			elif name == "ports":
+				tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
+			else:
+				raise Exception("Unknown index specified")
+			query_params["aggregate"] = [ "id" ]
+
 		(results, total) =  self.sql_query(tableName, query_params)
 		return (results, total)
 
@@ -1452,7 +1500,7 @@ class OracleBackend(Backend):
 		limit = query_params["limit"] 
 		count = query_params["count"]
 		start_bucket = query_params["start_bucket"]
-		endBucket = query_params["end_bucket"]
+		end_bucket = query_params["end_bucket"]
 		resolution = query_params["resolution"]
 		bucketSize = query_params["bucket_size"]
 		biflow = query_params["biflow"]
@@ -1466,62 +1514,21 @@ class OracleBackend(Backend):
 		aggregate = query_params["aggregate"]
 		black_others = query_params["black_others"]
 
-		fieldList = ""
-		if aggregate != None and aggregate != []:
-			# aggregate all fields
-			for field in aggregate:
-				if fieldList != "":
-					fieldList += ","
-				if black_others:
-					# black SQL magic. Select only the values of srcIP, dstIP that match the include_ips fields
-					# (same with scrPort,dstPorts). Set all other values to 0
-					includeList = None
-					if field == common.COL_SRC_IP or field == common.COL_DST_IP:
-						includeList = include_ips
-					elif field == common.COL_SRC_PORT or field == common.COL_DST_PORT:
-						includeList = include_ports
-					if includeList:
-						fieldString = "CASE " + field + " "
-						for includeField in includeList:
-							fieldString += " WHEN " + str(includeField) + " THEN " + field
-						fieldList += fieldString + " ELSE 0 END as " + field
-					else:
-						fieldList += "MIN(" + field +  ") "
-				else:
-					# just take the field
-					fieldList += field 
-			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-				fieldList += ",SUM(" + field + ") as " + field
-				for p in common.AVAILABLE_PROTOS:
-					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
-		elif fields != None: 
-			for field in fields:
-				if field in common.AVAILABLE_PROTOS:
-					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-						if fieldList != "":
-							fieldList += ","
-						fieldList += field + "_" + s
-				else:
-					if fieldList != "":
-						fieldList += ","
-					fieldList += field
-			if not common.COL_BUCKET in fields:
-				fieldList += "," + common.COL_BUCKET
-		else:
-			fieldList = "*"
+
+		# create filter strings
 
 		isWhere = False
-		queryString = "SELECT %s FROM %s " % (fieldList, collectionName)
+		queryString = ""
 		if start_bucket != None and start_bucket > 0:
 			isWhere = True
 			queryString += "WHERE " + common.COL_BUCKET + " >= %d " % (start_bucket)
-		if endBucket != None and endBucket < sys.maxint:
+		if end_bucket != None and end_bucket < sys.maxint:
 			if not isWhere:
 				queryString += "WHERE " 
 				isWhere = True
 			else: 
 				queryString += "AND "
-			queryString += common.COL_BUCKET + " <= %d " % (endBucket)
+			queryString += common.COL_BUCKET + " <= %d " % (end_bucket)
 
 		firstIncludePort = True
 		for port in includePorts:
@@ -1548,8 +1555,8 @@ class OracleBackend(Backend):
 					queryString += "AND ("
 					firstExcludePort = False
 				else:
-					queryString += "OR "
-			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
+					queryString += "AND "
+			queryString += "%s != %d AND %s != %d " % (common.COL_SRC_PORT, port, common.COL_DST_PORT, port)
 		if not firstExcludePort:
 			queryString += ") "
 
@@ -1579,8 +1586,8 @@ class OracleBackend(Backend):
 					queryString += "AND ("
 					firstExcludeIP = False
 				else:
-					queryString += "OR "
-			queryString += "%s != %d OR %s != %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
+					queryString += "AND "
+			queryString += "%s != %d AND %s != %d " % (common.COL_SRC_IP, ip, common.COL_DST_IP, ip)
 		if not firstExcludeIP:
 			queryString += ") "
 
@@ -1609,13 +1616,91 @@ class OracleBackend(Backend):
 					queryString += "AND ("
 					firstExcludeProto = False
 				else:
-					queryString += "OR "
+					queryString += "AND "
 			queryString += "%s != %d " % (common.COL_PROTO, common.getValueFromProto(proto))
 		if not firstExcludeProto:
 			queryString += ") "
 
+		# build the aggregation keys here
+		doIPAddress = False
+		doPort = False
+		fieldList = ""
+		if aggregate != None and aggregate != []:
+			# aggregate all fields
+			for field in aggregate:
+				if fieldList != "":
+					fieldList += ","
+				if black_others:
+					# black SQL magic. Select only the values of srcIP, dstIP that match the include_ips fields
+					# (same with scrPort,dstPorts). Set all other values to 0
+					includeList = None
+					if field == common.COL_SRC_IP or field == common.COL_DST_IP:
+						includeList = include_ips
+					elif field == common.COL_SRC_PORT or field == common.COL_DST_PORT:
+						includeList = include_ports
+					if includeList:
+						fieldString = "CASE " + field + " "
+						for includeField in includeList:
+							fieldString += " WHEN " + str(includeField) + " THEN " + field
+						fieldList += fieldString + " ELSE 0 END as " + field
+					else:
+						fieldList += "MIN(" + field +  ") "
+				else:
+					# just take the field
+					if field == common.COL_IPADDRESS:
+						doIPAddress = True
+					elif field == common.COL_PORT:
+						doPort = True	
+					else:
+						fieldList += field 
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+				fieldList += ",SUM(" + field + ") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					fieldList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
+		elif fields != None: 
+			for field in fields:
+				if field in common.AVAILABLE_PROTOS:
+					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+						if fieldList != "":
+							fieldList += ","
+						fieldList += field + "_" + s
+				else:
+					if fieldList != "":
+						fieldList += ","
+					fieldList += field
+			if not common.COL_BUCKET in fields:
+				fieldList += "," + common.COL_BUCKET
+		else:
+			fieldList = "*"
 
-		if aggregate:
+		if doIPAddress and doPort:
+			# we cannot have both of them. discard this request
+			raise Exception("Logical error: doIPAddress and doPorts have been both set")
+
+		if doIPAddress or doPort:
+			if doIPAddress:
+				bothDirection = common.COL_IPADDRESS
+				srcDirection = common.COL_SRC_IP
+				dstDirection = common.COL_DST_IP
+			else:
+				bothDirection = common.COL_PORT
+				srcDirection = common.COL_SRC_PORT
+				dstDirection = common.COL_DST_PORT
+			# we need to merge srcIP and dstIPs
+			srcQuery = "SELECT " + srcDirection + " as " + bothDirection + " %s FROM %s %s GROUP BY %s " % (fieldList, collectionName, queryString, srcDirection)
+			dstQuery = "SELECT " + dstDirection + " as " + bothDirection + " %s FROM %s %s GROUP BY %s " % (fieldList, collectionName, queryString, dstDirection)
+			addList = ""
+			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
+				addList += ",(a." + field + " + b." + field +") as " + field
+				for p in common.AVAILABLE_PROTOS:
+					addList += ",(a." + p + "_" + field + "+b." + p + "_" + field + ") as " + p + "_" + field
+
+			queryString = "SELECT a.%s as %s%s FROM ((%s) a JOIN (%s) b ON a.%s = b.%s) " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery, bothDirection, bothDirection)
+		else:
+			queryString = "SELECT %s FROM %s %s " % (fieldList, collectionName, queryString)
+
+
+		if aggregate and (not doIPAddress and not doPort):
 			queryString += "GROUP BY "
 			firstField = True
 			for field in aggregate:
@@ -1689,11 +1774,11 @@ class OracleBackend(Backend):
 			else:
 				result.append(resultDoc)
 
-		print "Got Results: ", len(result)
-		print "Total: ", total
+		#print "Got Results: ", len(result)
+		#print "Total: ", total
 		#print "Result: ", result
-		for r in result: 
-			print r
+		#for r in result: 
+		#	print r
 		return (result, total)
 
 	def run_query(self, collectionName, query):

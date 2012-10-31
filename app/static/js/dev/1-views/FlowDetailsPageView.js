@@ -1,11 +1,18 @@
-var DashboardPageView = PageView.extend({
+var FlowDetailsPageView = PageView.extend({
 	events: {
 		"click .hostview-value a": "clickHostviewValue",
 		"click .bucket-chart-value a": "clickBucketChartValue",
-		"click .donut-chart-value a": "clickDonutChartValue"
+		"click .donut-chart-value a": "clickDonutChartValue",
+		"click a.apply-filter": "clickApplyFilter",
+		"blur #filterProtocols": "changeFilterProtocols",
+		"blur #filterPorts": "changeFilterPorts",
+		"blur #filterIPs": "changeFilterIPs",
+		"change #filterPortsType": "changeFilterPortsType",
+		"change #filterProtocolsType": "changeFilterProtocolsType",
+		"change #filterIPsType": "changeFilterIPsType",
 	},
 	initialize: function() {
-		this.template = _.template($("#dashboard-page-template").html());
+		this.template = _.template($("#flow-details-page-template").html());
 
 		this.timelineModel = new TimelineModel();
 		this.timelineView = new TimelineView({
@@ -37,15 +44,25 @@ var DashboardPageView = PageView.extend({
 		
 		$(".bucket-chart-value li[data-value='" + this.bucketChartModel.get("value") + "']", this.el)
 			.addClass("active");
+
 		$(".donut-chart-value li[data-value='" + this.nodesDonutModel.get("value") + "']", this.el)
 			.addClass("active");
 
-		$(".viz-timeline", this.el).append(this.timelineView.el);
+
+		$("#footbar", this.el).append(this.timelineView.el);
 		$(".viz-hostview", this.el).append(this.hostView.el);
 		$(".viz-buckets", this.el).append(this.bucketChartView.el);
 		$(".viz-donut-nodes", this.el).append(this.nodesDonutView.el);
 		$(".viz-donut-ports", this.el).append(this.portsDonutView.el);
-		
+
+		// set form defaults
+		$("#filterPorts", this.el).val(this.bucketChartModel.get("filterPorts"));
+		$("#filterPortsType", this.el).val(this.bucketChartModel.get("filterPortsType"));
+    		$("#filterIPs", this.el).val(this.bucketChartModel.get("filterIPs"));
+		$("#filterIPsType", this.el).val(this.bucketChartModel.get("filterIPsType"));
+    		$("#filterProtocols", this.el).val(this.bucketChartModel.get("filterProtocols"));
+		$("#filterProtocolsType", this.el).val(this.bucketChartModel.get("filterProtocolsType"));
+    					
 		this.hostView.render();
 		this.bucketChartView.render();
 		this.nodesDonutView.render();
@@ -53,7 +70,7 @@ var DashboardPageView = PageView.extend({
 
 		this.timelineView.delegateEvents();
 		this.timelineView.render();
-		
+	
 		return this;
 	},
 	clickHostviewValue: function(e) {
@@ -85,7 +102,6 @@ var DashboardPageView = PageView.extend({
 			.addClass("active");
 	},
 	changeBucketInterval: function(model, interval) {
-		//this.loader.show();
 		this.bucketChartModel.set({ interval: interval });
 		this.hostModel.set({ interval: interval });
 		this.nodesDonutModel.set({ interval: interval });
@@ -95,5 +111,95 @@ var DashboardPageView = PageView.extend({
 		this.hostModel.set({bucket_size: bucket_size});
 		this.nodesDonutModel.set({bucket_size: bucket_size});
 		this.portsDonutModel.set({bucket_size: bucket_size});
-	}
+	},
+	changeFilterProtocols : function(model, value) {
+		this.hostModel.set({
+			filterProtocols: $("#filterProtocols", this.el).val()
+		});
+		this.bucketChartModel.set({
+			filterProtocols: $("#filterProtocols", this.el).val()
+		});
+		this.portsDonutModel.set({
+			filterProtocols: $("#filterProtocols", this.el).val()
+		});
+		this.nodesDonutModel.set({
+			filterProtocols: $("#filterProtocols", this.el).val()
+		});
+	},
+	changeFilterPorts : function(model, value) {
+		this.hostModel.set({
+			filterPorts: $("#filterPorts", this.el).val()
+		});
+		this.bucketChartModel.set({
+			filterPorts: $("#filterPorts", this.el).val()
+		});
+		this.portsDonutModel.set({
+			filterPorts: $("#filterPorts", this.el).val()
+		});
+		this.nodesDonutModel.set({
+			filterPorts: $("#filterPorts", this.el).val()
+		});
+	},
+	changeFilterIPs : function(model, value) {
+		this.hostModel.set({
+			filterIPs: $("#filterIPs", this.el).val()
+		});
+		this.bucketChartModel.set({
+			filterIPs: $("#filterIPs", this.el).val()
+		});
+		this.portsDonutModel.set({
+			filterIPs: $("#filterIPs", this.el).val()
+		});
+		this.nodesDonutModel.set({
+			filterIPs: $("#filterIPs", this.el).val()
+		});
+	},
+	changeFilterPortsType : function(model, value) {
+		this.hostModel.set({
+			filterPortsType: $("#filterPortsType", this.el).val()
+		});
+		this.bucketChartModel.set({
+			filterPortsType: $("#filterPortsType", this.el).val()
+		});
+		this.portsDonutModel.set({
+			filterPortsType: $("#filterPortsType", this.el).val()
+		});
+		this.nodesDonutModel.set({
+			filterPortsType: $("#filterPortsType", this.el).val()
+		});
+	},
+	changeFilterProtocolsType : function(model, value) {
+		this.hostModel.set({
+			filterProtocolsType: $("#filterProtocolsType", this.el).val()
+		});
+		this.bucketChartModel.set({
+			filterProtocolsType: $("#filterProtocolsType", this.el).val()
+		});
+		this.portsDonutModel.set({
+			filterProtocolsType: $("#filterProtocolsType", this.el).val()
+		});
+		this.nodesDonutModel.set({
+			filterProtocolsType: $("#filterProtocolsType", this.el).val()
+		});
+	},
+	changeFilterIPsType : function(model, value) {
+		this.hostModel.set({
+			filterPortsType: $("#filterIPsType", this.el).val()
+		});
+		this.bucketChartModel.set({
+			filterPortsType: $("#filterIPsType", this.el).val()
+		});
+		this.portsDonutModel.set({
+			filterPortsType: $("#filterIPsType", this.el).val()
+		});
+		this.nodesDonutModel.set({
+			filterPortsType: $("#filterIPsType", this.el).val()
+		});
+	},
+	clickApplyFilter : function() {
+		this.hostView.fetchData();
+		this.bucketChartView.fetchFlows();
+		this.nodesDonutView.fetchData();
+		this.portsDonutView.fetchData();
+	},
 });

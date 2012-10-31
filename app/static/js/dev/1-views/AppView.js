@@ -15,6 +15,7 @@ var AppView = Backbone.View.extend({
     	this.pageViews = {
 			"overview": OverviewPageView,
 			"query-page": QueryPageView,
+			"flow-details": FlowDetailsPageView,
 	    		"dashboard": DashboardPageView,
    		 	"graph": GraphPageView,
    		 	"edge-bundle": EdgeBundlePageView,

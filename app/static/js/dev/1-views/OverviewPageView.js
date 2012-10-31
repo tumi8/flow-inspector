@@ -37,15 +37,15 @@ var OverviewPageView = PageView.extend({
 		$(".donut-chart-value li[data-value='" + this.nodesDonutModel.get("value") + "']", this.el)
 			.addClass("active");
 
+		$(".viz-buckets", this.el).append(this.bucketChartView.el);
 		$(".viz-hostview", this.el).append(this.hostView.el);
 		$(".viz-donut-nodes", this.el).append(this.nodesDonutView.el);
 		$(".viz-donut-ports", this.el).append(this.portsDonutView.el);
-		$(".viz-buckets", this.el).append(this.bucketChartView.el);
 	
 		this.hostView.render();
+		this.bucketChartView.render();
 		this.nodesDonutView.render();
 		this.portsDonutView.render();
-		this.bucketChartView.render();
 		return this;
 	},
 	clickHostviewValue: function(e) {

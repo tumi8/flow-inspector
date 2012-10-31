@@ -245,7 +245,6 @@ var GraphPageView = PageView.extend({
 		});
 	},
 	changeFilterIPs: function() {
-		alert("changeFilterIPs");
 	},
 	filterPortsChanged: function(model, value) {
 		$("#filterPorts", this.el).val(value);
