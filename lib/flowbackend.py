@@ -14,6 +14,7 @@ import sys
 import config
 import common
 import time
+import operator
 
 class Collection:
 	"""
@@ -232,6 +233,44 @@ class MongoBackend(Backend):
 		Backend.__init__(self, host, port, user, password, databaseName)
 		self.connect()
 
+	def build_spec(self, query_params):
+		start_bucket = query_params["start_bucket"]
+		end_bucket = query_params["end_bucket"]
+		include_ports = query_params["include_ports"]
+		exclude_ports = query_params["exclude_ports"]
+		include_ips = query_params["include_ips"]
+		exclude_ips = query_params["exclude_ips"]
+
+		spec = {}
+		if start_bucket > 0 or end_bucket < sys.maxint:
+			spec["bucket"] = {}
+			if start_bucket > 0:
+				spec["bucket"]["$gte"] = start_bucket
+			if end_bucket < sys.maxint:
+				spec["bucket"]["$lte"] = end_bucket
+		if len(include_ports) > 0:
+			spec["$or"] = [
+				{ common.COL_SRC_PORT: { "$in": include_ports } },
+				{ common.COL_DST_PORT: { "$in": include_ports } }
+			]
+		if len(exclude_ports) > 0:
+			spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
+			spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
+		
+		if len(include_ips) > 0:
+			spec["$or"] = [
+				{ common.COL_SRC_IP : { "$in": include_ips } },
+				{ common.COL_DST_IP : { "$in": include_ips } }
+			]
+	
+		if len(exclude_ips) > 0:
+			spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
+			spec[common.COL_DST_IP] = { "$in": exclude_ips } 
+
+		return spec
+
+
+
 	def connect(self):
 		# init pymongo connection
 		try:
@@ -309,17 +348,21 @@ class MongoBackend(Backend):
 	def bucket_query(self, collectionName,  query_params):
 		import pymongo
 		collection = self.dst_db[collectionName]
+		spec = self.build_spec(query_params)
 		fields = query_params["fields"]
-		spec = query_params["spec"]
 		sort = query_params["sort"]
 		include_ips = query_params["include_ips"]
 		exclude_ips = query_params["exclude_ips"]
 		include_ports = query_params["include_ports"]
 		exclude_ports = query_params["exclude_ports"]
 		biflow = query_params["biflow"]
+		aggregate = query_params["aggregate"]
 
 		min_bucket = self.getMinBucket();
 		max_bucket = self.getMaxBucket();
+
+		if (aggregate and len(aggregate) > 0):
+			fields = fields + aggregate
 
 		cursor = collection.find(spec, fields=fields).batch_size(1000)
 		if sort: 
@@ -372,13 +415,15 @@ class MongoBackend(Backend):
 				del doc["_id"]
 				buckets.append(doc)
 
-		return (result, None, min_bucket, max_bucket);
+		return (buckets, None, min_bucket, max_bucket);
 
 	def index_query(self, collectionName, query_params):
-		spec = query_params["spec"]
 		sort = query_params["sort"]
 		limit = query_params["limit"]
+		fields = query_params["fields"]
+		count = query_params["count"]
 
+		spec = self.build_spec(query_params)
 
 		collection = self.dst_db[collectionName]
 		# query without the total field	
@@ -404,7 +449,7 @@ class MongoBackend(Backend):
 				row["id"] = row["_id"]
 				del row["_id"]
 				result.append(row)
-	
+
 		# get the total counter
 		spec = {"_id": "total"}
 		cursor = collection.find(spec)
@@ -416,10 +461,13 @@ class MongoBackend(Backend):
 		return (result, total)
 
 	def dynamic_index_query(self, name, query_params):
-		spec = query_params["spec"]
+		import pymongo
+
+		spec = self.build_spec(query_params)
 		fields = query_params["fields"]
 		sort = query_params["sort"]
 		limit = query_params["limit"]
+		bucket_size = query_params["bucket_size"]
 
 
 		def createNewIndexEntry(row):
@@ -441,7 +489,7 @@ class MongoBackend(Backend):
 					r[dest][s] = 0
 			return r
 
-		collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
+		collection = self.dst_db[common.DB_FLOW_PREFIX + str(bucket_size)]
 	
 		cursor = collection.find(spec, fields=fields).batch_size(1000)
 	
@@ -512,8 +560,8 @@ class MongoBackend(Backend):
 		
 		if limit:
 			results = results[0:limit]
-	
-		return (total, reults)
+
+		return (results, total)
 		
 	
 	def find_one(self, collectionName, spec, fields, sort):
@@ -827,7 +875,6 @@ class MysqlBackend(Backend):
 		return (results, total)
 
 	def sql_query(self, collectionName, query_params):
-		spec = query_params["spec"] 
 		fields = query_params["fields"]
 		sort  = query_params["sort"]
 		limit = query_params["limit"] 
@@ -1494,7 +1541,6 @@ class OracleBackend(Backend):
 		return (results, total)
 
 	def sql_query(self, collectionName, query_params):
-		spec = query_params["spec"] 
 		fields = query_params["fields"]
 		sort  = query_params["sort"]
 		limit = query_params["limit"] 
