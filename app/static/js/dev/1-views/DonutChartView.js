@@ -54,9 +54,6 @@ var DonutChartView = Backbone.View.extend({
 			return;
 		}
 
-	
-		console.log(data);
-		console.log("nochmal!");
 		if(data.length > this.showLimit) {
 			var others = data[this.showLimit].clone();
 			others.id = -1;

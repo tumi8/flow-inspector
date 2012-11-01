@@ -424,10 +424,8 @@ var HostView = Backbone.View.extend({
 		if (interval.length > 0) {
 			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
 			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
-		} else {
-			data["start_bucket"] = 0;
-			data["end_bucket"] = 0;
 		}
+
 		if (bucket_size) {
 			data["bucket_size"] = bucket_size;
 		}
