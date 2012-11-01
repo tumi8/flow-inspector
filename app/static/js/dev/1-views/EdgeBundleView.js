@@ -61,9 +61,9 @@ var EdgeBundleView = Backbone.View.extend({
 			})
 			.on("mouseover", function(d) {
 	    			d3.select(this).selectAll("text")
-    					.style("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).darker(); });
+    					.style("fill", function(d) { return d3.rgb(arc_color(d[FlowInspector.COL_PKTS] / arc_max_value)).darker(); });
     				d3.select(this).selectAll(".arc")
-    					.attr("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).brighter(3); })
+    					.attr("fill", function(d) { return d3.rgb(arc_color(d[FlowInspector.COL_PKTS] / arc_max_value)).brighter(3); })
    	 				.style("opacity", 1);
     				
    				var direction = that.model.get("hoverDirection");
@@ -80,18 +80,18 @@ var EdgeBundleView = Backbone.View.extend({
 			d3.select(this).selectAll("text")
 				.style("fill", null);
 			d3.select(this).selectAll(".arc")
-				.attr("fill", function(d) { return arc_color(d.pkts / arc_max_value); })
-				.style("opacity", function(d) { return arc_opacity(d.pkts); });
+				.attr("fill", function(d) { return arc_color(d[FlowInspector.COL_PKTS] / arc_max_value); })
+				.style("opacity", function(d) { return arc_opacity(d[FlowInspector.COL_PKTS]); });
 			svg_links.style("display", null);
 		});
 			
 		var arc_color = d3.interpolateRgb("#0064cd", "#c43c35");
-		var arc_max_value = d3.max(nodes, function(d) { return d.pkts; });
+		var arc_max_value = d3.max(nodes, function(d) { return d[FlowInspector.COL_PKTS]; });
 		var arc_scale = d3.scale.linear().range([r0+70, r]).domain([0, arc_max_value]);
 		var arc_opacity = d3.scale.linear().range([0.1, 0.6]).domain([0, arc_max_value]);
 		var arc = d3.svg.arc()
 			.innerRadius(r0)
-			.outerRadius(function(d) { return arc_scale(d.pkts); })
+			.outerRadius(function(d) { return arc_scale(d[FlowInspector.COL_PKTS]); })
 			.startAngle(function(d, i) {
 				var prev;
 				if(i == 0) {
@@ -139,8 +139,8 @@ var EdgeBundleView = Backbone.View.extend({
 		svg_nodes.append("svg:path")
 			.attr("class", "arc")
 			.attr("d", arc)
-			.attr("fill", function(d) { return arc_color(d.pkts / arc_max_value); })
-			.style("opacity", function(d) { return arc_opacity(d.pkts); });
+			.attr("fill", function(a) { return arc_color(a[FlowInspector.COL_PKTS] / arc_max_value); })
+			.style("opacity", function(b) { return arc_opacity(b[FlowInspector.COL_PKTS]); });
 			
 		svg_nodes.append("svg:text")
 			.attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
@@ -185,7 +185,7 @@ var EdgeBundleView = Backbone.View.extend({
 			.attr("class", "link")
 			.attr("d", function(d) { return line(d.bundle); })
 			.attr("stroke", function(d) { return color(d.link.t); });
-			
+
 		var svg_legend = this.svg.append("svg:g")
 			.attr("class", "legend")
 			.attr("transform", "translate(" + (r - 80) + "," + (r - 20) + ")");
