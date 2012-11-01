@@ -170,33 +170,6 @@ def extract_mongo_query_params():
 	# filter for known aggregation values
 	#if fields != None:
 	#	fields = [v for v in fields if v in config.flow_aggr_values]
-
-	spec = {}
-	if start_bucket > 0 or end_bucket < sys.maxint:
-		spec["bucket"] = {}
-		if start_bucket > 0:
-			spec["bucket"]["$gte"] = start_bucket
-		if end_bucket < sys.maxint:
-			spec["bucket"]["$lte"] = end_bucket
-	if len(include_ports) > 0:
-		spec["$or"] = [
-			{ common.COL_SRC_PORT: { "$in": include_ports } },
-			{ common.COL_DST_PORT: { "$in": include_ports } }
-		]
-	if len(exclude_ports) > 0:
-		spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
-		spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
-	
-	if len(include_ips) > 0:
-		spec["$or"] = [
-			{ common.COL_SRC_IP : { "$in": include_ips } },
-			{ common.COL_DST_IP : { "$in": include_ips } }
-		]
-
-	if len(exclude_ips) > 0:
-		spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
-		spec[common.COL_DST_IP] = { "$in": exclude_ips } 
-
 	black_others = False
 	if "black_others" in request.GET:
 		black_others = True
@@ -207,7 +180,6 @@ def extract_mongo_query_params():
 		aggregate = map(lambda v: v.strip(), aggregate.split(","))
 
 	result = {}
-	result["spec"] = spec
 	result["fields"] = fields
 	result["sort"] = sort
 	result["limit"] = limit
