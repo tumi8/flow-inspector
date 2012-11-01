@@ -152,7 +152,7 @@ var GraphView = Backbone.View.extend({
 		if(this.data_nodes.length <= 0) {
 			this.updateNodes();
 		}
-    	
+
 		var that = this;
 		this.data_links = [];
     	

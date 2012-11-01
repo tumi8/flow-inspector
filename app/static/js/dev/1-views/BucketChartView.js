@@ -100,9 +100,9 @@ var BucketChartView = Backbone.View.extend({
 			// the value might not be set in the db. use 0 as default
 			if (protoObj) {
 				val = protoObj[num_val];
-				if (! val > 0) {
-					val = 1;
-				}
+			}
+			if (! val > 0) {
+				val = 1;
 			}
 			return y(val);
 		}
