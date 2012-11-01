@@ -91,6 +91,7 @@ body {
 	width: 180px;
 	margin-bottom: 0;
 	outline: none;
+	overflow: auto;
 }
 .container-fixed > aside .form-stacked {
 	padding-left: 0;
