@@ -168,7 +168,12 @@ FlowInspector.getTitleFormat = function(value, protocol) {
 			var val = 0;
 			// if get is a function, call it, otherwise take d's value
 			if (protocol  !== undefined) {
-				val = d.get(protocol)[value];
+				var pSpecific = d.get(protocol);
+				if (pSpecific !== undefined) {
+					val = d.get(protocol)[value];
+				} else {
+					val = 0;
+				}
 			} else if (typeof d.get == 'function') {
 				val = d.get(value);
 			} else {
@@ -190,7 +195,12 @@ FlowInspector.getTitleFormat = function(value, protocol) {
 			var val = 0;
 			// if get is a function, call it, otherwise take d's value
 			if (protocol  !== undefined) {
-				val = d.get(protocol)[value];
+				var pSpecific = d.get(protocol);
+				if (pSpecific !== undefined) {
+					val = d.get(protocol)[value];
+				} else {
+					val = 0;
+				}
 			} else if (typeof d.get == 'function') {
 				val = d.get(value);
 			} else {
@@ -221,7 +231,12 @@ FlowInspector.getTitleFormat = function(value, protocol) {
 		var val = 0;
 		// if get is a function, call it, otherwise take d's value
 		if (protocol  !== undefined) {
-			val = d.get(protocol)[value];
+			var pSpecific = d.get(protocol);
+			if (pSpecific !== undefined)  {
+				val = d.get(protocol)[value];
+			} else {
+				val = 0;
+			}
 		} else 	if (typeof d.get == 'function') {
 			val = d.get(value);
 		} else {
