@@ -801,14 +801,23 @@ class MysqlBackend(Backend):
 		return self.sql_query(collectionName, query_params)
 
 	def dynamic_index_query(self, name, query_params):
-		if name == "nodes":
-			tableName = common.DB_INDEX_NODES + "_" + str(query_params["bucket_size"])
-		elif name == "ports":
-			tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
-		else:
-			raise Exception("Unknown index specified")
+		aggregate = query_params["aggregate"]
+		bucket_size = query_params["bucket_size"]
 
-		query_params["aggregate"] = [ "_id" ] 
+		if len(aggregate) > 0:
+			# we must calculate all the stuff from our orignial
+			# flow db
+			tableName = common.DB_FLOW_PREFIX + str(bucket_size)
+		else:	
+			# we can use the precomuped indexes. *yay*
+			if name == "nodes":
+				tableName = common.DB_INDEX_NODES + "_" + str(query_params["bucket_size"])
+			elif name == "ports":
+				tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
+			else:
+				raise Exception("Unknown index specified")
+			query_params["aggregate"] = [ "_id" ]
+
 		(results, total) =  self.sql_query(tableName, query_params)
 		return (results, total)
 
