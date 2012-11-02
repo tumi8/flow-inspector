@@ -155,7 +155,7 @@ var HostView = Backbone.View.extend({
 			.text("Traffic")
 
 		// draw the bars
-		var barWidth = h / data.length / 2;
+		var barWidth = 10;// h / data.length / 2;
 		var bar = this.barGroup.selectAll("rect")
 			.data(data);
 
@@ -163,10 +163,12 @@ var HostView = Backbone.View.extend({
 			.attr("class", "bar")
 			.attr("title", FlowInspector.getTitleFormat(num_val));
 
+		/*
 		$(".bar", this.el).twipsy({
 			offset: 3,
 			placement: "above"
 		});
+		*/
 
 		// the following method aims at getting the appropriate x-offset for 
 		// the value of num_val (which can be flows, pakets, or bytes) 
@@ -264,10 +266,12 @@ var HostView = Backbone.View.extend({
 							return "TCP: " + f(d);
 						});
 
+		/*
 		$(".tcp", this.el).twipsy({
 			offset: 3,
 			placement: "above"
 		});
+		*/
 
 		// udp bar, starts after the tcp bar
 		bar_enter.append("rect")
@@ -281,10 +285,12 @@ var HostView = Backbone.View.extend({
 							var f = FlowInspector.getTitleFormat(num_val);
 							return "UDP: " + f(d);
 						});
+		/*
 		$(".udp", this.el).twipsy({
 			offset: 3,
 			placement: "above"
 		});
+		*/
 
 		// icmp bar, starts after the udp bar
 		bar_enter.append("rect")
@@ -298,10 +304,12 @@ var HostView = Backbone.View.extend({
 							var f = FlowInspector.getTitleFormat(num_val);
 							return "ICMP: " + f(d);
 						});
+		/*
 		$(".icmp", this.el).twipsy({
 			offset: 3,
 			placement: "above"
 		});
+		*/
 
 
 		// others bar, starts after the imcp bar
@@ -316,10 +324,12 @@ var HostView = Backbone.View.extend({
 							var f = FlowInspector.getTitleFormat(num_val);
 							return "Other: " + f(d);
 						});
+		/*
 		$(".other", this.el).twipsy({
 			offset: 3,
 			placement: "above"
 		});
+		*/
 
 
 		bar_enter.append("line")
