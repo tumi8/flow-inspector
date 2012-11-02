@@ -430,7 +430,7 @@ class MongoBackend(Backend):
 		full_spec = {}
 		full_spec["$and"] = [
 				spec, 
-				{ "_id": { "$ne": "total" }}
+				{ "_id": { "$ne": { "key":  "total" }} }
 			]
 	
 		cursor = collection.find(full_spec, fields=fields).batch_size(1000)
@@ -446,17 +446,18 @@ class MongoBackend(Backend):
 			result = []
 			total = []
 			for row in cursor:
-				row["id"] = row["_id"]
+				row["id"] = row["_id"]["key"]
 				del row["_id"]
 				result.append(row)
 
 		# get the total counter
-		spec = {"_id": "total"}
+		spec = {"_id": {"key": "total" }}
 		cursor = collection.find(spec)
 		if cursor.count() > 0:
 			total = cursor[0]
-			total["id"] = total["_id"]
+			total["id"] = total["_id"]["key"]
 			del total["_id"]
+		print total
 	
 		return (result, total)
 
@@ -468,98 +469,27 @@ class MongoBackend(Backend):
 		sort = query_params["sort"]
 		limit = query_params["limit"]
 		bucket_size = query_params["bucket_size"]
+		start_bucket = query_params["start_bucket"]
+		end_bucket = query_params["end_bucket"]
 
+		if name == "nodes":
+			collection = self.dst_db[common.DB_INDEX_NODES + "_" + str(bucket_size)]
+		elif name == "ports":
+			collection = self.dst_db[common.DB_INDEX_PORTS + "_" + str(bucket_size)]
+		else:
+			raise HTTPError(output="Unknown dynamic index")
 
-		def createNewIndexEntry(row):
-			# top level
-			r = { "id": row[key[0]], common.COL_FLOWS: 0 }
-			for s in config.flow_aggr_sums:
-				r[s] = row[s]
-	
-			# protocol specific
-			for p in common.AVAILABLE_PROTOS:
-				r[p] = { common.COL_FLOWS: 0 }
-				for s in config.flow_aggr_sums:	
-					r[p][s] = 0
-			# src and dst specific		
-			for dest in ["src", "dst"]:
-				r[dest] = {}
-				r[dest][common.COL_FLOWS ] = 0
-				for s in config.flow_aggr_sums:
-					r[dest][s] = 0
-			return r
+		#mongo aggregation framework pipeline elements
+		matchTotalGroup = {
+			"$match" : {
+				"_id":  { "key": "total" },
+			}
+		}
 
-		collection = self.dst_db[common.DB_FLOW_PREFIX + str(bucket_size)]
-	
-		cursor = collection.find(spec, fields=fields).batch_size(1000)
-	
-		result = {}
+		print matchTotalGroup
+		pipeline = [ matchTotalGroup ]
 
-		# total counter that contains information about all flows in 
-		# the REQUESTED buckets (not over the complete dataset)
-		# this is important because the limit parameter might remove
-		# some information
-		total = {}
-		total[common.COL_FLOWS] = 0
-		for s in config.flow_aggr_sums:
-			total[s] = 0
-		for proto in common.AVAILABLE_PROTOS:
-			total[proto] = {}
-			total[proto][common.COL_FLOWS] = 0
-			for s in config.flow_aggr_sums:
-				total[proto][s] = 0
-	
-		for row in cursor:
-			if name == "nodes":
-				keylist = [ (common.COL_SRC_IP, "src"), (common.COL_DST_IP, "dst") ]
-			elif name == "ports":
-				keylist = [ (common.COL_SRC_PORT, "src"), (common.COL_DST_PORT, "dst") ]
-			else:
-				raise HTTPError(output = "Unknown dynamic index")
-	
-			# update total counters
-			total[common.COL_FLOWS] += row[common.COL_FLOWS]
-			if common.COL_PROTO in row:
-				total[common.getProtoFromValue(row[common.COL_PROTO])][common.COL_FLOWS] += row[common.COL_FLOWS]
-			for s in config.flow_aggr_sums:
-				total[s] += row[s]
-				if common.COL_PROTO in row:
-					total[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
-	
-	
-			# update individual counters
-			for key in keylist:
-				if row[key[0]] in result:
-					r = result[row[key[0]]]
-				else:
-					r = createNewIndexEntry(row)
-	
-				r[common.COL_FLOWS] += row[common.COL_FLOWS]
-				r[key[1]][common.COL_FLOWS] += row[common.COL_FLOWS]
-				for s in config.flow_aggr_sums:
-					r[s] += row[s]
-					r[key[1]][s] += row[s]
-	
-				if common.COL_PROTO in row:
-					r[common.getProtoFromValue(row[common.COL_PROTO])][common.COL_FLOWS] += row[common.COL_FLOWS]
-					for s in config.flow_aggr_sums:
-						r[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
-	
-				result[row[key[0]]] = r
-
-		# no that we have calculated the indexes, take the values and postprocess them
-		results = result.values()
-		if sort:
-			# TODO: implement sort function that allows for sorting with two keys
-			if len(sort) != 1:
-				raise HTTPError(output = "Cannot sort by multiple fields. This must yet be implemented.")
-			if sort[0][1] == pymongo.ASCENDING:
-				results.sort(key=operator.itemgetter(sort[0][0]))
-			else:
-				results.sort(key=operator.itemgetter(sort[0][0]), reverse=True)
-		
-		if limit:
-			results = results[0:limit]
+		print collection.aggregate(pipeline)
 
 		return (results, total)
 		
@@ -722,25 +652,33 @@ class MysqlBackend(Backend):
 		
 	def update(self, collectionName, statement, document, insertIfNotExists):
 		# special handling for the _id field
-		if collectionName.startswith('index'):
-			typeString = "_id"
-			value = str(statement["_id"])
-			if self.doCache: 
-				if value == "total":
-					# special value 0 encodes the total field
-					cacheLine = (0,)
+		for s in statement:
+			if s == "_id":
+				if collectionName.startswith('index'):
+					typeString = "_id"
+					value = str(statement[s]["key"])
+					if self.doCache: 
+						if value == "total":
+							# special value 0 encodes the total field
+							cacheLine = (0,)
+						else:
+							cacheLine = (value,)
+						valueString = "%s"
+					else:
+						if value == "total":
+							valueString = "0"
+						else:
+							valueString = str(value)
+					if commmon.COL_BUCKET in statement[s]:
+						bucketValue = statement[s][common.COL_BUCKET]
+						if not "$set" in document:
+							document["$set"] = {}
+						document["$set"][common.COL_BUCKET] = bucketValue
 				else:
-					cacheLine = (value,)
-				valueString = "%s"
-			else:
-				if value == "total":
-					valueString = "0"
-				else:
-					valueString = str(value)
-		else:
-			typeString = ""
-			valueString = ""
-			cacheLine = ()
+					typeString = ""
+					valueString = ""
+					cacheLine = ()
+		
 
 		#if not collectionName ==common.DB_INDEX_NODES and not collectionName == common.DB_INDEX_PORTS:
 		#	print collectionName,  statement, document
@@ -1432,12 +1370,18 @@ class OracleBackend(Backend):
 	def update(self, collectionName, statement, document, insertIfNotExists):
 		fieldDict = {}
 		for s in statement:
-			if collectionName.startswith("index"):
-				# special handling for total field
-				if statement[s] == "total":
-					fieldDict["id"] = (0, "PRIMARY")
-				else:
-					fieldDict["id"] = (statement[s], "PRIMARY")
+			if s == "_id":
+				if collectionName.startswith("index"):
+					# special handling for total field
+					if statement[s]["key"] == "total":
+						fieldDict["id"] = (0, "PRIMARY")
+					else:
+						fieldDict["id"] = (statement[s]["key"], "PRIMARY")
+					if common.COL_BUCKET in statement[s]:
+						if not "$set" in document:
+							document["$set"] = {}
+						document["$set"][common.COL_BUCKET] = statement[s][common.COL_BUCKET]
+			
 
 		for part in [ "$set", "$inc" ]:
 			if not part in document:

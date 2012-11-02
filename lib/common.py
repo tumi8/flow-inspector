@@ -164,9 +164,6 @@ def update_node_index(obj, collection, aggr_sum):
 		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if COL_BUCKET in obj:
-		doc["$set"] = {}
-		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
 
 	doc["$inc"][COL_FLOWS] = flows
 	doc["$inc"][proto + "." + COL_FLOWS] = flows
@@ -174,7 +171,10 @@ def update_node_index(obj, collection, aggr_sum):
 	doc["$inc"]["src." + proto + "." + COL_FLOWS] = flows
 	
 	# insert if not exists, else update sums
-	collection.update({ "_id": obj[COL_SRC_IP] }, doc, True)
+	if COL_BUCKET in obj:
+		collection.update({ "_id": {"key": obj[COL_SRC_IP], COL_BUCKET: obj[COL_BUCKET] }}, doc, True)
+	else:
+		collection.update({ "_id": {"key": obj[COL_SRC_IP] }}, doc, True)
 	
 	# update destination node
 	doc = { "$inc": {} }
@@ -189,10 +189,6 @@ def update_node_index(obj, collection, aggr_sum):
 		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if COL_BUCKET in obj:
-		doc["$set"] = {}
-		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
-
 
 	doc["$inc"][COL_FLOWS] = flows
 	doc["$inc"][proto + "." + COL_FLOWS] = flows 
@@ -200,7 +196,10 @@ def update_node_index(obj, collection, aggr_sum):
 	doc["$inc"]["dst." + proto + "." + COL_FLOWS] = flows
 					
 	# insert if not exists, else update sums
-	collection.update({ "_id": obj[COL_DST_IP] }, doc, True)
+	if COL_BUCKET in obj:
+		collection.update({ "_id": { "key": obj[COL_DST_IP], COL_BUCKET: obj[COL_BUCKET] }}, doc, True)
+	else:
+		collection.update({ "_id": { "key": obj[COL_DST_IP] }}, doc, True)
 
 	# update total counters
 	doc = { "$inc": {} }
@@ -209,10 +208,6 @@ def update_node_index(obj, collection, aggr_sum):
 		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if COL_BUCKET in obj:
-		doc["$set"] = {}
-		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
-
 
 	doc["$inc"][COL_FLOWS] = flows 
 	doc["$inc"][proto + "." + COL_FLOWS]= flows 
@@ -222,7 +217,10 @@ def update_node_index(obj, collection, aggr_sum):
 		doc["$inc"][s] = obj.get(s, 0)
 		doc["$inc"][proto + "." + s] = obj.get(s, 0)
 
-	collection.update({"_id": "total"}, doc, True)
+	if COL_BUCKET in obj:
+		collection.update({"_id": { "key":  "total", COL_BUCKET: obj[COL_BUCKET] }}, doc, True)
+	else:
+		collection.update({"_id": { "key": "total" } }, doc, True)
 			
 	
 def update_port_index(obj, collection, aggr_sum, filter_ports):
@@ -246,10 +244,6 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if COL_BUCKET in obj:
-		doc["$set"] = {}
-		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
-
 
 	doc["$inc"][COL_FLOWS] = flows
 	doc["$inc"]["src." + COL_FLOWS] = flows
@@ -265,7 +259,10 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 			port = None
 	
 	# insert if not exists, else update sums
-	collection.update({ "_id": port }, doc, True)
+	if COL_BUCKET in obj:
+		collection.update({ "_id": { "key": port, COL_BUCKET: obj[COL_BUCKET] }}, doc, True)
+	else:
+		collection.update({ "_id": { "key": port }}, doc, True)
 	
 	# update destination port
 	doc = { "$inc": {} }
@@ -278,16 +275,15 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if COL_BUCKET in obj:
-		doc["$set"] = {}
-		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
-
 	
 	doc["$inc"][COL_FLOWS] = flows
 	doc["$inc"]["dst." + COL_FLOWS] = flows
 	
 	# insert if not exists, else update sums
-	collection.update({ "_id": port }, doc, True)
+	if COL_BUCKET in obj:
+		collection.update({ "_id": {"key":  port, COL_BUCKET: obj[COL_BUCKET] }}, doc, True)
+	else:
+		collection.update({ "_id": { "key": port } }, doc, True)
 
 	# update total counters
 	doc = { "$inc": {} }
@@ -296,16 +292,15 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 		flows = obj[COL_FLOWS]
 	else:
 		flows = 1
-	if COL_BUCKET in obj:
-		doc["$set"] = {}
-		doc["$set"][COL_BUCKET] = obj[COL_BUCKET]
-
 
 	doc["$inc"][COL_FLOWS] = flows 
 	for s in aggr_sum:
 		doc["$inc"][s] = obj.get(s, 0)
 
-	collection.update({"_id": "total"}, doc, True)
+	if COL_BUCKET in obj:
+		collection.update({"_id": {"key" : "total", COL_BUCKET: obj[COL_BUCKET] } }, doc, True)
+	else:
+		collection.update({"_id": {"key" : "total" } }, doc, True)
 	
 # read ports for special filtering
 def getKnownPorts(flow_filter_unknown_ports):
