@@ -19,8 +19,7 @@ import math
 import bson
 import config
 import common
-import flowbackend
-import databackend
+import backend
 
 import operator
 
@@ -32,8 +31,8 @@ from bottle import PasteServer
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 
 # get database backend (currently: MongoDB)
-db = flowbackend.getBackendObject(config.db_backend, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
-dataBackend = databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_name)
+db = backend.flowbackend.getBackendObject(config.db_backend, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
+dataBackend = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_name)
 
 def extract_mongo_query_params():
 	# construct query

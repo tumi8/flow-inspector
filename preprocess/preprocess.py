@@ -28,7 +28,7 @@ import xml.dom.minidom
 from collections import deque
 
 import common
-import flowbackend
+import backend
 import config
 
 parser = argparse.ArgumentParser(description="Import IPFIX flows from Redis cache into MongoDB.")
@@ -274,7 +274,7 @@ except Exception, e:
 	print >> sys.stderr, "Could not connect to Redis database: %s" % (e)
 	sys.exit(1)
 
-dst_db = flowbackend.getBackendObject(args.backend, args.dst_host, args.dst_port, args.dst_user, args.dst_password, args.dst_database)
+dst_db = backend.flowbackend.getBackendObject(args.backend, args.dst_host, args.dst_port, args.dst_user, args.dst_password, args.dst_database)
 	
 if args.clear_database:
 	dst_db.clearDatabase()
