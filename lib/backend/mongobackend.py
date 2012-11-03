@@ -209,7 +209,7 @@ class MongoBackend(Backend):
 		full_spec = {}
 		full_spec["$and"] = [
 				spec, 
-				{ "_id": { "$ne": { "key":  "total" }} }
+				{ "key": { "$ne": "total" } }
 			]
 	
 		cursor = collection.find(full_spec, fields=fields).batch_size(1000)
@@ -225,18 +225,19 @@ class MongoBackend(Backend):
 			result = []
 			total = []
 			for row in cursor:
-				row["id"] = row["_id"]["key"]
+				row["id"] = row["key"]
+				del row["key"]
 				del row["_id"]
 				result.append(row)
 
 		# get the total counter
-		spec = {"_id": {"key": "total" }}
+		spec = {"key": "total" }
 		cursor = collection.find(spec)
 		if cursor.count() > 0:
 			total = cursor[0]
-			total["id"] = total["_id"]["key"]
+			total["id"] = total["key"]
 			del total["_id"]
-		print total
+			del total["key"]
 	
 		return (result, total)
 
@@ -261,7 +262,7 @@ class MongoBackend(Backend):
 		#mongo aggregation framework pipeline elements
 		matchTotalGroup = {
 			"$match" : {
-				"_id":  { "key": "total" },
+				{ "key": "total" },
 			}
 		}
 
