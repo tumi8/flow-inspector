@@ -262,14 +262,70 @@ class MongoBackend(Backend):
 		#mongo aggregation framework pipeline elements
 		matchTotalGroup = {
 			"$match" : {
-				{ "key": "total" },
+				"key": "total",
 			}
 		}
 
-		print matchTotalGroup
-		pipeline = [ matchTotalGroup ]
+		matchOthers = {
+			"$match" : {
+				"key" : { "$ne" : "total" },
+				"bucket" : { "$gte" : start_bucket, "$lte" : end_bucket },
+			}
+		}
 
-		print collection.aggregate(pipeline)
+		aggregateGroup = {
+			"$group" : {
+				"_id" : "$key", 
+			}
+		}
+		sort = {
+			"$sort" : {
+				sort[0][0] : sort[0][1]
+			}
+		}
+		limit = {
+			"$limit" : limit
+		}
+
+		for s in config.flow_aggr_sums + [ "flows" ]:
+			aggregateGroup["$group"][s] = { "$sum" : "$" + s }
+			for p in common.AVAILABLE_PROTOS:
+				aggregateGroup["$group"][p + "_" + s] = { "$sum" : "$" + p + "." + s }
+
+		totalPipeline = [ matchTotalGroup, aggregateGroup ]
+		othersPipeline = [matchOthers, aggregateGroup, sort, limit ]
+
+		aggResult =  collection.aggregate(totalPipeline)
+		total = aggResult["result"]
+		if len(total) > 0:
+			if len(total) > 1:
+				print "Bug: Got more than one result for total:"
+				print total
+			total = total[0]
+		else:
+			total = {}
+	
+		aggResult = collection.aggregate(othersPipeline)
+		results = aggResult["result"]
+
+		# we need to map the protocol_value fields into protocol : { value : xxx }
+		# dictionaries. This must be done for total and results
+		for row in results:
+			row["id"] = row["_id"]
+			del row["_id"]
+			for p in common.AVAILABLE_PROTOS:
+				row[p] = {}
+				for s in config.flow_aggr_sums + ["flows"]:
+					row[p][s] = row[p + "_" + s]
+					del row[p + "_" + s]
+
+		total["id"] = total["_id"]
+		del total["_id"]
+		for p in common.AVAILABLE_PROTOS:
+			total[p] = {}
+			for s in config.flow_aggr_sums:
+				total[p][s] = total[p + "_" + s]
+				del total[p + "_" + s]
 
 		return (results, total)
 		

@@ -61,6 +61,15 @@ class FlowHandler:
 		self.collection = collection
 		self.nodes_collection = nodes_collection
 		self.ports_collection = ports_collection
+		# create indexes
+		self.collection.createIndex(common.COL_BUCKET)
+		if self.nodes_collection:
+			self.nodes_collection.createIndex(common.COL_BUCKET)
+			self.nodes_collection.createIndex("key")
+		if self.ports_collection:
+			self.ports_collection.createIndex(common.COL_BUCKET)
+			self.ports_collection.createIndex("key")
+
 		self.aggr_sum = aggr_sum
 		self.aggr_values = aggr_values
 		self.filter_ports = filter_ports
@@ -299,6 +308,7 @@ for s in config.flow_bucket_sizes:
 		known_ports,
 		config.pre_cache_size
 	))
+	
 for s in config.flow_bucket_sizes:
 	handlers.append(FlowHandler(
 		s,
@@ -310,10 +320,6 @@ for s in config.flow_bucket_sizes:
 		None,
 		config.pre_cache_size_aggr
 	))
-
-# create indexes
-for handler in handlers:
-	handler.collection.createIndex(common.COL_BUCKET)
 
 print "%s: Preprocessing started." % (datetime.datetime.now())
 print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())
