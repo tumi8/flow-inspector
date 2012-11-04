@@ -353,6 +353,7 @@ var BucketChartView = Backbone.View.extend({
 		var data = {
 			"resolution": 1000
 		}
+
 		if (interval.length > 0) {
 			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
 			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);

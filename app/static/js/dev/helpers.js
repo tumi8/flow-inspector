@@ -67,13 +67,11 @@ FlowInspector.strToIp = function(str) {
 	var ip = 0;
 	for(var i = 0; i < 4; i++) {
 		var j = parseInt(parts[i]);
-		console.log("j: " + j)
 		// check for range and Nan
 		if(j !== j || j < 0 || j > 255) {
 			return null;
 		}
 		ip = (ip << 8) + j;
-		console.log("ip: " + ip);
 	}
 	return (ip >>> 0);
 };
