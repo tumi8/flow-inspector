@@ -249,15 +249,64 @@ class MongoBackend(Backend):
 		sort = query_params["sort"]
 		limit = query_params["limit"]
 		bucket_size = query_params["bucket_size"]
+		aggregate = query_params["aggregate"]
 		start_bucket = query_params["start_bucket"]
 		end_bucket = query_params["end_bucket"]
+		include_ports = query_params["include_ports"]
+		exclude_ports = query_params["exclude_ports"]
+		include_protos = query_params["include_protos"]
+		exclude_protos = query_params["exclude_protos"]
+		include_ips = query_params["include_ips"]
+		exclude_ips = query_params["exclude_ips"]
 
-		if name == "nodes":
-			collection = self.dst_db[common.DB_INDEX_NODES + "_" + str(bucket_size)]
-		elif name == "ports":
-			collection = self.dst_db[common.DB_INDEX_PORTS + "_" + str(bucket_size)]
-		else:
-			raise HTTPError(output="Unknown dynamic index")
+		if len(aggregate) > 0:
+			# we must calculate all the stuff from our orignial
+			# flow db
+			collection = self.dst_db[common.DB_FLOW_PREFIX + str(bucket_size)]
+			originalFlowDb = True
+		else:	
+			# we can use the precomuped indexes. *yay*
+			if name == "nodes":
+				collection = self.dst_db[common.DB_INDEX_NODES + "_" + str(query_params["bucket_size"])]
+			elif name == "ports":
+				collection = self.dst_db[common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])]
+			else:
+				raise Exception("Unknown dynamic index specified")
+			aggregate = [ "key" ]
+			originalFlowDb = False
+
+		commonFilter = {
+			"$match" : {
+				"bucket" : { "$gte" : start_bucket, "$lte" : end_bucket },
+			}
+		}
+		if len(include_protos) > 0:
+			commonFilter["$match"]["$or"] = [
+				{ common.COL_PROTO: { "$in": include_protos } }
+			]
+		if len(exclude_protos) > 0:
+			commonFilter["$match"][common.COL_PROTOS] = { "$nin": exclude_protos }
+
+		if len(include_ports) > 0:
+			if not "$or" in commonFilter["$match"]:
+				commonFilter["$match"]["$or"] = []
+			commonFilter["$match"]["$or"].append({ common.COL_SRC_PORT: { "$in": include_ports } })
+			commonFilter["$match"]["$or"].append({ common.COL_DST_PORT: { "$in": include_ports } })
+
+		if len(exclude_ports) > 0:
+			commonFilter["$match"][common.COL_SRC_PORT] = { common.COL_SRC_PORT: { "$nin": exclude_ports }}
+			commonFilter["$match"][common.COL_DST_PORT] = { common.COL_DST_PORT: { "$nin": exclude_ports }}
+
+		if len(include_ips) > 0:
+			if not "$or" in commonFilter["$match"]:
+				commonFilter["$match"]["$or"] = []
+			commonFilter["$match"]["$or"].append({ common.COL_SRC_IP: { "$in": include_ips } })
+			commonFilter["$match"]["$or"].append({ common.COL_DST_IP: { "$in": include_ips } })
+
+		if len(exclude_ips) > 0:
+			commonFilter["$match"][common.COL_SRC_IP] = { common.COL_SRC_IP: { "$nin": exclude_ips }}
+			commonFilter["$match"][common.COL_DST_IP] = { common.COL_DST_IP: { "$nin": exclude_ips }}
+
 
 		#mongo aggregation framework pipeline elements
 		matchTotalGroup = {
@@ -269,15 +318,9 @@ class MongoBackend(Backend):
 		matchOthers = {
 			"$match" : {
 				"key" : { "$ne" : "total" },
-				"bucket" : { "$gte" : start_bucket, "$lte" : end_bucket },
 			}
 		}
 
-		aggregateGroup = {
-			"$group" : {
-				"_id" : "$key", 
-			}
-		}
 		sort = {
 			"$sort" : {
 				sort[0][0] : sort[0][1]
@@ -287,31 +330,96 @@ class MongoBackend(Backend):
 			"$limit" : limit
 		}
 
+
+		aggregateGroup = {
+			"$group" : {
+				"_id" : {}, 
+			}
+		}
+		doIPAddress = False
+		doPort = False
+		for field in aggregate:
+			if field == common.COL_IPADDRESS:
+				doIPAddress = True
+			elif field == common.COL_PORT:
+				doPort = True
+			else: 
+				aggregateGroup["$group"]["_id"][field] = "$" +field
+
 		for s in config.flow_aggr_sums + [ "flows" ]:
 			aggregateGroup["$group"][s] = { "$sum" : "$" + s }
 			for p in common.AVAILABLE_PROTOS:
 				aggregateGroup["$group"][p + "_" + s] = { "$sum" : "$" + p + "." + s }
 
-		totalPipeline = [ matchTotalGroup, aggregateGroup ]
-		othersPipeline = [matchOthers, aggregateGroup, sort, limit ]
-
-		aggResult =  collection.aggregate(totalPipeline)
-		total = aggResult["result"]
-		if len(total) > 0:
-			if len(total) > 1:
-				print "Bug: Got more than one result for total:"
-				print total
-			total = total[0]
-		else:
-			total = {}
+		if not originalFlowDb:
+			# use pre-calculated indexes
+			totalPipeline = [ commonFilter,  matchTotalGroup, aggregateGroup ]
+			othersPipeline = [ commonFilter, matchOthers, aggregateGroup, sort, limit ]
 	
-		aggResult = collection.aggregate(othersPipeline)
-		results = aggResult["result"]
+			aggResult =  collection.aggregate(totalPipeline)
+			total = aggResult["result"]
+			if len(total) > 0:
+				if len(total) > 1:
+					print "Bug: Got more than one result for total:"
+					print total
+				total = total[0]
+			else:
+				total =  None
+		
+			aggResult = collection.aggregate(othersPipeline)
+			results = aggResult["result"]
+			total = None
+		else:
+			# create from flow database
+			if doIPAddress:
+				src = common.COL_SRC_IP
+				dst = common.COL_SRC_IP
+				fieldName = common.COL_IPADDRESS
+			elif doPort:
+				src = common.COL_SRC_PORT
+				dst = common.COL_SRC_PORT
+				fieldName = common.COL_PORT
+
+			if doIPAddress or doPort:
+				projectDual =  {
+					"$project" : {
+						"_id" : 1,
+						"index" : { "$const" :[0,1] }
+					}
+				}
+				for s in config.flow_aggr_values + config.flow_aggr_sums + [ "flows"] + common.AVAILABLE_PROTOS:
+					projectDual["$project"][s] = 1
+				unwind = {
+					"$unwind" : "$index"
+				}	
+				aggregateGroup["$group"]["_id"][fieldName] = { "$cond" : [ {"$eq":['$index', 0]}, '$' + src, '$' + dst] }
+				pipeline = [ commonFilter, projectDual, unwind, aggregateGroup]
+				if sort: 
+					pipeline.append(sort)
+				if limit: 
+					pipeline.append(limit)
+				aggResult =  collection.aggregate(pipeline)
+				results = aggResult["result"]
+				total = None
+			else:
+				print commonFilter
+				pipeline = [ commonFilter, aggregateGroup ]
+				if sort:
+					pipeline.append(sort)
+				if limit:
+					pipeline.append(limit)
+				aggResult = collection.aggregate(pipeline)
+				results = aggResult["result"]
+				total = None
 
 		# we need to map the protocol_value fields into protocol : { value : xxx }
 		# dictionaries. This must be done for total and results
 		for row in results:
-			row["id"] = row["_id"]
+			for field in aggregate:
+				if field == "key" or field == common.COL_IPADDRESS or field == common.COL_PORT:
+					row["id"] = row["_id"][field]
+				else:
+					row[field] = row["_id"][field]
 			del row["_id"]
 			for p in common.AVAILABLE_PROTOS:
 				row[p] = {}
@@ -319,13 +427,21 @@ class MongoBackend(Backend):
 					row[p][s] = row[p + "_" + s]
 					del row[p + "_" + s]
 
-		total["id"] = total["_id"]
-		del total["_id"]
-		for p in common.AVAILABLE_PROTOS:
-			total[p] = {}
-			for s in config.flow_aggr_sums:
-				total[p][s] = total[p + "_" + s]
-				del total[p + "_" + s]
+		
+
+		if total != None:
+			total["id"] = total["_id"]
+			for field in aggregate:
+				if field == "key":
+					total["id"] = total["_id"][field]
+				else:
+					total[field] = total["_id"][field]
+			del total["_id"]
+			for p in common.AVAILABLE_PROTOS:
+				total[p] = {}
+				for s in config.flow_aggr_sums:
+					total[p][s] = total[p + "_" + s]
+					del total[p + "_" + s]
 
 		return (results, total)
 		

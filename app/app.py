@@ -127,11 +127,11 @@ def extract_mongo_query_params():
 	include_protos = []
 	if "include_protos" in request.GET:
 		include_protos = request.GET["include_protos"].strip()
-		include_protos = map(lambda v: v.strip(), include_protos.split(","))
+		include_protos = map(lambda v: common.getValueFromProto(v.strip()), include_protos.split(","))
 	exclude_protos = []
 	if "exclude_protos" in request.GET:
 		exclude_protos = request.GET["exclude_protos"].strip()
-		exclude_protos = map(lambda v: v.strip(), exclude_protos.split(","))
+		exclude_protos = map(lambda v: common.getValueFromProto(v.strip()), exclude_protos.split(","))
 
 	
 	# port filter

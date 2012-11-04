@@ -212,7 +212,8 @@ class FlowHandler:
 			
 	def updateCollection(self, key, doc):
 		# bindata will reduce id size by 50%
-		self.collection.update({ "_id": bson.binary.Binary(key) }, doc, True)
+		#self.collection.update({ "_id": bson.binary.Binary(key) }, doc, True)
+		self.collection.update({ "_id": key }, doc, True)
 		if self.nodes_collection:
 			newdoc = doc["$set"]
 			newdoc.update(doc["$inc"])
