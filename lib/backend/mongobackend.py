@@ -127,72 +127,16 @@ class MongoBackend(Backend):
 	def bucket_query(self, collectionName,  query_params):
 		import pymongo
 		collection = self.dst_db[collectionName]
-		spec = self.build_spec(query_params)
-		fields = query_params["fields"]
-		sort = query_params["sort"]
-		include_ips = query_params["include_ips"]
-		exclude_ips = query_params["exclude_ips"]
-		include_ports = query_params["include_ports"]
-		exclude_ports = query_params["exclude_ports"]
-		biflow = query_params["biflow"]
-		aggregate = query_params["aggregate"]
-
 		min_bucket = self.getMinBucket();
 		max_bucket = self.getMaxBucket();
 
-		if (aggregate and len(aggregate) > 0):
-			fields = fields + aggregate
+		aggregate = query_params["aggregate"]
+		if len(aggregate) == 0:
+			aggregate.append(common.COL_BUCKET)
 
-		cursor = collection.find(spec, fields=fields).batch_size(1000)
-		if sort: 
-			cursor.sort(common.COL_BUCKET, sort)
-		else:
-			cursor.sort(common.COL_BUCKET, pymongo.ASCENDING)
+		query_params["aggregate"] = aggregate
 
-		buckets = []
-		if (fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0 or len(include_ips) > 0 or len(exclude_ips) > 0:
-			current_bucket = -1
-			aggr_buckets = {}
-			for doc in cursor:
-				if doc[common.COL_BUCKET] > current_bucket:
-					for key in aggr_buckets:
-						buckets.append(aggr_buckets[key])
-					aggr_buckets = {}
-					current_bucket = doc[common.COL_BUCKET]
-					
-				# biflow?
-				if biflow and common.COL_SRC_IP in fields and common.COL_DST_IP in fields:
-					srcIP = doc.get(common.COL_SRC_IP, None)
-					dstIP = doc.get(common.COL_DST_IP, None)
-					if srcIP > dstIP:
-						doc[common.COL_SRC_IP] = dstIP
-						doc[common.COL_DST_IP] = srcIP
-				
-				# construct aggregation key
-				key = str(current_bucket)
-				for a in fields:
-					key += str(doc.get(a, "x"))
-				
-				if key not in aggr_buckets:
-					bucket = { common.COL_BUCKET: current_bucket }
-					for a in fields:
-						bucket[a] = doc.get(a, None)
-					for s in [common.COL_FLOWS] + config.flow_aggr_sums:
-						bucket[s] = 0
-					aggr_buckets[key] = bucket
-				else:
-					bucket = aggr_buckets[key]
-				
-				for s in [common.COL_FLOWS] + config.flow_aggr_sums:
-					bucket[s] += doc.get(s, 0)
-				
-			for key in aggr_buckets:
-				buckets.append(aggr_buckets[key])
-		else:
-			# cheap operation if nothing has to be aggregated
-			for doc in cursor:
-				del doc["_id"]
-				buckets.append(doc)
+		(buckets, total) = self.run_query(collection, query_params, True)
 
 		return (buckets, None, min_bucket, max_bucket);
 
@@ -274,6 +218,28 @@ class MongoBackend(Backend):
 				raise Exception("Unknown dynamic index specified")
 			aggregate = [ "key" ]
 			originalFlowDb = False
+		query_params["aggregate"] = aggregate
+
+		return self.run_query(collection, query_params, originalFlowDb)
+
+	def run_query(self, collection, query_params, originalFlowDb):
+		import pymongo
+
+		spec = self.build_spec(query_params)
+		fields = query_params["fields"]
+		sort = query_params["sort"]
+		limit = query_params["limit"]
+		bucket_size = query_params["bucket_size"]
+		aggregate = query_params["aggregate"]
+		start_bucket = query_params["start_bucket"]
+		end_bucket = query_params["end_bucket"]
+		include_ports = query_params["include_ports"]
+		exclude_ports = query_params["exclude_ports"]
+		include_protos = query_params["include_protos"]
+		exclude_protos = query_params["exclude_protos"]
+		include_ips = query_params["include_ips"]
+		exclude_ips = query_params["exclude_ips"]
+
 
 		commonFilter = {
 			"$match" : {
@@ -321,14 +287,16 @@ class MongoBackend(Backend):
 			}
 		}
 
-		sort = {
-			"$sort" : {
-				sort[0][0] : sort[0][1]
+		if sort: 
+			sort = {
+				"$sort" : {
+					sort[0][0] : sort[0][1]
+				}
 			}
-		}
-		limit = {
-			"$limit" : limit
-		}
+		if limit: 
+			limit = {
+				"$limit" : limit
+			}
 
 
 		aggregateGroup = {
@@ -402,7 +370,6 @@ class MongoBackend(Backend):
 				results = aggResult["result"]
 				total = None
 			else:
-				print commonFilter
 				pipeline = [ commonFilter, aggregateGroup ]
 				if sort:
 					pipeline.append(sort)
