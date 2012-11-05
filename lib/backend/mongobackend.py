@@ -153,7 +153,7 @@ class MongoBackend(Backend):
 		full_spec = {}
 		full_spec["$and"] = [
 				spec, 
-				{ "key": { "$ne": "total" } }
+				{ common.COL_ID :  { "$ne": "total" } }
 			]
 	
 		cursor = collection.find(full_spec, fields=fields).batch_size(1000)
@@ -169,19 +169,15 @@ class MongoBackend(Backend):
 			result = []
 			total = []
 			for row in cursor:
-				row["id"] = row["key"]
-				del row["key"]
 				del row["_id"]
 				result.append(row)
 
 		# get the total counter
-		spec = {"key": "total" }
+		spec = {common.COL_ID: "total" }
 		cursor = collection.find(spec)
 		if cursor.count() > 0:
 			total = cursor[0]
-			total["id"] = total["key"]
 			del total["_id"]
-			del total["key"]
 	
 		return (result, total)
 
@@ -216,7 +212,7 @@ class MongoBackend(Backend):
 				collection = self.dst_db[common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])]
 			else:
 				raise Exception("Unknown dynamic index specified")
-			aggregate = [ "key" ]
+			aggregate = [ common.COL_ID ]
 			originalFlowDb = False
 		query_params["aggregate"] = aggregate
 
@@ -277,13 +273,13 @@ class MongoBackend(Backend):
 		#mongo aggregation framework pipeline elements
 		matchTotalGroup = {
 			"$match" : {
-				"key": "total",
+				common.COL_ID : "total",
 			}
 		}
 
 		matchOthers = {
 			"$match" : {
-				"key" : { "$ne" : "total" },
+				common.COL_ID : { "$ne" : "total" },
 			}
 		}
 
@@ -383,7 +379,7 @@ class MongoBackend(Backend):
 		# dictionaries. This must be done for total and results
 		for row in results:
 			for field in aggregate:
-				if field == "key" or field == common.COL_IPADDRESS or field == common.COL_PORT:
+				if  field == common.COL_IPADDRESS or field == common.COL_PORT:
 					row["id"] = row["_id"][field]
 				else:
 					row[field] = row["_id"][field]
@@ -394,15 +390,10 @@ class MongoBackend(Backend):
 					row[p][s] = row[p + "_" + s]
 					del row[p + "_" + s]
 
-		
-
 		if total != None:
 			total["id"] = total["_id"]
 			for field in aggregate:
-				if field == "key":
-					total["id"] = total["_id"][field]
-				else:
-					total[field] = total["_id"][field]
+				total[field] = total["_id"][field]
 			del total["_id"]
 			for p in common.AVAILABLE_PROTOS:
 				total[p] = {}

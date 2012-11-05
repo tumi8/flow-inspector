@@ -228,7 +228,7 @@ class OracleBackend(Backend):
 		
 		# create precomputed index that describe the whole data set
 		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
-			createString = "CREATE TABLE %s (id NUMBER(10) NOT NULL" % table
+			createString = "CREATE TABLE %s (%s NUMBER(10) NOT NULL" % (table, common.COL_ID)
 			for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
@@ -241,14 +241,14 @@ class OracleBackend(Backend):
 					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 
-			createString += ", PRIMARY KEY(id))"
+			createString += ", PRIMARY KEY(%s))" % (common.COL_ID)
 			self.execute(createString)
 
 		# create tables for storing incremental indexes
 		for bucket_size in config.flow_bucket_sizes:
 			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 				table = index + "_" + str(bucket_size)
-				createString = "CREATE TABLE " + table + " (id NUMBER(10) NOT NULL, " + common.COL_BUCKET + " NUMBER(10) NOT NULL"
+				createString = "CREATE TABLE " + table + " (" + common.COL_ID + " NUMBER(10) NOT NULL, " + common.COL_BUCKET + " NUMBER(10) NOT NULL"
 				for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 					createString += ", %s %s DEFAULT 0" % (s, common.ORACLE_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
@@ -261,7 +261,7 @@ class OracleBackend(Backend):
 						for s in config.flow_aggr_sums + [common.COL_FLOWS ]: 
 							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.ORACLE_TYPE_MAPPER[s])
 	
-				createString += ", PRIMARY KEY(id," + common.COL_BUCKET + "))"
+				createString += ", PRIMARY KEY(" + common.COL_ID + "," + common.COL_BUCKET + "))"
 				self.execute(createString)
 
 
@@ -277,17 +277,17 @@ class OracleBackend(Backend):
 	def update(self, collectionName, statement, document, insertIfNotExists):
 		fieldDict = {}
 		for s in statement:
-			if s == "_id":
-				if collectionName.startswith("index"):
+			if collectionName.startswith("index"):
+				if s == common.COL_ID:
 					# special handling for total field
-					if statement[s]["key"] == "total":
-						fieldDict["id"] = (0, "PRIMARY")
+					if statement[s] == "total":
+						fieldDict[common.COL_ID] = (0, "PRIMARY")
 					else:
-						fieldDict["id"] = (statement[s]["key"], "PRIMARY")
-					if common.COL_BUCKET in statement[s]:
-						if not "$set" in document:
-							document["$set"] = {}
-						document["$set"][common.COL_BUCKET] = statement[s][common.COL_BUCKET]
+						fieldDict[common.COL_ID] = (statement[s]["key"], "PRIMARY")
+				if s == common.COL_BUCKET:
+					if not "$set" in document:
+						document["$set"] = {}
+					document["$set"][common.COL_BUCKET] = statement[s][common.COL_BUCKET]
 			
 
 		for part in [ "$set", "$inc" ]:
@@ -386,7 +386,7 @@ class OracleBackend(Backend):
 				tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
 			else:
 				raise Exception("Unknown index specified")
-			query_params["aggregate"] = [ "id" ]
+			query_params["aggregate"] = [ common.COL_ID ]
 
 		(results, total) =  self.sql_query(tableName, query_params)
 		return (results, total)
@@ -661,10 +661,7 @@ class OracleBackend(Backend):
 					else:
 						raise Exception("Internal Programming Error!")
 				else:
-					if field == "_id":
-						resultDoc["id"] = int(fieldValue)
-					else: 
-						resultDoc[field] = int(fieldValue)
+					resultDoc[field] = int(fieldValue)
 				idx += 1
 			if isTotal:
 				total = resultDoc

@@ -41,6 +41,7 @@ class MysqlBackend(Backend):
 		import MySQLdb
 		import _mysql_exceptions
 		try: 
+			#print string
 			self.cursor.execute(string)
 		except MySQLdb.OperationalError as e:
 			print "Tried statement: ", string
@@ -110,7 +111,7 @@ class MysqlBackend(Backend):
 		
 		# create precomputed index that describe the whole data set
 		for table in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
-			createString = "CREATE TABLE IF NOT EXISTS %s (_id INTEGER(10) UNSIGNED NOT NULL" % table
+			createString = "CREATE TABLE IF NOT EXISTS %s (%s INTEGER(10) UNSIGNED NOT NULL" % (table, common.COL_ID)
 			for s in config.flow_aggr_sums + [ common.COL_FLOWS ]:
 				createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 			for proto in common.AVAILABLE_PROTOS:
@@ -123,14 +124,14 @@ class MysqlBackend(Backend):
 					for s in config.flow_aggr_sums + [ common.COL_FLOWS ]: 
 						createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 
-			createString += ", PRIMARY KEY(_id))"
+			createString += ", PRIMARY KEY(%s))" % common.COL_ID
 			self.execute(createString)
 
 		# create tables for storing incremental indexes
 		for bucket_size in config.flow_bucket_sizes:
 			for index in [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]:
 				table = index + "_" + str(bucket_size)
-				createString = "CREATE TABLE IF NOT EXISTS " + table + " (_id INTEGER(10) UNSIGNED NOT NULL," + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
+				createString = "CREATE TABLE IF NOT EXISTS " + table + " (" + common.COL_ID + " INTEGER(10) UNSIGNED NOT NULL," + common.COL_BUCKET + " INTEGER(10) UNSIGNED NOT NULL"
 				for s in config.flow_aggr_sums + [common.COL_FLOWS]:
 					createString += ", %s %s DEFAULT 0" % (s, common.MYSQL_TYPE_MAPPER[s])
 				for proto in common.AVAILABLE_PROTOS:
@@ -143,7 +144,7 @@ class MysqlBackend(Backend):
 						for s in config.flow_aggr_sums + [common.COL_FLOWS ]: 
 							createString += ", %s %s DEFAULT 0" % (direction + "_" + proto + "_" + s, common.MYSQL_TYPE_MAPPER[s])
 	
-				createString += ", PRIMARY KEY(_id," + common.COL_BUCKET + "))"
+				createString += ", PRIMARY KEY(" + common.COL_ID + "," + common.COL_BUCKET + "))"
 				self.execute(createString)
 
 
@@ -159,10 +160,10 @@ class MysqlBackend(Backend):
 	def update(self, collectionName, statement, document, insertIfNotExists):
 		# special handling for the _id field
 		for s in statement:
-			if s == "_id":
-				if collectionName.startswith('index'):
-					typeString = "_id"
-					value = str(statement[s]["key"])
+			if collectionName.startswith('index'):
+				if s == common.COL_ID:
+					typeString = s
+					value = str(statement[s])
 					if self.doCache: 
 						if value == "total":
 							# special value 0 encodes the total field
@@ -175,15 +176,15 @@ class MysqlBackend(Backend):
 							valueString = "0"
 						else:
 							valueString = str(value)
-					if commmon.COL_BUCKET in statement[s]:
-						bucketValue = statement[s][common.COL_BUCKET]
-						if not "$set" in document:
-							document["$set"] = {}
-						document["$set"][common.COL_BUCKET] = bucketValue
-				else:
-					typeString = ""
-					valueString = ""
-					cacheLine = ()
+				if s == common.COL_BUCKET:
+					bucketValue = statement[s]
+					if not "$set" in document:
+						document["$set"] = {}
+					document["$set"][common.COL_BUCKET] = bucketValue
+			else:
+				typeString = ""
+				valueString = ""
+				cacheLine = ()
 		
 
 		#if not collectionName ==common.DB_INDEX_NODES and not collectionName == common.DB_INDEX_PORTS:
@@ -322,7 +323,7 @@ class MysqlBackend(Backend):
 				tableName = common.DB_INDEX_PORTS + "_" + str(query_params["bucket_size"])
 			else:
 				raise Exception("Unknown index specified")
-			query_params["aggregate"] = [ "_id" ]
+			query_params["aggregate"] = [ common.COL_ID ]
 
 		(results, total) =  self.sql_query(tableName, query_params)
 		return (results, total)
@@ -435,7 +436,7 @@ class MysqlBackend(Backend):
 					firstIncludeProto = False
 				else:
 					queryString += "OR "
-			queryString += "%s = %d " % (common.COL_PROTO, common.getValueFromProto(proto))
+			queryString += "%s = %d " % (common.COL_PROTO, proto)
 		if not firstIncludeProto:
 			queryString += ") "
 
@@ -450,7 +451,7 @@ class MysqlBackend(Backend):
 					firstExcludeProto = False
 				else:
 					queryString += "AND "
-			queryString += "%s != %d " % (common.COL_PROTO, common.getValueFromProto(proto))
+			queryString += "%s != %d " % (common.COL_PROTO, proto)
 		if not firstExcludeProto:
 			queryString += ") "
 
@@ -555,7 +556,7 @@ class MysqlBackend(Backend):
 			queryString += "LIMIT %d" % (limit)
 
 		print "MySQL: Running Query ..."
-		print queryString
+		#print queryString
 		self.execute(queryString)
 		queryResult =  self.cursor.fetchall()
 		print "MySQL: Encoding Query ..."
@@ -574,7 +575,7 @@ class MysqlBackend(Backend):
 			resultDoc = dict()
 			isTotal = False
 			for field in row:
-				if field == "_id":
+				if field == common.COL_ID:
 					if row[field] == 0:
 						isTotal = True
 					fieldParts = []
@@ -593,10 +594,7 @@ class MysqlBackend(Backend):
 					else:
 						raise Exception("Internal Programming Error!")
 				else:
-					if field == "_id":
-						resultDoc["id"] = int(row[field])
-					else: 
-						resultDoc[field] = int(row[field])
+					resultDoc[field] = int(row[field])
 			if isTotal:
 				total = resultDoc
 			else:

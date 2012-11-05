@@ -65,10 +65,10 @@ class FlowHandler:
 		self.collection.createIndex(common.COL_BUCKET)
 		if self.nodes_collection:
 			self.nodes_collection.createIndex(common.COL_BUCKET)
-			self.nodes_collection.createIndex("key")
+			self.nodes_collection.createIndex(common.COL_ID)
 		if self.ports_collection:
 			self.ports_collection.createIndex(common.COL_BUCKET)
-			self.ports_collection.createIndex("key")
+			self.ports_collection.createIndex(common.COL_ID)
 
 		self.aggr_sum = aggr_sum
 		self.aggr_values = aggr_values
