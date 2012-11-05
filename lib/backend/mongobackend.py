@@ -247,7 +247,7 @@ class MongoBackend(Backend):
 				{ common.COL_PROTO: { "$in": include_protos } }
 			]
 		if len(exclude_protos) > 0:
-			commonFilter["$match"][common.COL_PROTOS] = { "$nin": exclude_protos }
+			commonFilter["$match"][common.COL_PROTO] = { "$nin": exclude_protos }
 
 		if len(include_ports) > 0:
 			if not "$or" in commonFilter["$match"]:
@@ -256,8 +256,8 @@ class MongoBackend(Backend):
 			commonFilter["$match"]["$or"].append({ common.COL_DST_PORT: { "$in": include_ports } })
 
 		if len(exclude_ports) > 0:
-			commonFilter["$match"][common.COL_SRC_PORT] = { common.COL_SRC_PORT: { "$nin": exclude_ports }}
-			commonFilter["$match"][common.COL_DST_PORT] = { common.COL_DST_PORT: { "$nin": exclude_ports }}
+			commonFilter["$match"][common.COL_SRC_PORT] = { "$nin": exclude_ports }
+			commonFilter["$match"][common.COL_DST_PORT] = { "$nin": exclude_ports }
 
 		if len(include_ips) > 0:
 			if not "$or" in commonFilter["$match"]:
@@ -266,8 +266,8 @@ class MongoBackend(Backend):
 			commonFilter["$match"]["$or"].append({ common.COL_DST_IP: { "$in": include_ips } })
 
 		if len(exclude_ips) > 0:
-			commonFilter["$match"][common.COL_SRC_IP] = { common.COL_SRC_IP: { "$nin": exclude_ips }}
-			commonFilter["$match"][common.COL_DST_IP] = { common.COL_DST_IP: { "$nin": exclude_ips }}
+			commonFilter["$match"][common.COL_SRC_IP] = { "$nin": exclude_ips }
+			commonFilter["$match"][common.COL_DST_IP] = { "$nin": exclude_ips }
 
 
 		#mongo aggregation framework pipeline elements
