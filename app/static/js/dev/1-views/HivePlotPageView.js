@@ -5,11 +5,16 @@ var HivePlotPageView = PageView.extend({
 		"blur #mapAxis1": "changeMapAxis1",
 		"blur #mapAxis2": "changeMapAxis2",
 		"blur #mapAxis3": "changeMapAxis3",
-		"blur #filterPorts": "changeFilterPorts",
-		"change #filterPortsType": "changeFilterPortsType",
 		"change #directionAxis1": "changeDirectionAxis1",
 		"change #directionAxis2": "changeDirectionAxis2",
-		"change #directionAxis3": "changeDirectionAxis3"
+		"change #directionAxis3": "changeDirectionAxis3",
+		"click a.apply-filter": "clickApplyFilter",
+		"blur #filterProtocols": "changeFilterProtocols",
+		"blur #filterPorts": "changeFilterPorts",
+		"blur #filterIPs": "changeFilterIPs",
+		"change #filterPortsType": "changeFilterPortsType",
+		"change #filterProtocolsType": "changeFilterProtocolsType",
+		"change #filterIPsType": "changeFilterIPsType",
 	},
 	initialize: function() {
 		this.template = _.template($("#hive-plot-page-template").html());
@@ -45,8 +50,6 @@ var HivePlotPageView = PageView.extend({
 		this.hivePlotModel.bind("change:mapAxis1", this.mapAxis1Changed, this);
 		this.hivePlotModel.bind("change:mapAxis2", this.mapAxis2Changed, this);
 		this.hivePlotModel.bind("change:mapAxis3", this.mapAxis3Changed, this);
-		this.hivePlotModel.bind("change:filterPorts", this.filterPortsChanged, this);
-		this.hivePlotModel.bind("change:filterPortsType", this.filterPortsTypeChanged, this);
 		this.hivePlotModel.bind("change:directionAxis1", this.directionAxis1Changed, this);
 		this.hivePlotModel.bind("change:directionAxis2", this.directionAxis2Changed, this);
 		this.hivePlotModel.bind("change:directionAxis3", this.directionAxis3Changed, this);
@@ -94,11 +97,16 @@ var HivePlotPageView = PageView.extend({
 		$("#mapAxis1").val(this.hivePlotModel.get("mapAxis1"));
 		$("#mapAxis2").val(this.hivePlotModel.get("mapAxis2"));
 		$("#mapAxis3").val(this.hivePlotModel.get("mapAxis3"));
-		$("#filterPorts", this.el).val(this.hivePlotModel.get("filterPorts"));
-		$("#filterPortsType", this.el).val(this.hivePlotModel.get("filterPortsType"));
 		$("#directionAxis1", this.el).val(this.hivePlotModel.get("directionAxis1"));
 		$("#directionAxis2", this.el).val(this.hivePlotModel.get("directionAxis2"));
 		$("#directionAxis3", this.el).val(this.hivePlotModel.get("directionAxis3"));
+
+		$("#filterPorts", this.el).val(this.hivePlotModel.get("filterPorts"));
+		$("#filterPortsType", this.el).val(this.hivePlotModel.get("filterPortsType"));
+    		$("#filterIPs", this.el).val(this.hivePlotModel.get("filterIPs"));
+		$("#filterIPsType", this.el).val(this.hivePlotModel.get("filterIPsType"));
+    		$("#filterProtocols", this.el).val(this.hivePlotModel.get("filterProtocols"));
+		$("#filterProtocolsType", this.el).val(this.hivePlotModel.get("filterProtocolsType"));
 		
 		$("aside .help", this.el).popover({ offset: 24 });
 		
@@ -124,29 +132,34 @@ var HivePlotPageView = PageView.extend({
 	fetchFlows: function() {
 		var interval = this.timelineModel.get("interval");
 		var bucket_size = this.timelineModel.get("bucket_size");
-		var filter_ports = $.trim(this.hivePlotModel.get("filterPorts"));
+	
+		var filter_ports = this.hivePlotModel.get("filterPorts");
 		var filter_ports_type = this.hivePlotModel.get("filterPortsType");
+		var filter_ips = this.hivePlotModel.get("filterIPs");
+		var filter_ips_type = this.hivePlotModel.get("filterIPsType");
+		var filter_protocols = this.hivePlotModel.get("filterProtocols");
+		var filter_protocols_type = this.hivePlotModel.get("filterProtocolsType");
 		
 		var data = { 
-			"fields": "srcIP,dstIP",
+			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP + "," + FlowInspector.COL_BUCKET,
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size
 		};
-    	
+
+		// apply filter for ports
 		var ports = filter_ports.split("\n");
 		filter_ports = "";
 		for(var i = 0; i < ports.length; i++) {
 			var p = parseInt(ports[i]);
-			// test for NaN
-			if(p === p) {
-				if(filter_ports.length > 0) {
-					filter_ports += ",";
-				}
-				filter_ports += p;
-			}
+    			// test for nan
+    			if(p === p) {
+    				if(filter_ports.length > 0) {
+    					filter_ports += ",";
+    				}
+    				filter_ports += p;
+    			}
 		}
-		
 		if(filter_ports) {
 			if(filter_ports_type === "exclusive") {
 				data["exclude_ports"] = filter_ports;
@@ -154,6 +167,44 @@ var HivePlotPageView = PageView.extend({
 				data["include_ports"] = filter_ports;
 			}
 		}
+
+		// apply filter for ips
+		var ips = filter_ips.split("\n");
+		filter_ips = "";
+		for(var i = 0; i < ips.length; i++) {
+			var p = FlowInspector.strToIp(ips[i]);
+    			if(p != null) {
+    				if(filter_ips.length > 0) {
+    					filter_ips += ",";
+    				}
+    				filter_ips += p;
+    			}
+		}
+		if(filter_ips) {
+			if(filter_ips_type === "exclusive") {
+				data["exclude_ips"] = filter_ips;
+			} else {
+				data["include_ips"] = filter_ips;
+			}
+		}
+
+		// apply filter for ips
+		var protocols = filter_protocols.split("\n");
+		filter_protocols = "";
+		for(var i = 0; i < protocols.length; i++) {
+			if(filter_protocols.length > 0) {
+				filter_protocols += ",";
+			}
+    			filter_protocols += protocols[i];
+		}
+		if(filter_protocols) {
+			if(filter_protocols_type === "exclusive") {
+				data["exclude_protos"] = filter_protocols;
+			} else {
+				data["include_protos"] = filter_protocols;
+			}
+		}
+
 		this.flows.fetch({ data: data });
 	},
 	changeBucketInterval: function(model, interval) {
@@ -200,26 +251,6 @@ var HivePlotPageView = PageView.extend({
 	mapAxis3Changed: function(model, value) {
 		$("#mapAxis3", this.el).val(value);
 	},
-	changeFilterPorts: function() {
-		this.hivePlotModel.set({
-			filterPorts: $("#filterPorts", this.el).val()
-		});
-	},
-	filterPortsChanged: function(model, value) {
-		$("#filterPorts", this.el).val(value);
-		this.loader.show();
-		this.fetchFlows();
-	},
-	changeFilterPortsType: function() {
-		this.hivePlotModel.set({
-			filterPortsType: $("#filterPortsType", this.el).val()
-		});
-	},
-	filterPortsTypeChanged: function(model, value) {
-		$("#filterPortsType", this.el).val(value);
-		this.loader.show();
-		this.fetchFlows();
-	},
 	changeDirectionAxis1: function() {
 		this.hivePlotModel.set({
 			directionAxis1: $("#directionAxis1", this.el).val()
@@ -243,5 +274,39 @@ var HivePlotPageView = PageView.extend({
 	},
 	directionAxis3Changed: function(model, value) {
 		$("#directionAxis3", this.el).val(value);
-	}
+	},
+	changeFilterProtocols : function(model, value) {
+		this.hivePlotModel.set({
+			filterProtocols: $("#filterProtocols", this.el).val()
+		});
+	},
+	changeFilterPorts : function(model, value) {
+		this.hivePlotModel.set({
+			filterPorts: $("#filterPorts", this.el).val()
+		});
+	},
+	changeFilterIPs : function(model, value) {
+		this.hivePlotModel.set({
+			filterIPs: $("#filterIPs", this.el).val()
+		});
+	},
+	changeFilterPortsType : function(model, value) {
+		this.hivePlotModel.set({
+			filterPortsType: $("#filterPortsType", this.el).val()
+		});
+	},
+	changeFilterProtocolsType : function(model, value) {
+		this.hivePlotModel.set({
+			filterProtocolsType: $("#filterProtocolsType", this.el).val()
+		});
+	},
+	changeFilterIPsType : function(model, value) {
+		this.hivePlotModel.set({
+			filterPortsType: $("#filterIPsType", this.el).val()
+		});
+	},
+	clickApplyFilter : function() {
+		this.loader.show();
+		this.fetchFlows();
+	},
 });

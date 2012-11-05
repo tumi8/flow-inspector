@@ -111,7 +111,7 @@ var TimelineView = Backbone.View.extend({
 		
 		var bar_enter =	bar.enter().append("g")
 			.attr("class", "bar")
-			.attr("transform", function(d) { return "translate(" + x(d.get("bucket")) + ",0)"; })
+			.attr("transform", function(d) { return "translate(" + x(d.get(FlowInspector.COL_BUCKET)) + ",0)"; })
 			.attr("title", titleFormat)
 			.on("mouseover", function(d) {
 				d3.select(this).selectAll("rect")

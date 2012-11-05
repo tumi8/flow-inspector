@@ -312,8 +312,8 @@ var HivePlotView = Backbone.View.extend({
 		var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
 		
 		this.flows.each(function(m) {
-			var source = that.node_map[m.get("srcIP")];
-			var target = that.node_map[m.get("dstIP")];
+			var source = that.node_map[m.get(FlowInspector.COL_SRC_IP)];
+			var target = that.node_map[m.get(FlowInspector.COL_DST_IP)];
 			
 			if(!source || source.length === 0 || !target || target.length === 0) {
 				return;

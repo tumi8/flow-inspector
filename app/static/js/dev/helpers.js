@@ -14,6 +14,34 @@ FlowInspector.udpColor = "rgb(0,204,0)";
 FlowInspector.icmpColor = "rgb(0,102,204)";
 FlowInspector.otherColor = "rgb(255,163,71)";
 
+FlowInspector.COL_FIRST_SWITCHED = "flowStartSeconds"
+FlowInspector.COL_LAST_SWITCHED = "flowEndSeconds"
+// column names of IP addresses
+FlowInspector.COL_SRC_IP = "sourceIPv4Address"
+FlowInspector.COL_DST_IP = "destinationIPv4Address"
+
+// column names for indexes (bidirectional)
+FlowInspector.COL_IPADDRESS = "ipaddress"
+FlowInspector.COL_PORT = "port"
+
+// column names of ports and protocol
+FlowInspector.COL_SRC_PORT = "sourceTransportPort"
+FlowInspector.COL_DST_PORT = "destinationTransportPort"
+FlowInspector.COL_PROTO = "protocolIdentifier"
+FlowInspector.COL_BUCKET = "bucket"
+
+
+FlowInspector.COL_BYTES = "octetDeltaCount"
+FlowInspector.COL_PKTS = "packetDeltaCount"
+FlowInspector.COL_FLOWS = "flows"
+FlowInspector.COL_ID = "id"
+
+FlowInspector.COL_PROTO_TCP = "tcp"
+FlowInspector.COL_PROTO_UDP = "udp"
+FlowInspector.COL_PROTO_ICMP = "icmp"
+FlowInspector.COL_PROTO_OTHER = "other"
+
+
 
 /**
  * Transforms a 32bit IPv4 address into a human readable format
@@ -33,7 +61,7 @@ FlowInspector.ipToStr = function(ip) {
 FlowInspector.strToIp = function(str) {
 	var parts = str.split(".");
 	if(parts.length !== 4) {
-		return false;
+		return null;
 	}
 	
 	var ip = 0;
@@ -41,11 +69,11 @@ FlowInspector.strToIp = function(str) {
 		var j = parseInt(parts[i]);
 		// check for range and Nan
 		if(j !== j || j < 0 || j > 255) {
-			return false;
+			return null;
 		}
 		ip = (ip << 8) + j;
 	}
-	return ip;
+	return (ip >>> 0);
 };
 
 /**
@@ -132,12 +160,19 @@ FlowInspector.isIPValid = function(ipaddr)  {
 	return false;
 }
 
-FlowInspector.getTitleFormat = function(value) {
-	if(value === "pkts") {
+FlowInspector.getTitleFormat = function(value, protocol) {
+	if(value === FlowInspector.COL_PKTS) {
 		return function(d) { 
 			var val = 0;
 			// if get is a function, call it, otherwise take d's value
-			if (typeof d.get == 'function') {
+			if (protocol  !== undefined) {
+				var pSpecific = d.get(protocol);
+				if (pSpecific !== undefined) {
+					val = d.get(protocol)[value];
+				} else {
+					val = 0;
+				}
+			} else if (typeof d.get == 'function') {
 				val = d.get(value);
 			} else {
 				val = d;
@@ -153,11 +188,18 @@ FlowInspector.getTitleFormat = function(value) {
 			}
 			return Math.floor(val/factor)+unit; };
 	}
-	if(value === "bytes") {
+	if(value === FlowInspector.COL_BYTES) {
 		return function(d) { 
 			var val = 0;
 			// if get is a function, call it, otherwise take d's value
-			if (typeof d.get == 'function') {
+			if (protocol  !== undefined) {
+				var pSpecific = d.get(protocol);
+				if (pSpecific !== undefined) {
+					val = d.get(protocol)[value];
+				} else {
+					val = 0;
+				}
+			} else if (typeof d.get == 'function') {
 				val = d.get(value);
 			} else {
 				val = d;
@@ -186,11 +228,18 @@ FlowInspector.getTitleFormat = function(value) {
 	return function(d) { 
 		var val = 0;
 		// if get is a function, call it, otherwise take d's value
-		if (typeof d.get == 'function') {
+		if (protocol  !== undefined) {
+			var pSpecific = d.get(protocol);
+			if (pSpecific !== undefined)  {
+				val = d.get(protocol)[value];
+			} else {
+				val = 0;
+			}
+		} else 	if (typeof d.get == 'function') {
 			val = d.get(value);
 		} else {
 			val = d;
 		}
-		return Math.floor(val) + " flows" };
+		return Math.floor(val)  };
 }
 

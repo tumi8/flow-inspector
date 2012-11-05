@@ -15,28 +15,43 @@ Requirements
 ### App
 
 - Python (tested with v2.7.1)
-- MongoDB (tested with v2.0)
-- Bottle (v0.10.dev in /app/vendor)
-- pymongo (tested with v2.0.1)
-  pip install pymongo
 - Jinja2 (tested with v2.6)
   pip install Jinja2
-- ujson (tested with 1.18)
+- ujson (tested with 1.18) (optional but recommended)
   pip install ujson
+
+- MongoDB (minimum requirement with v2.0)
+- pymongo (tested with v2.0.1)
+  pip install pymongo
 
 ### Preprocess
 
 - Python (tested with v2.7.1)
-- MongoDB (tested with v2.0)
-- pymongo (tested with 2.0.1)
-  pip install pymongo
-- MySQLdb (tested with v1.2.3)
-  pip install mysql-python
-- psycopg (tested with v2.4.2)
-  pip install psycopg2
 - Redis (tested with v2.4.3)
   pip install redis
-  
+
+### Backends
+
+You can choose between multiple backends for storing flow data. Additional requirements come from your choice of flow data backend. flow-inspector currently supports three backends:
+
+- MongoDB
+- MySQL 
+- Oracle
+
+Depending on your backend you have the following additional requirements:
+
+## MongoDB
+- MongoDB (minimum required: version 2.2)
+- pymongo (minimum required: version 2.2)
+  pip install pymongo
+
+## MySQL
+- MySQLdb (tested with v1.2.3)
+  pip install mysql-python
+
+## Oracle
+- cx_oracle
+
 Installation
 ---------------
 
@@ -44,11 +59,13 @@ Installation
 - Run /preprocess/preprocess.py to add flows to the database
 - Run /app/app.py to start the web interface
 
+Detailed information on how to install and configure can be found in the Wiki at https://github.com/constcast/flow-inspector/wiki
+
 License
 -------------
 
 The MIT License (MIT)
-Copyright (c) 2012 Mario Volke
+Copyright (c) 2012 Mario Volke, Lothar Braun 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

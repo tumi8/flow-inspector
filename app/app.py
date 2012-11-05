@@ -12,13 +12,14 @@ import os
 import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'preprocess'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
+import pymongo
 import math
 import bson
-import pymongo
 import config
 import common
+import backend
 
 import operator
 
@@ -29,34 +30,13 @@ from bottle import PasteServer
 # set template path
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 
-# MongoDB
-db_conn = pymongo.Connection(config.db_host, config.db_port)
-db = db_conn[config.db_name]
-
-def get_bucket_size(start_time, end_time, resolution):
-	for i,s in enumerate(config.flow_bucket_sizes):
-		if i == len(config.flow_bucket_sizes)-1:
-			return s
-			
-		coll = db[common.DB_FLOW_AGGR_PREFIX + str(s)]
-		min_bucket = coll.find_one(
-			{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
-			fields={ "bucket": 1, "_id": 0 }, 
-			sort=[("bucket", pymongo.ASCENDING)])
-		max_bucket = coll.find_one(
-			{ "bucket": { "$gte": start_time, "$lte": end_time} }, 
-			fields={ "bucket": 1, "_id": 0 }, 
-			sort=[("bucket", pymongo.DESCENDING)])
-			
-		if not min_bucket or not max_bucket:
-			return s
-			
-		num_slots = (max_bucket["bucket"]-min_bucket["bucket"]) / s + 1
-		if num_slots <= resolution:
-			return s
+# get database backend (currently: MongoDB)
+db = backend.flowbackend.getBackendObject(config.db_backend, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
+dataBackend = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_name)
 
 def extract_mongo_query_params():
 	# construct query
+
 	limit = 0
 	if "limit" in request.GET:
 		try:
@@ -141,7 +121,18 @@ def extract_mongo_query_params():
 	biflow = False
 	if "biflow" in request.GET:
 		biflow = True
-		
+
+
+	# protocol filter
+	include_protos = []
+	if "include_protos" in request.GET:
+		include_protos = request.GET["include_protos"].strip()
+		include_protos = map(lambda v: common.getValueFromProto(v.strip()), include_protos.split(","))
+	exclude_protos = []
+	if "exclude_protos" in request.GET:
+		exclude_protos = request.GET["exclude_protos"].strip()
+		exclude_protos = map(lambda v: common.getValueFromProto(v.strip()), exclude_protos.split(","))
+
 	
 	# port filter
 	include_ports = []
@@ -172,45 +163,48 @@ def extract_mongo_query_params():
 	
 	# get buckets and aggregate
 	if bucket_size == None:
-		bucket_size = get_bucket_size(start_bucket, end_bucket, resolution)
+		bucket_size = db.getBucketSize(start_bucket, end_bucket, resolution)
 
 	# only stated fields will be available, all others will be aggregated toghether	
 	# filter for known aggregation values
-	if fields != None:
-		fields = [v for v in fields if v in config.flow_aggr_values]
+	#if fields != None:
+	#	fields = [v for v in fields if v in config.flow_aggr_values]
+	black_others = False
+	if "black_others" in request.GET:
+		black_others = True
 
-	spec = {}
-	if start_bucket > 0 or end_bucket < sys.maxint:
-		spec["bucket"] = {}
-		if start_bucket > 0:
-			spec["bucket"]["$gte"] = start_bucket
-		if end_bucket < sys.maxint:
-			spec["bucket"]["$lte"] = end_bucket
-	if len(include_ports) > 0:
-		spec["$or"] = [
-			{ common.COL_SRC_PORT: { "$in": include_ports } },
-			{ common.COL_DST_PORT: { "$in": include_ports } }
-		]
-	if len(exclude_ports) > 0:
-		spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
-		spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
-	
-	if len(include_ips) > 0:
-		spec["$or"] = [
-			{ common.COL_SRC_IP : { "$in": include_ips } },
-			{ common.COL_DST_IP : { "$in": include_ips } }
-		]
+	aggregate = []
+	if "aggregate" in request.GET:
+		aggregate = request.GET["aggregate"].strip()
+		aggregate = map(lambda v: v.strip(), aggregate.split(","))
 
-	if len(exclude_ips) > 0:
-		spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
-		spec[common.COL_DST_IP] = { "$in": exclude_ips } 
+	result = {}
+	result["fields"] = fields
+	result["sort"] = sort
+	result["limit"] = limit
+	result["count"] = count
+	result["start_bucket"] = start_bucket
+	result["end_bucket"] = end_bucket
+	result["resolution"] = resolution
+	result["bucket_size"] = bucket_size
+	result["biflow"] = biflow
+	result["include_ports"] = include_ports
+	result["exclude_ports"] = exclude_ports
+	result["include_ips"] = include_ips
+	result["exclude_ips"] = exclude_ips
+	result["include_protos"] = include_protos
+	result["exclude_protos"] = exclude_protos
+	result["batch_size"] = 1000
+	result["aggregate"] = aggregate
+	result["black_others"] = black_others
 
-	
-	return (spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)
+	return result
 			
 @get("/")
 @get("/dashboard")
 @get("/dashboard/:##")
+@get("/flow-details")
+@get("/flow-details/:##")
 @get("/graph")
 @get("/graph/:##")
 @get("/query-page")
@@ -219,6 +213,8 @@ def extract_mongo_query_params():
 @get("/hierarchical-edge-bundle/:##")
 @get("/hive-plot")
 @get("/hive-plot/:##")
+@get("/ip-documentation")
+@get("/ip-documentation/:##")
 @view("index")
 def index():
     # find js files
@@ -245,180 +241,38 @@ def index():
 @get("/api/bucket/query")
 @get("/api/bucket/query/")
 def api_bucket_query():
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	query_params = extract_mongo_query_params()
+	fields = query_params["fields"]
+	bucket_size = query_params["bucket_size"]
 
 	# get proper collection
 	collection = None
-	if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
-		collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
+	if (query_params["fields"] != None and len(query_params["fields"]) > 0)  or len(query_params["include_ports"]) > 0 or len(query_params["exclude_ports"]) > 0 or len(query_params["aggregate"]) > 0:
+		collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
 	else:
 		# use preaggregated collection
-		collection = db[common.DB_FLOW_AGGR_PREFIX + str(bucket_size)]
+		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(bucket_size))
 
-	if fields != None:
-		query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
+	if query_params["fields"] != None:
+		query_fields = fields + [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums
 	else:
-		query_fields = ["bucket", "flows"] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
+		query_fields = [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
 
-	print "bucket/query:", bucket_size, "spec:", spec, "fields:", query_fields
-	cursor = collection.find(spec, fields=query_fields).batch_size(1000)
-	if sort:
-		cursor.sort("bucket", sort)
-	else:
-		cursor.sort("bucket", pymongo.ASCENDING)
-	if limit:
-		cursor.limit(limit)
+	query_params["fields"] = query_fields
 
-	buckets = []
-	if (fields != None and len(fields) > 0) or len(include_ports) > 0 or len(exclude_ports) > 0 or len(include_ips) > 0 or len(exclude_ips) > 0:
-		current_bucket = -1
-		aggr_buckets = {}
-		for doc in cursor:
-			if doc["bucket"] > current_bucket:
-				for key in aggr_buckets:
-					buckets.append(aggr_buckets[key])
-				aggr_buckets = {}
-				current_bucket = doc["bucket"]
-				
-			# biflow?
-			if biflow and common.COL_SRC_IP in fields and common.COL_DST_IP in fields:
-				srcIP = doc.get(common.COL_SRC_IP, None)
-				dstIP = doc.get(common.COL_DST_IP, None)
-				if srcIP > dstIP:
-					doc[common.COL_SRC_IP] = dstIP
-					doc[common.COL_DST_IP] = srcIP
-			
-			# construct aggregation key
-			key = str(current_bucket)
-			for a in fields:
-				key += str(doc.get(a, "x"))
-				
-			if key not in aggr_buckets:
-				bucket = { "bucket": current_bucket }
-				for a in fields:
-					bucket[a] = doc.get(a, None)
-				for s in ["flows"] + config.flow_aggr_sums:
-					bucket[s] = 0
-				aggr_buckets[key] = bucket
-			else:
-				bucket = aggr_buckets[key]
-			
-			for s in ["flows"] + config.flow_aggr_sums:
-				bucket[s] += doc.get(s, 0)
-			
-		for key in aggr_buckets:
-			buckets.append(aggr_buckets[key])
-	else:
-		# cheap operation if nothing has to be aggregated
-		for doc in cursor:
-			del doc["_id"]
-			buckets.append(doc)
+	(buckets, total, min_bucket, max_bucket) = collection.bucket_query(query_params)
 	
 	return { 
-		"bucket_size": bucket_size,
+		"bucket_size": query_params["bucket_size"],
+		"global_min_bucket": min_bucket,
+		"global_max_bucket": max_bucket,
 		"results": buckets
 	}
 
 @get("/api/dynamic/index/:name")
 def api_dynamic_index(name):
-	def createNewIndexEntry(row):
-		# top level
-		r = { "id": row[key[0]], "flows": 0 }
-		for s in config.flow_aggr_sums:
-			r[s] = row[s]
-
-		# protocol specific
-		for p in common.AVAILABLE_PROTOS:
-			r[p] = { "flows": 0 }
-			for s in config.flow_aggr_sums:	
-				r[p][s] = 0
-		# src and dst specific		
-		for dest in ["src", "dst"]:
-			r[dest] = {}
-			r[dest]["flows" ] = 0
-			for s in config.flow_aggr_sums:
-				r[dest][s] = 0
-		return r
-
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
-
-	print "Bucket_Size: ", bucket_size
-	collection = db[common.DB_FLOW_PREFIX + str(bucket_size)]
-
-	print collection
-
-	print "Spec:", spec, "fields: ", fields
-	cursor = collection.find(spec, fields=fields).batch_size(1000)
-
-	print "Got", cursor.count(), "entries from the database"
-
-	result = {}
-
-	# total counter that contains information about all flows in 
-	# the REQUESTED buckets (not over the complete dataset)
-	# this is important because the limit parameter might remove
-	# some information
-	total = {}
-	total["flows"] = 0
-	for s in config.flow_aggr_sums:
-		total[s] = 0
-	for proto in common.AVAILABLE_PROTOS:
-		total[proto] = {}
-		total[proto]["flows"] = 0
-		for s in config.flow_aggr_sums:
-			total[proto][s] = 0
-
-	for row in cursor:
-		if name == "nodes":
-			keylist = [ (common.COL_SRC_IP, "src"), (common.COL_DST_IP, "dst") ]
-		elif name == "ports":
-			keylist = [ (common.COL_SRC_PORT, "src"), (common.COL_DST_PORT, "dst") ]
-		else:
-			raise HTTPError(output = "Unknown dynamic index")
-
-		# update total counters
-		total["flows"] += row["flows"]
-		if common.COL_PROTO in row:
-			total[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
-		for s in config.flow_aggr_sums:
-			total[s] += row[s]
-			if common.COL_PROTO in row:
-				total[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
-
-
-		# update individual counters
-		for key in keylist:
-			if row[key[0]] in result:
-				r = result[row[key[0]]]
-			else:
-				r = createNewIndexEntry(row)
-
-			r["flows"] += row["flows"]
-			r[key[1]]["flows"] += row["flows"]
-			for s in config.flow_aggr_sums:
-				r[s] += row[s]
-				r[key[1]][s] += row[s]
-
-			if common.COL_PROTO in row:
-				r[common.getProtoFromValue(row[common.COL_PROTO])]["flows"] += row["flows"]
-				for s in config.flow_aggr_sums:
-					r[common.getProtoFromValue(row[common.COL_PROTO])][s] += row[s]
-
-			result[row[key[0]]] = r
-
-	# no that we have calculated the indexes, take the values and postprocess them
-	results = result.values()
-	if sort:
-		# TODO: implement sort function that allows for sorting with two keys
-		if len(sort) != 1:
-			raise HTTPError(output = "Cannot sort by multiple fields. This must yet be implemented.")
-		if sort[0][1] == pymongo.ASCENDING:
-			results.sort(key=operator.itemgetter(sort[0][0]))
-		else:
-			results.sort(key=operator.itemgetter(sort[0][0]), reverse=True)
-	
-	if limit:
-		results = results[0:limit]
+	query_params = extract_mongo_query_params()
+	(results, total) = db.dynamic_index_query(name, query_params)
 
 	return { "totalCounter" : total, "results": results }
 
@@ -426,51 +280,32 @@ def api_dynamic_index(name):
 @get("/api/index/:name")
 @get("/api/index/:name/")
 def api_index(name):
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	query_params =  extract_mongo_query_params()
 
 	collection = None
 	if name == "nodes":
-		collection = db[common.DB_INDEX_NODES]
+		collection = db.getCollection(common.DB_INDEX_NODES)
 	elif name == "ports":
-		collection = db[common.DB_INDEX_PORTS]
+		collection = db.getCollection(common.DB_INDEX_PORTS)
 		
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
 
-	# query without the total field	
-	full_spec = {}
-	full_spec["$and"] = [
-			spec, 
-			{ "_id": { "$ne": "total" }}
-		]
+	# static indexes don't konw about start and end times
+	# remove them from the query params
+	query_params["start_bucket"] = None
+	query_params["end_bucket"] = None
 
-	cursor = collection.find(full_spec, fields=fields).batch_size(1000)
-
-	if sort:
-		cursor.sort(sort)
-	if limit:
-		cursor.limit(limit)
-		
-	if count:
-		result = cursor.count() 
-	else:
-		result = []
-		total = []
-		for row in cursor:
-			row["id"] = row["_id"]
-			del row["_id"]
-			result.append(row)
-
-	# get the total counter
-	spec = {"_id": "total"}
-	cursor = collection.find(spec)
-	if cursor.count() > 0:
-		total = cursor[0]
-		total["id"] = total["_id"]
-		del total["_id"]
+	(result, total) = collection.index_query(query_params)
 
 	return { "totalCounter": total, "results": result }
 
+@get("/api/hostinfo/")
+def api_hostinfo():
+	quer_params =  extract_mongo_query_params()
+	data = dataBackend.data_query(common.HOST_INFORMATION_COLLECTION, None)
+	return { "results": data }
+	
 @get("/static/:path#.+#")
 def server_static(path):
 	return static_file(path, root=os.path.join(os.path.dirname(__file__), "static"))

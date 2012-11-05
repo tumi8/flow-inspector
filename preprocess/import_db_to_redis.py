@@ -5,12 +5,13 @@
 Import IPFIX flows from MySQL or PostgreSQL Vermont format
 into the Redis buffer for preprocessing
 
-Author: Mario Volke
+Author: Mario Volke, Lothar Braun 
 """
 
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import math
 import time
@@ -216,7 +217,7 @@ if TYPE == "mongodb":
 while True:
 	# get all flow tables
 	if TYPE == "oracle":
-		c.execute("""SELECT * FROM user_objects WHERE object_type = 'TABLE' AND object_name LIKE 'H_%'""")
+		c.execute("""SELECT * FROM user_objects WHERE object_type = 'TABLE' AND object_name LIKE 'H!_%' ESCAPE '!'""")
 	else:
 		c.execute("""SELECT table_name from information_schema.tables 
 			WHERE table_schema=%s AND table_type='BASE TABLE' AND table_name LIKE 'h\\_%%' ORDER BY table_name ASC""", (args.src_database))
@@ -275,8 +276,8 @@ while True:
 			obj = dict()
 			for j, col in enumerate(c.description):
 				if col[0] not in common.IGNORE_COLUMNS:
-					if TYPE == "oracle" and col[0] in common.COLUMNMAP:
-						obj[common.COLUMNMAP[col[0]]] = row[j]
+					if col[0].upper() in common.LEGACY_COLUMNMAP:
+						obj[common.LEGACY_COLUMNMAP[col[0].upper()]] = row[j]
 					else:
 						obj[col[0]] = row[j]
 						
