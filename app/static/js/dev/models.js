@@ -85,6 +85,8 @@ var GraphModel = Backbone.Model.extend({
 	defaults: {
 		nodeLimit: 255,
 		showOthers: false,
+		filterProtocols: "",
+		filterProtocolsType: "inclusive",
 		filterPorts: "",
 		filterPortsType: "inclusive",
 		filterIPs: "",
@@ -112,9 +114,14 @@ var EdgeBundleModel = Backbone.Model.extend({
 		tension: 0.99,
 		groupBytes: 0,
 		nodeLimit: 50,
+		hoverDirection: "outgoing",
+
+		filterProtocols: "",
+		filterProtocolsType: "inclusive",
 		filterPorts: "",
 		filterPortsType: "inclusive",
-		hoverDirection: "outgoing"
+		filterIPs: "",
+		filterIPsType: "inclusive"
 	}
 });
 
@@ -125,11 +132,16 @@ var HivePlotModel = Backbone.Model.extend({
 		mapAxis1: "",
 		mapAxis2: "",
 		mapAxis3: "0.0.0.0/0",
-		filterPorts: "",
-		filterPortsType: "inclusive",
 		directionAxis1: "both",
 		directionAxis2: "both",
-		directionAxis3: "both"
+		directionAxis3: "both",
+
+		filterProtocols: "",
+		filterProtocolsType: "inclusive",
+		filterPorts: "",
+		filterPortsType: "inclusive",
+		filterIPs: "",
+		filterIPsType: "inclusive"
 	}
 });
 

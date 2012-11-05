@@ -71,6 +71,8 @@ var FlowDetailsPageView = PageView.extend({
 		this.timelineView.delegateEvents();
 		this.timelineView.render();
 	
+		$("aside .help", this.el).popover({ offset: 24 });
+
 		return this;
 	},
 	clickHostviewValue: function(e) {
