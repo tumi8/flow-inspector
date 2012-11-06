@@ -186,16 +186,16 @@ var FlowDetailsPageView = PageView.extend({
 	},
 	changeFilterIPsType : function(model, value) {
 		this.hostModel.set({
-			filterPortsType: $("#filterIPsType", this.el).val()
+			filterIPsType: $("#filterIPsType", this.el).val()
 		});
 		this.bucketChartModel.set({
-			filterPortsType: $("#filterIPsType", this.el).val()
+			filterIPsType: $("#filterIPsType", this.el).val()
 		});
 		this.portsDonutModel.set({
-			filterPortsType: $("#filterIPsType", this.el).val()
+			filterIPsType: $("#filterIPsType", this.el).val()
 		});
 		this.nodesDonutModel.set({
-			filterPortsType: $("#filterIPsType", this.el).val()
+			filterIPsType: $("#filterIPsType", this.el).val()
 		});
 	},
 	clickApplyFilter : function() {

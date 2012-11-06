@@ -492,7 +492,7 @@ var HostView = Backbone.View.extend({
 			do_aggregate = true;
 		}
 
-		// apply filter for IPs
+		// apply filter for protocols
 		var protocols = filter_protocols.split("\n");
 		filter_protocols = "";
 		for(var i = 0; i < protocols.length; i++) {
