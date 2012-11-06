@@ -20,6 +20,7 @@ var DonutChartView = Backbone.View.extend({
 			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
 		}
 
+		this.showLimit = this.model.get("limit") + 1;
 
 		// fetch at the end because a cached request calls render immediately!
 		if (this.model.get("fetchOnInit")) {
@@ -67,10 +68,17 @@ var DonutChartView = Backbone.View.extend({
 			for(var i = 0; i < this.showLimit; i++) {
 				topNodeValues += data[i].attributes[num_val];
 			}
+
 			// we need to double the number of total flows, bytes, or packets as we count them 
 			// both twice (once for src and once for dst)
+
+			// TODO: This is only true for pre-calculated indexes, e.g. as they are produced
+			// by preprocess.py. However, this is not true if we calculate them on the fly 
+			// Think about how to handle this ...
+
 			others.attributes[num_val] = 2 * this.index.totalCounter[num_val] - topNodeValues;
 			var data = data.slice(0, this.showLimit);
+			others.attributes[num_val] =  this.index.totalCounter[num_val] - topNodeValues;
 			data[this.showLimit] = others;
 		}
 
@@ -90,7 +98,7 @@ var DonutChartView = Backbone.View.extend({
 			}
 		} else {
 			getLabel = function(d) { 
-				if(d.data.id) 
+				if(d.data.id > 0) 
 					return d.data.id; 
 				else if(d.data.id === -1) 
 					return "others";
