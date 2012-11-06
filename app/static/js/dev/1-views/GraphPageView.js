@@ -170,7 +170,7 @@ var GraphPageView = PageView.extend({
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size,
 			"biflow": 1,
-			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP + "," +  FlowInspector.COL_BUCKET
+			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP
 		};
     	
 		if (nodeLimit > 0) {

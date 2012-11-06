@@ -141,7 +141,7 @@ var HivePlotPageView = PageView.extend({
 		var filter_protocols_type = this.hivePlotModel.get("filterProtocolsType");
 		
 		var data = { 
-			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP + "," + FlowInspector.COL_BUCKET,
+			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP,
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size
