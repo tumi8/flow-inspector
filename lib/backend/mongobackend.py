@@ -248,7 +248,7 @@ class MongoBackend(Backend):
 			commonFilter["$match"]["$and"].append({ common.COL_PROTO: { "$in": include_protos } })
 
 		if len(exclude_protos) > 0:
-			commonFilter["$match"]["$and"].append({ "$nin": exclude_protos })
+			commonFilter["$match"]["$and"].append({ common.COL_PROTO: { "$nin": exclude_protos }})
 
 		if len(include_ports) > 0:
 			commonFilter["$match"]["$and"].append(
