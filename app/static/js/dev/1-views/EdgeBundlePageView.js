@@ -1,5 +1,7 @@
 var EdgeBundlePageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
+
 		"change #layoutTension": "changeTension",
 		"change #filterGroupBytes": "changeGroupBytes",
 		"change #filterNodeLimit": "changeNodeLimit",
@@ -43,6 +45,7 @@ var EdgeBundlePageView = PageView.extend({
 		this.flows.bind("reset", this.updateIfLoaded, this);
     	
 		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
 		this.edgeBundleModel.bind("change:tension", this.tensionChanged, this);
 		this.edgeBundleModel.bind("change:groupBytes", this.groupBytesChanged, this);
 		this.edgeBundleModel.bind("change:nodeLimit", this.nodeLimitChanged, this);
@@ -99,6 +102,8 @@ var EdgeBundlePageView = PageView.extend({
     		$("#filterProtocols", this.el).val(this.edgeBundleModel.get("filterProtocols"));
 		$("#filterProtocolsType", this.el).val(this.edgeBundleModel.get("filterProtocolsType"));
 
+		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
 	
 		$("aside .help", this.el).popover({ offset: 24 });
 		
@@ -270,6 +275,13 @@ var EdgeBundlePageView = PageView.extend({
 		this.loader.show();
 		this.fetchFlows();
 	},
-
-
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
+	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+	},
 });

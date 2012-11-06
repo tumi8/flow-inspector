@@ -1,5 +1,7 @@
 var GraphPageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
+
 		"click a.reset": "clickLayoutReset",
 		"click a.force": "clickLayoutForce",
 		"click a.hilbert": "clickLayoutHilbert",
@@ -27,6 +29,7 @@ var GraphPageView = PageView.extend({
 		this.nodes = new IndexQuery(null, { index: "nodes" });
 		this.flows = new Flows();
 		this.timelineModel = new TimelineModel();
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
 		this.graphModel = new GraphModel();
 
 		this.timelineView = new TimelineView({
@@ -97,7 +100,10 @@ var GraphPageView = PageView.extend({
 
 		$("#filterNodeLimit", this.el).val(this.graphModel.get("nodeLimit"));
     		$("#showOthers", this.el).attr("checked", this.graphModel.get("showOthers"));
-    	
+
+    		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
+	
 		$("aside .help", this.el).popover({ offset: 24 });
 
 		return this;
@@ -254,6 +260,10 @@ var GraphPageView = PageView.extend({
 		this.loader.show();
 		this.fetchFlows();
 	},
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
+	},
 	clickLayoutReset: function() {
 		if(this.nodes.length <= 0 || this.flows.length <= 0) {
 			return;
@@ -276,6 +286,11 @@ var GraphPageView = PageView.extend({
 		this.graphModel.set({
 			nodeLimit: Number($("#filterNodeLimit", this.el).val())
 		});
+	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
 	},
 	nodeLimitChanged: function(model, value) {
 		$("#filterNodeLimit", this.el).val(value);

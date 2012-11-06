@@ -1,5 +1,7 @@
 var HivePlotPageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
+
 		"change #mapNumericalValue": "changeNumericalValue",
 		"change #mapAxisScale": "changeAxisScale",
 		"blur #mapAxis1": "changeMapAxis1",
@@ -45,6 +47,7 @@ var HivePlotPageView = PageView.extend({
 		this.flows.bind("reset", this.updateIfLoaded, this);
     	
 		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
 		this.hivePlotModel.bind("change:numericalValue", this.numericalValueChanged, this);
 		this.hivePlotModel.bind("change:axisScale", this.axisScaleChanged, this);
 		this.hivePlotModel.bind("change:mapAxis1", this.mapAxis1Changed, this);
@@ -107,6 +110,9 @@ var HivePlotPageView = PageView.extend({
 		$("#filterIPsType", this.el).val(this.hivePlotModel.get("filterIPsType"));
     		$("#filterProtocols", this.el).val(this.hivePlotModel.get("filterProtocols"));
 		$("#filterProtocolsType", this.el).val(this.hivePlotModel.get("filterProtocolsType"));
+
+		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
 		
 		$("aside .help", this.el).popover({ offset: 24 });
 		
@@ -308,5 +314,14 @@ var HivePlotPageView = PageView.extend({
 	clickApplyFilter : function() {
 		this.loader.show();
 		this.fetchFlows();
+	},
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
+	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
 	},
 });
