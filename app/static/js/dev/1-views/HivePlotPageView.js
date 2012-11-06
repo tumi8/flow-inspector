@@ -302,7 +302,7 @@ var HivePlotPageView = PageView.extend({
 	},
 	changeFilterIPsType : function(model, value) {
 		this.hivePlotModel.set({
-			filterPortsType: $("#filterIPsType", this.el).val()
+			filterIPsType: $("#filterIPsType", this.el).val()
 		});
 	},
 	clickApplyFilter : function() {
