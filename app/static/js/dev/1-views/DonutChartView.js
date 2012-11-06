@@ -186,6 +186,9 @@ var DonutChartView = Backbone.View.extend({
 		}
 
 		data = FlowInspector.addToFilter(data, this.model, aggregate_field, false);
+		if (data == null) {
+			return;
+		}
 
 		this.index.fetch({data: data});
 	},

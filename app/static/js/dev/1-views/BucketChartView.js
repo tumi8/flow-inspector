@@ -360,6 +360,9 @@ var BucketChartView = Backbone.View.extend({
 		}
 
 		data = FlowInspector.addToFilter(data, this.model, FlowInspector.COL_BUCKET, false);
+		if (data == null) {
+			return;
+		}
 
 		this.flows.fetch({ data: data});
 	}

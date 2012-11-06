@@ -191,6 +191,9 @@ var GraphPageView = PageView.extend({
 
 		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP + "," +  FlowInspector.COL_BUCKET
 		data = FlowInspector.addToFilter(data, this.graphModel, aggregate_fields, true);
+		if (data == null) {
+			return;
+		}
 
 		this.flows.fetch({ data: data });
 	},

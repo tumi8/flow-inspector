@@ -138,6 +138,9 @@ var EdgeBundlePageView = PageView.extend({
     
 		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP
 		data = FlowInspector.addToFilter(data, this.edgeBundleModel, aggregate_fields, true);
+		if (data == null) {
+			return;
+		}
 
 		this.flows.fetch({ data: data });
 	},

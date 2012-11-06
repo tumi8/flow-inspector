@@ -441,6 +441,9 @@ var HostView = Backbone.View.extend({
 		}
 
 		data = FlowInspector.addToFilter(data, this.model, FlowInspector.COL_IPADDRESS, false);
+		if (data == null) {
+			return;
+		}
 
 		this.index.models = [];
 		this.render();
