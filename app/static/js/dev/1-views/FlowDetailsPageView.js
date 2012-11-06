@@ -23,18 +23,18 @@ var FlowDetailsPageView = PageView.extend({
 
 		this.hostModel = new HostViewModel();
 		this.hostModel.bind("change:value", this.changeHostViewValue, this);
-		this.hostView = new HostView({ model: this.hostModel, index: new DynamicIndexQuery(null, { index: this.hostModel.get("index") }) });
+		this.hostView = new HostView({ model: this.hostModel, index: new DynamicIndexQuery(null, { index: this.hostModel.get("index") }), fetchEmptyInterval: false});
 		
 		this.bucketChartModel = new BucketChartModel();
 		this.bucketChartModel.bind("change:value", this.changeBucketChartValue, this);
-		this.bucketChartView = new BucketChartView({ model: this.bucketChartModel});
+		this.bucketChartView = new BucketChartView({ model: this.bucketChartModel, fetchEmptyInterval: false});
 		
 		this.nodesDonutModel = new DonutChartModel({ index: "nodes" });
 		this.nodesDonutModel.bind("change:value", this.changeDonutChartValue, this);
-		this.nodesDonutView = new DonutChartView({ model: this.nodesDonutModel, index: new DynamicIndexQuery(null, {index: "nodes"})});
+		this.nodesDonutView = new DonutChartView({ model: this.nodesDonutModel, index: new DynamicIndexQuery(null, {index: "nodes"}), fetchEmptyInterval: false});
 		
 		this.portsDonutModel = new DonutChartModel({ index: "ports" });
-		this.portsDonutView = new DonutChartView({ model: this.portsDonutModel, index: new DynamicIndexQuery(null, {index: "ports"})});
+		this.portsDonutView = new DonutChartView({ model: this.portsDonutModel, index: new DynamicIndexQuery(null, {index: "ports"}), fetchEmptyInterval: false});
 	},
 	render: function() {
 		$(this.el).html(this.template());

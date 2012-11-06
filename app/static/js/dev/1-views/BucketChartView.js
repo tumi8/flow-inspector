@@ -1,7 +1,7 @@
 var BucketChartView = Backbone.View.extend({
 	className: "bucket-chart",
 	events: {},
-	initialize: function() {
+	initialize: function(options) {
 		if(!this.model) {
 			this.model = new BucketChartModel();
 		}
@@ -13,6 +13,10 @@ var BucketChartView = Backbone.View.extend({
 		// chart formatting
 		this.m = [10, 20, 30, 70];
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
+
+		if (options.fetchEmptyInterval !== undefined) {
+			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
+		}
 	
 		this.flows = new Flows();
 		this.flows.bind("reset", this.render, this);
@@ -340,7 +344,12 @@ var BucketChartView = Backbone.View.extend({
 		this.fetchFlows();
 	},
 	fetchFlows: function() {
+		var fetchEmptyInterval = this.model.get("fetchEmptyInterval");
 		var interval = this.model.get("interval");
+		if (!fetchEmptyInterval && interval.length == 0) {
+			return; 
+		}
+
 		var filter_ports = this.model.get("filterPorts");
 		var filter_ports_type = this.model.get("filterPortsType");
 		var filter_ips = this.model.get("filterIPs");

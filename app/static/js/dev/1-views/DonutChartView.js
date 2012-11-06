@@ -16,6 +16,11 @@ var DonutChartView = Backbone.View.extend({
 		this.index = options.index;
 		this.index.bind("reset", this.render, this);
 
+		if (options.fetchEmptyInterval !== undefined) {
+			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
+		}
+
+
 		// fetch at the end because a cached request calls render immediately!
 		if (this.model.get("fetchOnInit")) {
 			this.fetchData();
@@ -137,10 +142,15 @@ var DonutChartView = Backbone.View.extend({
 		this.index.models = [];
 		this.render();
 
+		var fetchEmptyInterval = this.model.get("fetchEmptyInterval");
+		var interval = this.model.get("interval");
+		if (!fetchEmptyInterval && interval.length == 0) {
+			return; 
+		}
+
 		var index	= this.model.get("index");
 		var limit       = this.model.get("limit");
 		var sortField   = this.model.get("value");
-		var interval    = this.model.get("interval");
 		var bucket_size = this.model.get("bucket_size");
 
 		var filter_ports = this.model.get("filterPorts");

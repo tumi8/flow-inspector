@@ -268,7 +268,6 @@ class MongoBackend(Backend):
 			commonFilter["$match"]["$and"].append({common.COL_SRC_IP : { "$nin": exclude_ips }})
 			commonFilter["$match"]["$and"].append({common.COL_DST_IP : { "$nin": exclude_ips }})
 
-
 		#mongo aggregation framework pipeline elements
 		matchTotalGroup = {
 			"$match" : {

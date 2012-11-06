@@ -19,6 +19,10 @@ var HostView = Backbone.View.extend({
 		this.index = options.index;// new IndexQuery(null, { index: this.model.get("index") });
 		this.index.bind("reset", this.render, this);
 
+		if (options.fetchEmptyInterval !== undefined) {
+			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
+		}
+
 		// fetch at the end because a cached request calls render immediately!
 		if (this.model.get("fetchOnInit")) {
 			this.fetchData();
@@ -415,8 +419,13 @@ var HostView = Backbone.View.extend({
 		return this;
 	},
 	fetchData: function() {
-		var limit = this.model.get("limit");
+		var fetchEmptyInterval = this.model.get("fetchEmptyInterval");
 		var interval = this.model.get("interval");
+		if (!fetchEmptyInterval && interval.length == 0) {
+			return; 
+		}
+
+		var limit = this.model.get("limit");
 		var bucket_size = this.model.get("bucket_size");
 
 		var filter_ports = this.model.get("filterPorts");

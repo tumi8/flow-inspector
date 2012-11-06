@@ -16,6 +16,7 @@ var BucketChartModel = Backbone.Model.extend({
 	defaults: {
 		value: "flows",
 		interval: [],
+		fetchEmptyInterval: true, 
 
 		filterProtocols: "",
 		filterProtocolsType: "inclusive",
@@ -31,6 +32,7 @@ var HostViewModel = Backbone.Model.extend({
 		index: "nodes",
 		value: "flows",
 		fetchOnInit: false,
+		fetchEmptyInterval: true,
 		limit: 15,
 		bucket_size: null,
 		interval: [],
@@ -52,6 +54,7 @@ var DonutChartModel = Backbone.Model.extend({
 		fetchOnInit: false,
 		bucket_size: null,
 		interval: [],
+		fetchEmptyInterval: true,
 		limit: 30,
 
 		filterProtocols: "",
