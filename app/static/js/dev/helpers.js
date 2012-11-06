@@ -243,3 +243,87 @@ FlowInspector.getTitleFormat = function(value, protocol) {
 		return Math.floor(val)  };
 }
 
+FlowInspector.addToFilter = function(data, model, aggregate_fields, always_aggregate) {
+	var filter_ports = model.get("filterPorts");
+	var filter_ports_type = model.get("filterPortsType");
+	var filter_ips = model.get("filterIPs");
+	var filter_ips_type = model.get("filterIPsType");
+	var filter_protocols = model.get("filterProtocols");
+	var filter_protocols_type = model.get("filterProtocolsType");
+	var do_aggregate = false;
+
+
+	// apply filter for ports
+	var ports = filter_ports.split("\n");
+	filter_ports = "";
+	for(var i = 0; i < ports.length; i++) {
+		var p = parseInt(ports[i]);
+		// test for NaN
+		if(p === p) {
+			if(filter_ports.length > 0) {
+				filter_ports += ",";
+			}
+			filter_ports += p;
+		}
+	}
+	if(filter_ports) {
+		if(filter_ports_type === "exclusive") {
+			data["exclude_ports"] = filter_ports;
+		} else {
+			data["include_ports"] = filter_ports;
+		}
+		do_aggregate = true;
+	}
+
+	// apply filter for IPs
+	var ips = filter_ips.split("\n");
+	filter_ips = "";
+	for(var i = 0; i < ips.length; i++) {
+		var p = FlowInspector.strToIp(ips[i]);
+		if(p != null) {
+			if(filter_ips.length > 0) {
+				filter_ips += ",";
+			}
+			filter_ips += p;
+		}
+	}
+	if(filter_ips) {
+		if(filter_ips_type === "exclusive") {
+			data["exclude_ips"] = filter_ips;
+		} else {
+			data["include_ips"] = filter_ips;
+		}
+		do_aggregate = true;
+	}
+
+	// apply filter for protocols
+	var protocols = filter_protocols.split("\n");
+	filter_protocols = "";
+	for(var i = 0; i < protocols.length; i++) {
+		if(filter_protocols.length > 0) {
+			filter_protocols += ",";
+		}
+		filter_protocols += protocols[i];
+	}
+	if(filter_protocols) {
+		if(filter_protocols_type === "exclusive") {
+			data["exclude_protos"] = filter_protocols;
+		} else {
+			data["include_protos"] = filter_protocols;
+		}
+		do_aggregate = true;
+	}
+
+
+	// we need to calculate the buckets dynamically 
+	// because of dynamic filtering. Prepare the 
+	// query that does the aggregation on the default
+	// non-aggregated db
+	if (do_aggregate || always_aggregate) {
+		data["aggregate"] = aggregate_fields
+	}
+
+	
+	return data;
+}
+
