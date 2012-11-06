@@ -90,7 +90,7 @@
 	    			</div>
 					<div class="clearfix help"
 					title="Protocol"
-	    				data-content="Filter for protocols">
+	    				data-content="Filter for protocols. Enter one protocol per line. Supported Protocols: tcp, udp, icmp, other">
 						<label for="filterProtocols">Protocol</label>
 						<textarea id="filterProtocols" rows="10"></textarea>
 						<div class="clearfix">
