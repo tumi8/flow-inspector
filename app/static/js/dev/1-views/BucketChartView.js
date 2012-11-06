@@ -106,7 +106,7 @@ var BucketChartView = Backbone.View.extend({
 				val = protoObj[num_val];
 			}
 			if (! val > 0) {
-				val = 1;
+				return max_value;
 			}
 			return y(val);
 		}
