@@ -189,7 +189,7 @@ var GraphPageView = PageView.extend({
 			data["black_others"] = true;
 		}
 
-		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP + "," +  FlowInspector.COL_BUCKET
+		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP;
 		data = FlowInspector.addToFilter(data, this.graphModel, aggregate_fields, true);
 		if (data == null) {
 			return;
