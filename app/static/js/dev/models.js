@@ -88,6 +88,11 @@ var GraphModel = Backbone.Model.extend({
 	defaults: {
 		nodeLimit: 255,
 		showOthers: false,
+
+		linkDistance: 100,
+		charge : -120,
+		gravity : 0.1,
+
 		filterProtocols: "",
 		filterProtocolsType: "inclusive",
 		filterPorts: "",

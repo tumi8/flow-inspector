@@ -5,6 +5,11 @@ var GraphPageView = PageView.extend({
 		"click a.reset": "clickLayoutReset",
 		"click a.force": "clickLayoutForce",
 		"click a.hilbert": "clickLayoutHilbert",
+
+		"blur #gravity" : "changeGravity",
+		"blur #linkdistance" : "changeLinkDistance",
+		"blur #charge" : "changeCharge",
+
 		"change #filterNodeLimit": "changeNodeLimit",
 
 		"click a.apply-filter": "clickApplyFilter",
@@ -97,6 +102,10 @@ var GraphPageView = PageView.extend({
 		$("#filterIPsType", this.el).val(this.graphModel.get("filterIPsType"));
     		$("#filterProtocols", this.el).val(this.graphModel.get("filterProtocols"));
 		$("#filterProtocolsType", this.el).val(this.graphModel.get("filterProtocolsType"));
+
+		$("#charge", this.el).val(this.graphModel.get("charge"));
+		$("#gravity", this.el).val(this.graphModel.get("gravity"));
+		$("#linkdistance", this.el).val(this.graphModel.get("linkDistance"));
 
 		$("#filterNodeLimit", this.el).val(this.graphModel.get("nodeLimit"));
     		$("#showOthers", this.el).attr("checked", this.graphModel.get("showOthers"));
@@ -287,5 +296,23 @@ var GraphPageView = PageView.extend({
 		this.loader.show();
 		this.fetchFlows();
 	},
+	changeGravity: function() {
+		this.graphModel.set({
+			gravity: $("#gravity", this.el).val()
+		});
+		this.graphView.render();
+	},
+	changeLinkDistance: function() {
+		this.graphModel.set({
+			linkDistance: $("#linkDistance", this.el).val()
+		});
+		this.graphView.render();
+	},
 
+	changeCharge: function() {
+		this.graphModel.set({
+			charge: $("#charge", this.el).val()
+		});
+		this.graphView.render();
+	},
 });

@@ -23,6 +23,30 @@
 	    			data-content="Set positions of all nodes on the canvas with a Hilber curve.">
 	    			Hilbert Curve</a>
 	    	</p>
+		<p>
+			<div class="clearfix help"
+				title="Charge"
+    				data-content="Charge for Force Graphs. Applies at next push to the force button!"
+				<label for="charge">Charge</label>
+				<input type="text" id="charge"></input>
+			</div>
+		</p>
+		<p>
+			<div class="clearfix help"
+				title="Gravity"
+    				data-content="Gravity for Force Graphs. Applies to the next push to the force button!"
+				<label for="charge">Gravity</label>
+				<input type="text" id="gravity"></input>
+			</div>
+		</p>
+		<p>
+			<div class="clearfix help"
+				title="Link Distance"
+    				data-content="Desired Link Distance for Force Graphs. Applies to the next push to the force button!"
+				<label for="charge">Link Distance</label>
+				<input type="text" id="linkdistance"></input>
+			</div>
+		</p>
 		<!--
 	    	<h5>Data Mapping</h5>
 	    	<form class="form-stacked">
