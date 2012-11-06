@@ -373,7 +373,11 @@ class MongoBackend(Backend):
 					aggregateGroup["$group"]["_id"] = "null"
 					pipeline = [ commonFilter, projectDual, unwind, aggregateGroup ]
 					aggResult = collection.aggregate(pipeline)
-					total = aggResult["result"][0]
+					total = aggResult["result"]
+					if len(total) > 0:
+						total = total[0]
+					else:
+						total = None
 				else:
 					total = None
 			else:
@@ -389,7 +393,11 @@ class MongoBackend(Backend):
 					aggregateGroup["$group"]["_id"] = "null"
 					pipeline = [ commonFilter, aggregateGroup ]
 					aggResult = collection.aggregate(pipeline)
-					total = aggResult["result"][0]
+					total = aggResult["result"]
+					if len(total) > 0:
+						total = total[0]
+					else:
+						total = None
 				else:
 					total = None
 
