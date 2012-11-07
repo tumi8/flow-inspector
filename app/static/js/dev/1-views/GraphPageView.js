@@ -304,7 +304,7 @@ var GraphPageView = PageView.extend({
 	},
 	changeLinkDistance: function() {
 		this.graphModel.set({
-			linkDistance: $("#linkDistance", this.el).val()
+			linkDistance: $("#linkdistance", this.el).val()
 		});
 		this.graphView.render();
 	},
