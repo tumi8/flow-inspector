@@ -77,30 +77,30 @@ for line in input_file:
 	srcFlow = {}
 	srcFlow[common.COL_FIRST_SWITCHED] = float(fields[0])
 	srcFlow[common.COL_SRC_IP] = ip2int(fields[2])
-	srcFlow[common.COL_SRC_PORT] = fields[3]
+	srcFlow[common.COL_SRC_PORT] = int(fields[3])
 	srcFlow[common.COL_DST_IP] = ip2int(fields[4])
-	srcFlow[common.COL_DST_PORT] = fields[5]
+	srcFlow[common.COL_DST_PORT] = int(fields[5])
 	srcFlow[common.COL_PROTO] = common.getValueFromProto(fields[6])
 	if fields[8] == '-':
 		srcFlow[common.COL_LAST_SWITCHED] = float(fields[0])
 	else:
 		srcFlow[common.COL_LAST_SWITCHED] = float(fields[0]) + float(fields[8])
-	srcFlow[common.COL_PKTS] = fields[15]
-	srcFlow[common.COL_BYTES] = fields[16]
+	srcFlow[common.COL_PKTS] = int(fields[15])
+	srcFlow[common.COL_BYTES] = int(fields[16])
 
 	dstFlow = {}
 	dstFlow[common.COL_FIRST_SWITCHED] = float(fields[0])
 	dstFlow[common.COL_SRC_IP] = ip2int(fields[4])
-	dstFlow[common.COL_SRC_PORT] = fields[5]
+	dstFlow[common.COL_SRC_PORT] = int(fields[5])
 	dstFlow[common.COL_DST_IP] = ip2int(fields[2])
-	dstFlow[common.COL_DST_PORT] = fields[3]
+	dstFlow[common.COL_DST_PORT] = int(fields[3])
 	dstFlow[common.COL_PROTO] = common.getValueFromProto(fields[6])
 	if fields[8] == '-':
 		dstFlow[common.COL_LAST_SWITCHED] = float(fields[0])
 	else:
 		dstFlow[common.COL_LAST_SWITCHED] = float(fields[0]) + float(fields[8])
-	dstFlow[common.COL_PKTS] = fields[17]
-	dstFlow[common.COL_BYTES] = fields[18]
+	dstFlow[common.COL_PKTS] = int(fields[17])
+	dstFlow[common.COL_BYTES] = int(fields[18])
 
 	for flow in [srcFlow, dstFlow]:
 		if flow[common.COL_PKTS] == 0:
