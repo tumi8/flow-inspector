@@ -139,6 +139,51 @@ def getValueFromProto(proto):
 	if proto == COL_PROTO_ICMP:
 		return 1
 	return 0
+	
+# read ports for special filtering
+def getKnownPorts(flow_filter_unknown_ports):
+	known_ports = None
+	if flow_filter_unknown_ports:
+		f = open(PORTS_FILE, "r")
+		dom = xml.dom.minidom.parse(f)
+		f.close()
+	
+		def getDomText(node):
+			rc = []
+			for n in node.childNodes:
+				if n.nodeType == node.TEXT_NODE:
+					rc.append(n.data)
+			return ''.join(rc)
+
+		known_ports = dict()
+		records = dom.getElementsByTagName("record")
+		for record in records:
+			description = getDomText(record.getElementsByTagName("description")[0])
+			number = record.getElementsByTagName("number")
+			if description != "Unassigned" and len(number) > 0:
+				numbers = getDomText(number[0]).split('-')
+				number = int(numbers[0])
+				number_to = int(numbers[len(numbers)-1])
+				
+				protocol = record.getElementsByTagName("protocol")
+				if len(protocol) > 0:
+					protocol = getDomText(protocol[0])
+					if protocol == "tcp":
+						protocol = 6
+					elif protocol == "udp":
+						protocol = 17
+					else:
+						protocol = 0
+				else:
+					protocol = 0
+				
+				while number <= number_to:
+					if number in known_ports:
+						known_ports[number].append(protocol)
+					else:
+						known_ports[number] = [protocol]
+					number += 1
+
 
 def update_node_index(obj, collection, aggr_sum):
 	"""Update the node index collection in MongoDB with the current flow.
@@ -151,6 +196,7 @@ def update_node_index(obj, collection, aggr_sum):
 
 	# update source node
 	doc = { "$inc": {} }
+	
 
 	proto = getProto(obj)
 
@@ -221,7 +267,7 @@ def update_node_index(obj, collection, aggr_sum):
 		collection.update({COL_ID:  "total", COL_BUCKET: obj[COL_BUCKET] }, doc, True)
 	else:
 		collection.update({COL_ID : "total"  }, doc, True)
-			
+
 	
 def update_port_index(obj, collection, aggr_sum, filter_ports):
 	"""Update the port index collection in MongoDB with the current flow.
@@ -301,47 +347,4 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 		collection.update({COL_ID : "total", COL_BUCKET: obj[COL_BUCKET]}, doc, True)
 	else:
 		collection.update({COL_ID : "total"}, doc, True)
-	
-# read ports for special filtering
-def getKnownPorts(flow_filter_unknown_ports):
-	known_ports = None
-	if flow_filter_unknown_ports:
-		f = open(PORTS_FILE, "r")
-		dom = xml.dom.minidom.parse(f)
-		f.close()
-	
-		def getDomText(node):
-			rc = []
-			for n in node.childNodes:
-				if n.nodeType == node.TEXT_NODE:
-					rc.append(n.data)
-			return ''.join(rc)
 
-		known_ports = dict()
-		records = dom.getElementsByTagName("record")
-		for record in records:
-			description = getDomText(record.getElementsByTagName("description")[0])
-			number = record.getElementsByTagName("number")
-			if description != "Unassigned" and len(number) > 0:
-				numbers = getDomText(number[0]).split('-')
-				number = int(numbers[0])
-				number_to = int(numbers[len(numbers)-1])
-				
-				protocol = record.getElementsByTagName("protocol")
-				if len(protocol) > 0:
-					protocol = getDomText(protocol[0])
-					if protocol == "tcp":
-						protocol = 6
-					elif protocol == "udp":
-						protocol = 17
-					else:
-						protocol = 0
-				else:
-					protocol = 0
-				
-				while number <= number_to:
-					if number in known_ports:
-						known_ports[number].append(protocol)
-					else:
-						known_ports[number] = [protocol]
-					number += 1
