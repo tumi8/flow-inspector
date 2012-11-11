@@ -347,7 +347,7 @@ while True:
 			for s in config.flow_aggr_sums:
 				obj[s] = int(obj[s])
 		except ValueError, e:
-			print >> sys.stderr, "Could not decode JSON object in queue!"
+			print >> sys.stderr, "Could not decode JSON object in queue: ", e
 			continue
 
 		# only import flow if it is newer than config.max_flow_time
