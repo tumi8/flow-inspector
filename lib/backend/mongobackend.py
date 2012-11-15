@@ -10,7 +10,6 @@ import operator
 class MongoBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName):
 		Backend.__init__(self, host, port, user, password, databaseName)
-		self.index_cache = {}
 		self.connect()
 
 	def build_spec(self, query_params):
@@ -49,7 +48,8 @@ class MongoBackend(Backend):
 
 		return spec
 
-
+	def flushCache(self, collectionName = None):
+		self.flush_index_cache()
 
 	def connect(self):
 		# init pymongo connection
@@ -121,43 +121,11 @@ class MongoBackend(Backend):
 		collection = self.dst_db[collectionName]
 		collection.create_index(fieldName)
 
-	def flushCache(self, collectionName=None):
-		if collectionName == None:
-			while len(self.index_cache) > 0:
-				name = self.index_cache.keys()[0]
-				self.flushCache(name)
-		else:
-			collection = self.dst_db[collectionName]
-			for statement in self.index_cache[collectionName]:
-				doc = self.index_cache[collectionName][statement]
-				collection.update(dict(statement), doc, True)
-			del self.index_cache[collectionName]
-
-
-	def handle_index_update(self, collectionName, statement, document, insertIfnotExists):
-		statement = frozenset(statement.items())
-		if collectionName in self.index_cache:
-			if statement in self.index_cache[collectionName]:
-				cachedEntry = self.index_cache[collectionName][statement]
-				if "$set" in document:
-					print >> sys.stderr, "FATAL: index document contains $set field. This is a bug! Problematic document: ", doc
-				for field in document["$inc"]:
-					if field in cachedEntry["$inc"]:
-						cachedEntry["$inc"][field] += document["$inc"][field]
-					else:
-						cachedEntry["$inc"][field] = document["$inc"][field]
-				self.index_cache[collectionName][statement] = cachedEntry
-			else:
-				self.index_cache[collectionName][statement] = document
-		else:
-			self.index_cache[collectionName] = {}
-			self.index_cache[collectionName][statement] = document
-
-	def update(self, collectionName, statement, document, insertIfNotExists):
-		if collectionName.startswith("index"):
-			# do separate caching for index updates
-			self.handle_index_update(collectionName, statement, document, insertIfNotExists)
+	def update(self, collectionName, statement, document, insertIfNotExists, comes_from_cache = False):
+		if collectionName.startswith("index") and not comes_from_cache:
+			self.handle_index_update(statement, document, insertIfNotExists)
 			return 
+
 		collection = self.dst_db[collectionName]
 		collection.update(statement, document, insertIfNotExists)
 

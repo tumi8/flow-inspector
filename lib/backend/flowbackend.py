@@ -39,14 +39,15 @@ class Collection:
 		"""
 		self.backendObject.createIndex(self.collectionName, fieldName)
 
-	def update(self, statement, document, insertIfNotExist):
+	def update(self, statement, document, insertIfNotExist, comes_from_cache = False):
 		"""
 		Updates or creates a flow in the database. 
 		- statement - contains the id of the flow in the database (_id for mongo, primary key for sql)
 		- document - contains the properties of the flow
 		- insertIfNotExist: true: insert flow into db if it doesn't exist; false: only update entries of existing flows, do not create new flow
+		- comes_from_cache: Does indicate whether the user or the cache sends the document. If the cache sends it, do not attempt to further cache it.
 		"""
-		self.backendObject.update(self.collectionName, statement, document, insertIfNotExist)
+		self.backendObject.update(self.collectionName, statement, document, insertIfNotExist, comes_from_cache)
 
 	def bucket_query(self, query_params):
 		"""
@@ -126,6 +127,7 @@ class Backend:
 		self.user = user
 		self.password = password
 		self.databaseName = databaseName
+		self.index_cache = {}
 
 	def connect(self):
 		pass
@@ -227,9 +229,36 @@ class Backend:
 	def run_query(self, collectionName, query):
 		pass
 
+	def handle_index_update(self, collectionName, statement, document, insertIfnotExists):
+		statement = frozenset(statement.items())
+		if collectionName in self.index_cache:
+			if statement in self.index_cache[collectionName]:
+				cachedEntry = self.index_cache[collectionName][statement]
+				if "$set" in document:
+					print >> sys.stderr, "FATAL: index document contains $set field. This is a bug! Problematic document: ", doc
+				for field in document["$inc"]:
+					if field in cachedEntry["$inc"]:
+						cachedEntry["$inc"][field] += document["$inc"][field]
+					else:
+						cachedEntry["$inc"][field] = document["$inc"][field]
+				self.index_cache[collectionName][statement] = cachedEntry
+			else:
+				self.index_cache[collectionName][statement] = document
+		else:
+			self.index_cache[collectionName] = {}
+			self.index_cache[collectionName][statement] = document
 
-
-
+	def flush_index_cache(self, collectionName=None):
+		if collectionName == None:
+			while len(self.index_cache) > 0:
+				name = self.index_cache.keys()[0]
+				self.flush_index_cache(name)
+		else:
+			collection = self.getCollection(collectionName)
+			for statement in self.index_cache[collectionName]:
+				doc = self.index_cache[collectionName][statement]
+				collection.update(dict(statement), doc, True, True)
+			del self.index_cache[collectionName]
 
 
 def getBackendObject(backend, host, port, user, password, databaseName):
