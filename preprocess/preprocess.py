@@ -338,6 +338,7 @@ while True:
 		# Terminate if this object is the END flag
 		if obj == "END":
 			print "%s: Reached END. Terminating..." % (datetime.datetime.now())
+			print "%s: Flusing caches. Do not terminate this process or you will have data loss!"
 			break
 			
 		try:
@@ -366,6 +367,7 @@ while True:
 		
 	except KeyboardInterrupt:
 		print "%s: Keyboard interrupt. Terminating..." % (datetime.datetime.now())
+		print "%s: Flusing caches. Do not terminate this process or you will have data loss!"
 		break
 		
 timer.cancel()
