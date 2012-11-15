@@ -27,7 +27,7 @@ db_name = "flows"
 
 # Destination Data Backend (for miscelanous data)
 #----------------------------------------------------------------
-data_backend = "mysql"
+data_backend = "none"
 data_backend_host = "127.0.0.1"
 data_backend_port = 3306
 data_backend_user = "username"
