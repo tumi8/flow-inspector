@@ -34,22 +34,13 @@ data_backend_user = "username"
 data_backend_password = "password"
 data_backend_name = "flows"
 
-# Destination Data Backend (for miscelanous data)
-#----------------------------------------------------------------
-host_info = "oracle"
-data_backend_host = "127.0.0.1"
-data_backend_port = 3306
-data_backend_user = "username"
-data_backend_password = "password"
-data_backend_name = "hostinfo"
-
 
 # Flow settings
 #----------------------------------------------------------------
 # The different bucket sizes in seconds to aggregate.
 # Each bucket size leads to a new collection in the database.
 # This list is assumed be sorted ascending!
-flow_bucket_sizes = [ 5*60 ]
+flow_bucket_sizes = [ 10*60 ]
 # Those values have to match in order to aggregate two flows
 flow_aggr_values = ["sourceIPv4Address", "destinationIPv4Address", "sourceTransportPort", "destinationTransportPort", "protocolIdentifier"]
 # Those columns will be summed up
@@ -78,4 +69,14 @@ max_flow_age = 0
 # Host Information Datbase (optional)
 #----------------------------------------------------------------
 host_information_table = "somename"
+
+# Destination Data Backend (for miscelanous data)
+#----------------------------------------------------------------
+host_info = "oracle"
+host_info_host = "127.0.0.1"
+host_info_port = 3306
+host_info__user = "username"
+host_info_password = "password"
+host_info_name = "hostinfo"
+
 
