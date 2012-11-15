@@ -20,7 +20,7 @@ Requirements
 - ujson (tested with 1.18) (optional but recommended)
   pip install ujson
 
-- MongoDB (minimum requirement with v2.0)
+- MongoDB (minimum requirement with v2.2)
 - pymongo (tested with v2.0.1)
   pip install pymongo
 
@@ -63,6 +63,8 @@ Detailed information on how to install and configure can be found in the Wiki at
 
 License
 -------------
+
+This is a long-time fork of https://github.com/webholics/flow-inspector
 
 The MIT License (MIT)
 Copyright (c) 2012 Mario Volke, Lothar Braun 
