@@ -123,7 +123,7 @@ class MongoBackend(Backend):
 
 	def update(self, collectionName, statement, document, insertIfNotExists, comes_from_cache = False):
 		if collectionName.startswith("index") and not comes_from_cache:
-			self.handle_index_update(statement, document, insertIfNotExists)
+			self.handle_index_update(collectionName, statement, document, insertIfNotExists)
 			return 
 
 		collection = self.dst_db[collectionName]
