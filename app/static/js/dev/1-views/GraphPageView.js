@@ -1,8 +1,15 @@
 var GraphPageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
+
 		"click a.reset": "clickLayoutReset",
 		"click a.force": "clickLayoutForce",
 		"click a.hilbert": "clickLayoutHilbert",
+
+		"blur #gravity" : "changeGravity",
+		"blur #linkdistance" : "changeLinkDistance",
+		"blur #charge" : "changeCharge",
+
 		"change #filterNodeLimit": "changeNodeLimit",
 
 		"click a.apply-filter": "clickApplyFilter",
@@ -27,6 +34,7 @@ var GraphPageView = PageView.extend({
 		this.nodes = new IndexQuery(null, { index: "nodes" });
 		this.flows = new Flows();
 		this.timelineModel = new TimelineModel();
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
 		this.graphModel = new GraphModel();
 
 		this.timelineView = new TimelineView({
@@ -95,9 +103,16 @@ var GraphPageView = PageView.extend({
     		$("#filterProtocols", this.el).val(this.graphModel.get("filterProtocols"));
 		$("#filterProtocolsType", this.el).val(this.graphModel.get("filterProtocolsType"));
 
+		$("#charge", this.el).val(this.graphModel.get("charge"));
+		$("#gravity", this.el).val(this.graphModel.get("gravity"));
+		$("#linkdistance", this.el).val(this.graphModel.get("linkDistance"));
+
 		$("#filterNodeLimit", this.el).val(this.graphModel.get("nodeLimit"));
     		$("#showOthers", this.el).attr("checked", this.graphModel.get("showOthers"));
-    	
+
+    		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
+	
 		$("aside .help", this.el).popover({ offset: 24 });
 
 		return this;
@@ -157,20 +172,13 @@ var GraphPageView = PageView.extend({
 		var showOthers = this.graphModel.get("showOthers");
 		var nodeLimit = this.graphModel.get("nodeLimit")
 
-		var filter_ports = this.graphModel.get("filterPorts");
-		var filter_ports_type = this.graphModel.get("filterPortsType");
-		var filter_ips = this.graphModel.get("filterIPs");
-		var filter_ips_type = this.graphModel.get("filterIPsType");
-		var filter_protocols = this.graphModel.get("filterProtocols");
-		var filter_protocols_type = this.graphModel.get("filterProtocolsType");
-	
+
 		var data = { 
 			"fields": FlowInspector.COL_BUCKET,
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size,
 			"biflow": 1,
-			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP + "," +  FlowInspector.COL_BUCKET
 		};
     	
 		if (nodeLimit > 0) {
@@ -190,62 +198,10 @@ var GraphPageView = PageView.extend({
 			data["black_others"] = true;
 		}
 
-		// apply filter for ports
-		var ports = filter_ports.split("\n");
-		filter_ports = "";
-		for(var i = 0; i < ports.length; i++) {
-			var p = parseInt(ports[i]);
-    			// test for nan
-    			if(p === p) {
-    				if(filter_ports.length > 0) {
-    					filter_ports += ",";
-    				}
-    				filter_ports += p;
-    			}
-		}
-		if(filter_ports) {
-			if(filter_ports_type === "exclusive") {
-				data["exclude_ports"] = filter_ports;
-			} else {
-				data["include_ports"] = filter_ports;
-			}
-		}
-
-		// apply filter for ips
-		var ips = filter_ips.split("\n");
-		filter_ips = "";
-		for(var i = 0; i < ips.length; i++) {
-			var p = FlowInspector.strToIp(ips[i]);
-    			if(p != null) {
-    				if(filter_ips.length > 0) {
-    					filter_ips += ",";
-    				}
-    				filter_ips += p;
-    			}
-		}
-		if(filter_ips) {
-			if(filter_ips_type === "exclusive") {
-				data["exclude_ips"] = filter_ips;
-			} else {
-				data["include_ips"] = filter_ips;
-			}
-		}
-
-		// apply filter for ips
-		var protocols = filter_protocols.split("\n");
-		filter_protocols = "";
-		for(var i = 0; i < protocols.length; i++) {
-			if(filter_protocols.length > 0) {
-				filter_protocols += ",";
-			}
-    			filter_protocols += protocols[i];
-		}
-		if(filter_protocols) {
-			if(filter_protocols_type === "exclusive") {
-				data["exclude_protos"] = filter_protocols;
-			} else {
-				data["include_protos"] = filter_protocols;
-			}
+		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP;
+		data = FlowInspector.addToFilter(data, this.graphModel, aggregate_fields, true);
+		if (data == null) {
+			return;
 		}
 
 		this.flows.fetch({ data: data });
@@ -253,6 +209,10 @@ var GraphPageView = PageView.extend({
 	changeBucketInterval: function(model, interval) {
 		this.loader.show();
 		this.fetchFlows();
+	},
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
 	},
 	clickLayoutReset: function() {
 		if(this.nodes.length <= 0 || this.flows.length <= 0) {
@@ -276,6 +236,11 @@ var GraphPageView = PageView.extend({
 		this.graphModel.set({
 			nodeLimit: Number($("#filterNodeLimit", this.el).val())
 		});
+	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
 	},
 	nodeLimitChanged: function(model, value) {
 		$("#filterNodeLimit", this.el).val(value);
@@ -324,12 +289,30 @@ var GraphPageView = PageView.extend({
 	},
 	changeFilterIPsType : function(model, value) {
 		this.graphModel.set({
-			filterPortsType: $("#filterIPsType", this.el).val()
+			filterIPsType: $("#filterIPsType", this.el).val()
 		});
 	},
 	clickApplyFilter : function() {
 		this.loader.show();
 		this.fetchFlows();
 	},
+	changeGravity: function() {
+		this.graphModel.set({
+			gravity: $("#gravity", this.el).val()
+		});
+		this.graphView.render();
+	},
+	changeLinkDistance: function() {
+		this.graphModel.set({
+			linkDistance: $("#linkdistance", this.el).val()
+		});
+		this.graphView.render();
+	},
 
+	changeCharge: function() {
+		this.graphModel.set({
+			charge: $("#charge", this.el).val()
+		});
+		this.graphView.render();
+	},
 });

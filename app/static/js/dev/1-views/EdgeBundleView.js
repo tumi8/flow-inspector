@@ -302,10 +302,19 @@ var EdgeBundleView = Backbone.View.extend({
 		if(node_limit) {
 			this.data_nodes.children.push(other_nodes);
 		}
+		this.updateFlows();
 	},
 	updateFlows: function() {
 		if(!this.data_nodes) {
 			this.updateNodes();
+			// if we don't have data_nodes know, the node data 
+			// has not yet been received. this can happen when 
+			// fetching nodes takes longer than fetching the flows
+			//  We'll have updateFlows called  after running updateFlows updateNodes(). 
+			return;
+		}
+		if (this.flows.length <= 0) {
+			return;
 		}
     	
 		var that = this;
@@ -313,7 +322,7 @@ var EdgeBundleView = Backbone.View.extend({
 		
 		var min_bucket = d3.min(this.flows.models, function(d) { return d.get(FlowInspector.COL_BUCKET); });
 		var max_bucket = d3.max(this.flows.models, function(d) { return d.get(FlowInspector.COL_BUCKET); });
-		
+
 		this.flows.each(function(m) {
 			var source = that.node_map[m.get(FlowInspector.COL_SRC_IP)];
 			var target = that.node_map[m.get(FlowInspector.COL_DST_IP)];

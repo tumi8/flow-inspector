@@ -253,13 +253,6 @@ def api_bucket_query():
 		# use preaggregated collection
 		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(bucket_size))
 
-	if query_params["fields"] != None:
-		query_fields = fields + [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums
-	else:
-		query_fields = [common.COL_BUCKET, common.COL_FLOWS] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
-
-	query_params["fields"] = query_fields
-
 	(buckets, total, min_bucket, max_bucket) = collection.bucket_query(query_params)
 	
 	return { 

@@ -48,7 +48,8 @@ class MongoBackend(Backend):
 
 		return spec
 
-
+	def flushCache(self, collectionName = None):
+		self.flush_index_cache()
 
 	def connect(self):
 		# init pymongo connection
@@ -120,7 +121,11 @@ class MongoBackend(Backend):
 		collection = self.dst_db[collectionName]
 		collection.create_index(fieldName)
 
-	def update(self, collectionName, statement, document, insertIfNotExists):
+	def update(self, collectionName, statement, document, insertIfNotExists, comes_from_cache = False):
+		if collectionName.startswith("index") and not comes_from_cache:
+			self.handle_index_update(collectionName, statement, document, insertIfNotExists)
+			return 
+
 		collection = self.dst_db[collectionName]
 		collection.update(statement, document, insertIfNotExists)
 
@@ -136,7 +141,7 @@ class MongoBackend(Backend):
 
 		query_params["aggregate"] = aggregate
 
-		(buckets, total) = self.run_query(collection, query_params, True)
+		(buckets, total) = self.run_query(collection, query_params, originalFlowDb = True, calculateTotals = False)
 
 		return (buckets, None, min_bucket, max_bucket);
 
@@ -216,9 +221,9 @@ class MongoBackend(Backend):
 			originalFlowDb = False
 		query_params["aggregate"] = aggregate
 
-		return self.run_query(collection, query_params, originalFlowDb)
+		return self.run_query(collection, query_params, originalFlowDb, calculateTotals = True)
 
-	def run_query(self, collection, query_params, originalFlowDb):
+	def run_query(self, collection, query_params, originalFlowDb, calculateTotals):
 		import pymongo
 
 		spec = self.build_spec(query_params)
@@ -248,7 +253,7 @@ class MongoBackend(Backend):
 			commonFilter["$match"]["$and"].append({ common.COL_PROTO: { "$in": include_protos } })
 
 		if len(exclude_protos) > 0:
-			commonFilter["$match"]["$and"].append({ "$nin": exclude_protos })
+			commonFilter["$match"]["$and"].append({ common.COL_PROTO: { "$nin": exclude_protos }})
 
 		if len(include_ports) > 0:
 			commonFilter["$match"]["$and"].append(
@@ -267,7 +272,6 @@ class MongoBackend(Backend):
 		if len(exclude_ips) > 0:
 			commonFilter["$match"]["$and"].append({common.COL_SRC_IP : { "$nin": exclude_ips }})
 			commonFilter["$match"]["$and"].append({common.COL_DST_IP : { "$nin": exclude_ips }})
-
 
 		#mongo aggregation framework pipeline elements
 		matchTotalGroup = {
@@ -309,10 +313,17 @@ class MongoBackend(Backend):
 			else: 
 				aggregateGroup["$group"]["_id"][field] = "$" +field
 
-		for s in config.flow_aggr_sums + [ "flows" ]:
-			aggregateGroup["$group"][s] = { "$sum" : "$" + s }
-			for p in common.AVAILABLE_PROTOS:
-				aggregateGroup["$group"][p + "_" + s] = { "$sum" : "$" + p + "." + s }
+		if fields != None:
+			for field in fields:
+				if field == common.COL_BUCKET: 
+					aggregateGroup["$group"][field] = { "$max" : "$" + field }
+				else:
+					aggregateGroup["$group"][field] = { "$sum" : "$" + field }
+		else:
+			for s in config.flow_aggr_sums + [ "flows" ]:
+				aggregateGroup["$group"][s] = { "$sum" : "$" + s }
+				for p in common.AVAILABLE_PROTOS:
+					aggregateGroup["$group"][p + "_" + s] = { "$sum" : "$" + p + "." + s }
 
 		if not originalFlowDb:
 			# use pre-calculated indexes
@@ -327,11 +338,11 @@ class MongoBackend(Backend):
 					print total
 				total = total[0]
 			else:
+				print "Did not get total!"
 				total =  None
 		
 			aggResult = collection.aggregate(othersPipeline)
 			results = aggResult["result"]
-			total = None
 		else:
 			# create from flow database
 			if doIPAddress:
@@ -363,7 +374,17 @@ class MongoBackend(Backend):
 					pipeline.append(limit)
 				aggResult =  collection.aggregate(pipeline)
 				results = aggResult["result"]
-				total = None
+				if calculateTotals:
+					aggregateGroup["$group"]["_id"] = "null"
+					pipeline = [ commonFilter, projectDual, unwind, aggregateGroup ]
+					aggResult = collection.aggregate(pipeline)
+					total = aggResult["result"]
+					if len(total) > 0:
+						total = total[0]
+					else:
+						total = None
+				else:
+					total = None
 			else:
 				pipeline = [ commonFilter, aggregateGroup ]
 				if sort:
@@ -372,7 +393,18 @@ class MongoBackend(Backend):
 					pipeline.append(limit)
 				aggResult = collection.aggregate(pipeline)
 				results = aggResult["result"]
-				total = None
+				if calculateTotals:
+					# aggregate all elements from selection
+					aggregateGroup["$group"]["_id"] = "null"
+					pipeline = [ commonFilter, aggregateGroup ]
+					aggResult = collection.aggregate(pipeline)
+					total = aggResult["result"]
+					if len(total) > 0:
+						total = total[0]
+					else:
+						total = None
+				else:
+					total = None
 
 		# we need to map the protocol_value fields into protocol : { value : xxx }
 		# dictionaries. This must be done for total and results
@@ -383,16 +415,20 @@ class MongoBackend(Backend):
 				else:
 					row[field] = row["_id"][field]
 			del row["_id"]
-			for p in common.AVAILABLE_PROTOS:
-				row[p] = {}
-				for s in config.flow_aggr_sums + ["flows"]:
-					row[p][s] = row[p + "_" + s]
-					del row[p + "_" + s]
+			if fields == None: 
+				for p in common.AVAILABLE_PROTOS:
+					row[p] = {}
+					for s in config.flow_aggr_sums + ["flows"]:
+						row[p][s] = row[p + "_" + s]
+						del row[p + "_" + s]
 
 		if total != None:
-			total["id"] = total["_id"]
-			for field in aggregate:
-				total[field] = total["_id"][field]
+			if total["_id"] == "null":
+				total["id"] = "total"
+			else:
+				total["id"] = total["_id"]
+				for field in aggregate:
+					total[field] = total["_id"][field]
 			del total["_id"]
 			for p in common.AVAILABLE_PROTOS:
 				total[p] = {}

@@ -16,6 +16,12 @@ var DonutChartView = Backbone.View.extend({
 		this.index = options.index;
 		this.index.bind("reset", this.render, this);
 
+		if (options.fetchEmptyInterval !== undefined) {
+			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
+		}
+
+		this.showLimit = this.model.get("limit") + 1;
+
 		// fetch at the end because a cached request calls render immediately!
 		if (this.model.get("fetchOnInit")) {
 			this.fetchData();
@@ -62,10 +68,17 @@ var DonutChartView = Backbone.View.extend({
 			for(var i = 0; i < this.showLimit; i++) {
 				topNodeValues += data[i].attributes[num_val];
 			}
+
 			// we need to double the number of total flows, bytes, or packets as we count them 
 			// both twice (once for src and once for dst)
+
+			// TODO: This is only true for pre-calculated indexes, e.g. as they are produced
+			// by preprocess.py. However, this is not true if we calculate them on the fly 
+			// Think about how to handle this ...
+
 			others.attributes[num_val] = 2 * this.index.totalCounter[num_val] - topNodeValues;
 			var data = data.slice(0, this.showLimit);
+			others.attributes[num_val] =  this.index.totalCounter[num_val] - topNodeValues;
 			data[this.showLimit] = others;
 		}
 
@@ -85,7 +98,7 @@ var DonutChartView = Backbone.View.extend({
 			}
 		} else {
 			getLabel = function(d) { 
-				if(d.data.id) 
+				if(d.data.id > 0) 
 					return d.data.id; 
 				else if(d.data.id === -1) 
 					return "others";
@@ -137,19 +150,16 @@ var DonutChartView = Backbone.View.extend({
 		this.index.models = [];
 		this.render();
 
+		var fetchEmptyInterval = this.model.get("fetchEmptyInterval");
+		var interval = this.model.get("interval");
+		if (!fetchEmptyInterval && interval.length == 0) {
+			return; 
+		}
+
 		var index	= this.model.get("index");
 		var limit       = this.model.get("limit");
 		var sortField   = this.model.get("value");
-		var interval    = this.model.get("interval");
 		var bucket_size = this.model.get("bucket_size");
-
-		var filter_ports = this.model.get("filterPorts");
-		var filter_ports_type = this.model.get("filterPortsType");
-		var filter_ips = this.model.get("filterIPs");
-		var filter_ips_type = this.model.get("filterIPsType");
-		var filter_protocols = this.model.get("filterProtocols");
-		var filter_protocols_type = this.model.get("filterProtocolsType");
-		var do_aggregate = false;
 
 		var data = {
 			"limit": limit + 1,
@@ -167,80 +177,17 @@ var DonutChartView = Backbone.View.extend({
 			data["bucket_size"] = bucket_size;
 		}
 
-		// apply filter for ports
-		var ports = filter_ports.split("\n");
-		filter_ports = "";
-		for(var i = 0; i < ports.length; i++) {
-			var p = parseInt(ports[i]);
-    			// test for NaN
-    			if(p === p) {
-    				if(filter_ports.length > 0) {
-    					filter_ports += ",";
-    				}
-    				filter_ports += p;
-    			}
-		}
-		if(filter_ports) {
-			if(filter_ports_type === "exclusive") {
-				data["exclude_ports"] = filter_ports;
-			} else {
-				data["include_ports"] = filter_ports;
-			}
-			do_aggregate = true;
+		if (index == "nodes") {
+			aggregate_field = FlowInspector.COL_IPADDRESS;
+		} else if (index == "ports") {
+			aggregate_field = FlowInspector.COL_PORT;
+		} else {
+			alert("DonutChart shows unknown index!");
 		}
 
-		// apply filter for IPs
-		var ips = filter_ips.split("\n");
-		filter_ips = "";
-		for(var i = 0; i < ips.length; i++) {
-			var p = FlowInspector.strToIp(ips[i]);
-    			if(p != null) {
-    				if(filter_ips.length > 0) {
-    					filter_ips += ",";
-    				}
-    				filter_ips += p;
-    			}
-		}
-		if(filter_ips) {
-			if(filter_ips_type === "exclusive") {
-				data["exclude_ips"] = filter_ips;
-			} else {
-				data["include_ips"] = filter_ips;
-			}
-			do_aggregate = true;
-		}
-
-		// apply filter for IPs
-		var protocols = filter_protocols.split("\n");
-		filter_protocols = "";
-		for(var i = 0; i < protocols.length; i++) {
-			if(filter_protocols.length > 0) {
-				filter_protocols += ",";
-			}
-    			filter_protocols += protocols[i];
-		}
-		if(filter_protocols) {
-			if(filter_protocols_type === "exclusive") {
-				data["exclude_protos"] = filter_protocols;
-			} else {
-				data["include_protos"] = filter_protocols;
-			}
-			do_aggregate = true;
-		}
-
-
-		// we need to calculate the buckets dynamically 
-		// because of dynamic filtering. Prepare the 
-		// query that does the aggregation on the default
-		// non-aggregated db
-		if (do_aggregate) {
-			if (index == "nodes") {
-				data["aggregate"] = FlowInspector.COL_IPADDRESS;
-			} else if (index == "ports") {
-				data["aggregate"] = FlowInspector.COL_PORT;
-			} else {
-				alert("DonutChart shows unknown index!");
-			}
+		data = FlowInspector.addToFilter(data, this.model, aggregate_field, false);
+		if (data == null) {
+			return;
 		}
 
 		this.index.fetch({data: data});

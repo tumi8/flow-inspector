@@ -23,6 +23,30 @@
 	    			data-content="Set positions of all nodes on the canvas with a Hilber curve.">
 	    			Hilbert Curve</a>
 	    	</p>
+		<p>
+			<div class="clearfix help"
+				title="Charge"
+    				data-content="Charge for Force Graphs. Applies at next push to the force button!"
+				<label for="charge">Charge</label>
+				<input type="text" id="charge"></input>
+			</div>
+		</p>
+		<p>
+			<div class="clearfix help"
+				title="Gravity"
+    				data-content="Gravity for Force Graphs. Applies to the next push to the force button!"
+				<label for="charge">Gravity</label>
+				<input type="text" id="gravity"></input>
+			</div>
+		</p>
+		<p>
+			<div class="clearfix help"
+				title="Link Distance"
+    				data-content="Desired Link Distance for Force Graphs. Applies to the next push to the force button!"
+				<label for="charge">Link Distance</label>
+				<input type="text" id="linkdistance"></input>
+			</div>
+		</p>
 		<!--
 	    	<h5>Data Mapping</h5>
 	    	<form class="form-stacked">
@@ -90,7 +114,7 @@
 	    			</div>
 					<div class="clearfix help"
 					title="Protocol"
-	    				data-content="Filter for protocols">
+	    				data-content="Filter for protocols. Enter one protocol per line. Supported Protocols: tcp, udp, icmp, other">
 						<label for="filterProtocols">Protocol</label>
 						<textarea id="filterProtocols" rows="10"></textarea>
 						<div class="clearfix">
@@ -135,7 +159,12 @@
 	    		<div class="canvas"></div>
 	    	</div>
 	    </div>
-	    <footer id="footbar" class="well">
-	    </footer>
+		<footer id="footbar" class="well">
+	    		<ul class="pills timeline-value">
+				<li data-value="flows"><a href="javascript:void(0)"># Flows</a></li>
+				<li data-value="packetDeltaCount"><a href="javascript:void(0)"># Packets</a></li>
+				<li data-value="octetDeltaCount"><a href="javascript:void(0)"># Bytes</a></li>
+			</ul>
+		</footer>
 	</div>
 </script>

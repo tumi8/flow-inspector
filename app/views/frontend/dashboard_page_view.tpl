@@ -5,6 +5,11 @@
 		    	<h1>Dashboard</h1>
 		    </div>
 		    	<h2>Timeline</h2>
+			<ul class="pills timeline-value">
+				<li data-value="flows"><a href="javascript:void(0)">Flows</a></li>
+				<li data-value="packetDeltaCount"><a href="javascript:void(0)">Packets</a></li>
+				<li data-value="octetDeltaCount"><a href="javascript:void(0)">Bytes</a></li>
+			</ul>
 			<div class="viz-timeline"></div>
 			<h2>Host Overview</h2>
 			<ul class="pills hostview-value">

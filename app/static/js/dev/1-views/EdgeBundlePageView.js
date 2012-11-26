@@ -1,5 +1,7 @@
 var EdgeBundlePageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
+
 		"change #layoutTension": "changeTension",
 		"change #filterGroupBytes": "changeGroupBytes",
 		"change #filterNodeLimit": "changeNodeLimit",
@@ -43,6 +45,7 @@ var EdgeBundlePageView = PageView.extend({
 		this.flows.bind("reset", this.updateIfLoaded, this);
     	
 		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
 		this.edgeBundleModel.bind("change:tension", this.tensionChanged, this);
 		this.edgeBundleModel.bind("change:groupBytes", this.groupBytesChanged, this);
 		this.edgeBundleModel.bind("change:nodeLimit", this.nodeLimitChanged, this);
@@ -99,6 +102,8 @@ var EdgeBundlePageView = PageView.extend({
     		$("#filterProtocols", this.el).val(this.edgeBundleModel.get("filterProtocols"));
 		$("#filterProtocolsType", this.el).val(this.edgeBundleModel.get("filterProtocolsType"));
 
+		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
 	
 		$("aside .help", this.el).popover({ offset: 24 });
 		
@@ -125,79 +130,18 @@ var EdgeBundlePageView = PageView.extend({
 		var interval = this.timelineModel.get("interval");
 		var bucket_size = this.timelineModel.get("bucket_size");
 
-    		var filter_ports = this.edgeBundleModel.get("filterPorts");
-		var filter_ports_type = this.edgeBundleModel.get("filterPortsType");
-		var filter_ips = this.edgeBundleModel.get("filterIPs");
-		var filter_ips_type = this.edgeBundleModel.get("filterIPsType");
-		var filter_protocols = this.edgeBundleModel.get("filterProtocols");
-		var filter_protocols_type = this.edgeBundleModel.get("filterProtocolsType");
-		
 		var data = { 
-			"aggregate": FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP + "," + FlowInspector.COL_BUCKET,
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size,
 		};
     
-		// apply filter for ports
-		var ports = filter_ports.split("\n");
-		filter_ports = "";
-		for(var i = 0; i < ports.length; i++) {
-			var p = parseInt(ports[i]);
-    			// test for nan
-    			if(p === p) {
-    				if(filter_ports.length > 0) {
-    					filter_ports += ",";
-    				}
-    				filter_ports += p;
-    			}
-		}
-		if(filter_ports) {
-			if(filter_ports_type === "exclusive") {
-				data["exclude_ports"] = filter_ports;
-			} else {
-				data["include_ports"] = filter_ports;
-			}
+		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP
+		data = FlowInspector.addToFilter(data, this.edgeBundleModel, aggregate_fields, true);
+		if (data == null) {
+			return;
 		}
 
-		// apply filter for ips
-		var ips = filter_ips.split("\n");
-		filter_ips = "";
-		for(var i = 0; i < ips.length; i++) {
-			var p = FlowInspector.strToIp(ips[i]);
-    			if(p != null) {
-    				if(filter_ips.length > 0) {
-    					filter_ips += ",";
-    				}
-    				filter_ips += p;
-    			}
-		}
-		if(filter_ips) {
-			if(filter_ips_type === "exclusive") {
-				data["exclude_ips"] = filter_ips;
-			} else {
-				data["include_ips"] = filter_ips;
-			}
-		}
-
-		// apply filter for ips
-		var protocols = filter_protocols.split("\n");
-		filter_protocols = "";
-		for(var i = 0; i < protocols.length; i++) {
-			if(filter_protocols.length > 0) {
-				filter_protocols += ",";
-			}
-    			filter_protocols += protocols[i];
-		}
-		if(filter_protocols) {
-			if(filter_protocols_type === "exclusive") {
-				data["exclude_protos"] = filter_protocols;
-			} else {
-				data["include_protos"] = filter_protocols;
-			}
-		}
-
-	
 		this.flows.fetch({ data: data });
 	},
 	changeBucketInterval: function(model, interval) {
@@ -263,13 +207,20 @@ var EdgeBundlePageView = PageView.extend({
 	},
 	changeFilterIPsType : function(model, value) {
 		this.edgeBundleModel.set({
-			filterPortsType: $("#filterIPsType", this.el).val()
+			filterIPsType: $("#filterIPsType", this.el).val()
 		});
 	},
 	clickApplyFilter : function() {
 		this.loader.show();
 		this.fetchFlows();
 	},
-
-
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
+	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+	},
 });

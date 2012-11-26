@@ -266,5 +266,7 @@ def getBackendObject(backend, host, port, user, password, databaseName):
 		return OracleBackend(host, port, user, password, databaseName)
 	elif backend == "mongo":
 		return None
+	elif backend == "none":
+		return None
 	else:
 		raise Exception("Data backend " + backend + " is not a supported backend")

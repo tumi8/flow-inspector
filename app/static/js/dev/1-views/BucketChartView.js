@@ -1,7 +1,7 @@
 var BucketChartView = Backbone.View.extend({
 	className: "bucket-chart",
 	events: {},
-	initialize: function() {
+	initialize: function(options) {
 		if(!this.model) {
 			this.model = new BucketChartModel();
 		}
@@ -13,6 +13,10 @@ var BucketChartView = Backbone.View.extend({
 		// chart formatting
 		this.m = [10, 20, 30, 70];
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
+
+		if (options.fetchEmptyInterval !== undefined) {
+			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
+		}
 	
 		this.flows = new Flows();
 		this.flows.bind("reset", this.render, this);
@@ -100,9 +104,9 @@ var BucketChartView = Backbone.View.extend({
 			// the value might not be set in the db. use 0 as default
 			if (protoObj) {
 				val = protoObj[num_val];
-			}
-			if (! val > 0) {
-				val = 1;
+				if (! val > 1) {
+					return 1;
+				}
 			}
 			return y(val);
 		}
@@ -262,8 +266,8 @@ var BucketChartView = Backbone.View.extend({
 			// the value might not be set in the db. use 0 as default
 			if (protoObj) {
 				val = protoObj[num_val];
-				if (! val > 0) {
-					val = 1;
+				if (! val > 1) {
+					return 1;
 				}
 			}
 			return y(val);
@@ -340,15 +344,11 @@ var BucketChartView = Backbone.View.extend({
 		this.fetchFlows();
 	},
 	fetchFlows: function() {
+		var fetchEmptyInterval = this.model.get("fetchEmptyInterval");
 		var interval = this.model.get("interval");
-		var filter_ports = this.model.get("filterPorts");
-		var filter_ports_type = this.model.get("filterPortsType");
-		var filter_ips = this.model.get("filterIPs");
-		var filter_ips_type = this.model.get("filterIPsType");
-		var filter_protocols = this.model.get("filterProtocols");
-		var filter_protocols_type = this.model.get("filterProtocolsType");
-		var do_aggregate = false;
-
+		if (!fetchEmptyInterval && interval.length == 0) {
+			return; 
+		}
 
 		var data = {
 			"resolution": 1000
@@ -359,74 +359,9 @@ var BucketChartView = Backbone.View.extend({
 			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
 		}
 
-		// apply filter for ports
-		var ports = filter_ports.split("\n");
-		filter_ports = "";
-		for(var i = 0; i < ports.length; i++) {
-			var p = parseInt(ports[i]);
-    			// test for NaN
-    			if(p === p) {
-    				if(filter_ports.length > 0) {
-    					filter_ports += ",";
-    				}
-    				filter_ports += p;
-    			}
-		}
-		if(filter_ports) {
-			if(filter_ports_type === "exclusive") {
-				data["exclude_ports"] = filter_ports;
-			} else {
-				data["include_ports"] = filter_ports;
-			}
-			do_aggregate = true;
-		}
-
-		// apply filter for IPs
-		var ips = filter_ips.split("\n");
-		filter_ips = "";
-		for(var i = 0; i < ips.length; i++) {
-			var p = FlowInspector.strToIp(ips[i]);
-    			if(p != null) {
-    				if(filter_ips.length > 0) {
-    					filter_ips += ",";
-    				}
-    				filter_ips += p;
-    			}
-		}
-		if(filter_ips) {
-			if(filter_ips_type === "exclusive") {
-				data["exclude_ips"] = filter_ips;
-			} else {
-				data["include_ips"] = filter_ips;
-			}
-			do_aggregate = true;
-		}
-
-		// apply filter for IPs
-		var protocols = filter_protocols.split("\n");
-		filter_protocols = "";
-		for(var i = 0; i < protocols.length; i++) {
-			if(filter_protocols.length > 0) {
-				filter_protocols += ",";
-			}
-    			filter_protocols += protocols[i];
-		}
-		if(filter_protocols) {
-			if(filter_protocols_type === "exclusive") {
-				data["exclude_protos"] = filter_protocols;
-			} else {
-				data["include_protos"] = filter_protocols;
-			}
-			do_aggregate = true;
-		}
-
-
-		// we need to calculate the buckets dynamically 
-		// because of dynamic filtering. Prepare the 
-		// query that does the aggregation on the default
-		// non-aggregated db
-		if (do_aggregate) {
-			data["aggregate"] = FlowInspector.COL_BUCKET;
+		data = FlowInspector.addToFilter(data, this.model, FlowInspector.COL_BUCKET, false);
+		if (data == null) {
+			return;
 		}
 
 		this.flows.fetch({ data: data});
