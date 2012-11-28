@@ -70,21 +70,21 @@ class SQLBaseBackend(Backend):
 	def executemany(self, string, objects, table = None):
 		self.executeManyTimes += 1
 		self.executeManyObjects += len(objects)
-		#print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
+		print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
 		maxtime = 5 
 
 		try:
-			#print "starting execute ..."
+			print "starting execute ..."
 			start_time = time.time()
 			self.cursor.executemany(string, objects)
 			end_time = time.time()
 			if end_time - start_time > maxtime:
 				print "ExecuteMany: executemany time was ", end_time - start_time
-			#print "ending execute ..."
+			print "ending execute ..."
 			start_time = time.time()
-			#print "starting commit ..."
+			print "starting commit ..."
 			self.conn.commit()
-			#print "ending commit ..."
+			print "ending commit ..."
 			end_time = time.time()
 			if end_time - start_time > maxtime:
 				print "ExecuteMany: commit time was ", end_time - start_time
@@ -108,7 +108,7 @@ class SQLBaseBackend(Backend):
 	def createIndex(self, tableName, fieldName):
 		try:
 			self.execute("CREATE INDEX %s on %s (%s)" % (fieldName, tableName, fieldName))
-		except:
+		except Exception as e:
 			if self.handle_exception(e):
 				self.createIndex(tableName, fieldName)
 			
@@ -458,11 +458,12 @@ class SQLBaseBackend(Backend):
 			dstQuery = "SELECT " + dstDirection + " as " + bothDirection + " %s FROM %s %s GROUP BY %s " % (fieldList, collectionName, queryString, dstDirection)
 			addList = ""
 			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-				addList += ",(a." + field + " + b." + field +") as " + field
+				addList += ",(" + field + " + " + field +") as " + field
 				for p in common.AVAILABLE_PROTOS:
-					addList += ",(a." + p + "_" + field + "+b." + p + "_" + field + ") as " + p + "_" + field
+					addList += ",(" + p + "_" + field + "+" + p + "_" + field + ") as " + p + "_" + field
 
-			queryString = "SELECT a.%s as %s%s FROM ((%s) a JOIN (%s) b ON a.%s = b.%s) " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery, bothDirection, bothDirection)
+			queryString = "SELECT %s as %s%s FROM ((%s) UNION (%s)) " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery)
+
 		else:
 			queryString = "SELECT %s FROM %s %s " % (fieldList, collectionName, queryString)
 
@@ -489,6 +490,7 @@ class SQLBaseBackend(Backend):
 			queryString = self.add_limit_to_string(queryString, limit)
 
 		print "SQL: Running Query ..."
+		print queryString
 		self.execute(queryString)
 		queryResult =  self.cursor.fetchall()
 		print "SQL: Encoding Query ..."
@@ -538,9 +540,9 @@ class SQLBaseBackend(Backend):
 			else:
 				result.append(resultDoc)
 
-		#print "Got Results: ", len(result)
-		#print "Total: ", total
-		#print "Result: ", result
+		print "Got Results: ", len(result)
+		print "Total: ", total
+		print "Result: ", result
 		#for r in result: 
 		#	print r
 		return (result, total)
