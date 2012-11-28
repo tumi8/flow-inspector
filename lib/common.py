@@ -106,6 +106,8 @@ MYSQL_TYPE_MAPPER = {
 }
 
 ORACLE_TYPE_MAPPER = {
+	COL_ID		   : "NUMBER(20)",
+	COL_BUCKET	   : "NUMBER(10)",
 	COL_SRC_IP         : "NUMBER(10)",
 	COL_DST_IP         : "NUMBER(10)",
 	COL_SRC_PORT       : "NUMBER(5)",
