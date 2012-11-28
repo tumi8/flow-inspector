@@ -17,6 +17,7 @@ class OracleBackend(SQLBaseBackend):
 		print "Oracle: Attempting new connect:" 
 		try:
 			connection_string = self.user + "/" + self.password + "@" + self.host + ":" + str(self.port) + "/" + self.databaseName
+			print connection_string
 			if self.cursor:
 				self.cursor.close()
 			if self.conn:
@@ -110,10 +111,22 @@ class OracleBackend(SQLBaseBackend):
 	def handle_exception(self, exception):
 		# try simply to reconnect and go again
 		# TODO: improve handling
-		print "Received exception: ", e
-		print "Trying to reconnet ..."
+		print "Received exception: ", exception
+		try:
+			error, = exception.args
+			#message = exception.args.message
+		except Exception as e:
+			# unknown error!
+			print >> sys.stderr, "Received unknown exception in oracle backend that could not be unpacked: ", e
+			sys.exit(-1)
+		if error.code == 955:
+			# index alreday exists. that's good. don't do anything
+			print "Index already exists!"
+			return False
+		sys.exit(-1)
 		self.connect()
+		print "Trying to reconnet ..."
 		return True
 
-	def addLimitToString(self, string, limit):
+	def add_limit_to_string(self, string, limit):
 		return "SELECT * FROM (" + string + ") WHERE ROWNUM <= " + str(limit)
