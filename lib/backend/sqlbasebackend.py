@@ -462,7 +462,7 @@ class SQLBaseBackend(Backend):
 				for p in common.AVAILABLE_PROTOS:
 					addList += ",(" + p + "_" + field + "+" + p + "_" + field + ") as " + p + "_" + field
 
-			queryString = "SELECT %s as %s%s FROM ((%s) UNION (%s)) " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery)
+			queryString = "SELECT %s as %s%s FROM ((%s) UNION (%s)) as T " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery)
 
 		else:
 			queryString = "SELECT %s FROM %s %s " % (fieldList, collectionName, queryString)
