@@ -468,7 +468,7 @@ class SQLBaseBackend(Backend):
 			queryString = "SELECT %s FROM %s %s " % (fieldList, collectionName, queryString)
 
 
-		if aggregate and (not doIPAddress and not doPort):
+		if aggregate:
 			queryString += "GROUP BY "
 			firstField = True
 			for field in aggregate:
