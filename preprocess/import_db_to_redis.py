@@ -45,12 +45,11 @@ parser.add_argument("--max-queue", nargs="?", type=int, default=100000, help="Th
 parser.add_argument("--clear-queue", nargs="?", type=bool, default=False, const=True, help="Whether to clear the queue before importing the flows.")
 parser.add_argument("--legacy-vermont", nargs="?", type=bool, default=False, const=True, help="Whether the old legacy VERMONT format should be used")
 parser.add_argument("--bro-conn-log", nargs="?", type=bool, default=False, const=True, help="Import files from bro connection logs. If set, --conn-file must be defined.")
+parser.add_argument("--argus-db", nargs="?", type=bool, default=False, const=True, help="Import files from argus rasqlinsert")
 parser.add_argument("--conn-file", nargs="?", default=None, help="Bro Connection log file. Preprocess will only evaulate this log if --bro-conn-log is set.")
 parser.add_argument("--table-name", nargs="?", default=None, help="Table name to import from SQL database.")
 
 args = parser.parse_args()
-
-
 
 try:
 	r = redis.Redis(host=args.dst_host, port=args.dst_port, db=args.dst_database)
@@ -67,6 +66,9 @@ if args.legacy_vermont:
 elif args.bro_conn_log:
 	print "Importing data from Bro connection logs ..."
 	importer = importer_modules.get_importer_module("bro-importer", args)
+elif args.argus_db:
+	print "Importing data from Argus MYSQL db ..."
+	importer = importer_modules.get_importer_module("argus-importer", args)
 else:
 	print "Importing data from VERMONT DB ..."
 	importer = importer_modules.get_importer_module("vermont-db", args)

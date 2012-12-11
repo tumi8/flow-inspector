@@ -70,6 +70,7 @@ LEGACY_COLUMNMAP = {
         "LASTSWITCHED"  : COL_LAST_SWITCHED,
 }
 
+
 ORACLE_COLUMNMAP = {
 	COL_ID.upper()             : COL_ID,
 	COL_BUCKET.upper()         : COL_BUCKET,

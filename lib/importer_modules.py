@@ -113,7 +113,9 @@ class VermontDB(BaseImporter):
 		self.flows = None
 		self.get_tables();
 		self.prevFlow = None
+		print self.tables;
 		if self.args.table_name:
+			print "Limiting table space to ", self.args.table_name
 			if self.args.table_name in self.tables:
 				self.tables = [ self.args.table_name ]
 			else:
@@ -134,7 +136,7 @@ class VermontDB(BaseImporter):
 			table =  self.tables.pop()
 
 			print "Importing table ", table, "..."
-			self.c.execute("SELECT * FROM " + table + " ORDER BY FLOWSTARTMILLISECONDS ASC")
+			self.c.execute("SELECT * FROM " + table)
 			return self.get_next_flow()
 
 		obj = dict()
@@ -201,8 +203,9 @@ class VermontDB(BaseImporter):
 		if self.TYPE == "oracle":
 			self.c.execute("""SELECT * FROM user_objects WHERE object_type = 'TABLE' AND object_name LIKE 'F!_%' ESCAPE '!'""")
 		else:
-			self.c.execute("""SELECT table_name from information_schema.tables 
-				WHERE table_schema=%s AND table_type='BASE TABLE' AND table_name LIKE 'F\\_%%' ORDER BY table_name ASC""", (self.args.src_database))
+			query_string = """SELECT table_name from information_schema.tables 
+				WHERE table_schema="%s" AND table_type='BASE TABLE' AND table_name LIKE 'f\\_%%' ORDER BY table_name ASC""" % (self.args.src_database)
+			self.c.execute(query_string)
 		print "Getting all table names ..."
 		self.tables = self.c.fetchall()
 	
@@ -350,7 +353,113 @@ class BroImporter(BaseImporter):
 		# return srcFlow now, return dstflow at the next call to get_next_flow()
 		self.prevFlow = dstFlow
 		return srcFlow
+
+class ArgusDB(BaseImporter):
+	def __init__(self, args):
+		BaseImporter.__init__(self, args)
+		self.get_db_connection()
+		self.flows = None
+		self.get_tables();
+		self.prevFlow = None
+		if self.args.table_name:
+			if self.args.table_name in self.tables:
+				self.tables = [ self.args.table_name ]
+			else:
+				print "Table " + self.args.table_name + " is not in database!"
+				self.tables = []
+		self.columnmap = {
+			"proto": common.COL_PROTO,
+			"saddr": common.COL_SRC_IP,
+			"daddr": common.COL_DST_IP,
+			"sport": common.COL_SRC_PORT,
+			"dport": common.COL_DST_PORT
+		}
+		self.srcDirectionMap = {
+			"spkts" : common.COL_PKTS,
+			"sbytes": common.COL_BYTES
+		}
+		self.dstDirectionMap = {
+			"dpkts" : common.COL_PKTS,
+			"dbytes" : common.COL_BYTES
+		}
+				
+
+	def get_next_flow(self):
+		if self.prevFlow:
+			ret = self.prevFlow
+			self.prevFlow = None
+			return ret
 	
+		flow = self.c.fetchone()
+		if flow == None:
+			if len(self.tables) == 0:
+				return None
+			table =  self.tables.pop()
+
+			print "Importing table ", table, "..."
+			self.c.execute("SELECT * FROM " + table + " ORDER BY stime ASC")
+			return self.get_next_flow()
+
+		obj = dict()
+		revObj = dict()
+		firstSwitched = None
+		for j, col in enumerate(self.c.description):
+			print col[0]
+			if col[0] in self.columnmap:
+				fieldName = self.columnmap[col[0]]
+				print "fieldName: ", fieldName
+				# argus tables contain reverse flow information
+				# create a revObj which matches the reverse flow
+				if fieldName == common.COL_SRC_IP:
+					ip = ip2int(flow[j])
+					obj[common.COL_SRC_IP] = ip
+					revObj[common.COL_DST_IP] = ip
+				if fieldName == common.COL_DST_IP:
+					ip = ip2int(flow[j])
+					obj[common.COL_DST_IP] = ip
+					revObj[common.COL_SRC_IP] = ip
+				if fieldName == common.COL_SRC_PORT:
+					obj[common.COL_SRC_PORT] = flow[j]
+					revObj[common.COL_DST_PORT] = flow[j]
+				if fieldName == common.COL_DST_PORT:
+					obj[common.COL_DST_PORT] = flow[j]
+					revObj[common.COL_SRC_PORT] = flow[j]
+				if fieldName == common.COL_PROTO:
+					obj[common.COL_PROTO] = common.getValueFromProto(flow[j])
+					revObj[common.COL_PROTO] = common.getValueFromProto(flow[j])
+			elif col[0] in self.srcDirectionMap:
+				fieldName = self.srcDirectionMap[col[0]]
+				obj[fieldName] = flow[j]
+			elif col[0] in self.dstDirectionMap:
+				fieldName = self.dstDirectionMap[col[0]]
+				revObj[fieldName] = flow[j]
+			elif col[0] == "stime":
+				firstSwitched = float(flow[j])
+				obj[common.COL_FIRST_SWITCHED] = firstSwitched
+				revObj[common.COL_FIRST_SWITCHED] = firstSwitched
+			elif col[0] == "dur":
+				obj[common.COL_LAST_SWITCHED] = firstSwitched + float(flow[j])
+				revObj[common.COL_LAST_SWITCHED] = firstSwitched + float(flow[j])
+				
+
+		# check if the reverse flow start time is > 0. if it is zero, this means that we have a 
+		# one way flow (e.g. coming from a scan) that should not be imported into the database
+		if common.COL_FIRST_SWITCHED in revObj and revObj[common.COL_FIRST_SWITCHED] > 0:
+			self.prevFlow = revObj
+
+		print obj
+		return obj
+
+	def get_tables(self):
+		query_string = """SELECT table_name from information_schema.tables 
+			WHERE table_schema="%s" AND table_type='BASE TABLE' ORDER BY table_name ASC""" % (self.args.src_database)
+		self.c.execute(query_string)
+		print "Getting all table names ..."
+		self.tables = self.c.fetchall()
+
+		# get the table names in list format
+		self.tables = map(lambda x: x[0], list(self.tables))
+
 	
 def get_importer_module(importer_type, args):
 	if importer_type == "vermont-db":
@@ -359,6 +468,8 @@ def get_importer_module(importer_type, args):
 		return LegacyVermontDB(args)
 	elif importer_type == "bro-importer":
 		return BroImporter(args)
+	elif importer_type == "argus-importer":
+		return ArgusDB(args)
 	else:
 		print "Unsupported importer module " + importer_type
 		sys.exit(-1)
