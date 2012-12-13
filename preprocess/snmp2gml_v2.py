@@ -34,24 +34,27 @@ collection = db["snmp_raw"]
 
 graph = Graph()
 
-#for entry in collection.find( { "type": "interface", "ifOperStatus": "1" }, { "router": 1, "ipAdEntAddr": 1, "ipAdEntIfIndex" : 1, "_id": 0 } ):
 
-for entry in collection.find( { "type": "interface", "ifOperStatus": "1", "ipAdEntAddr": { "$exists": "true" } } ):
+for entry in collection.find( { "type": "interface", "ifOperStatus": "1" } ):
    
     graph.add_router(entry["router"])
-    graph.add_router_interface(entry["router"], entry["ipAdEntAddr"], entry ["ipAdEntIfIndex"])
+    if "ipAdEntAddr" not in entry:
+        entry["ipAdEntAddr"] = entry["router"] + "jjj"
+        entry["ipAdEntNetMask"] = "fuck"
+    graph.add_router_interface(entry["router"], entry["ipAdEntAddr"], entry ["ifIndex"], entry["ipAdEntNetMask"])
 
 
-# for entry in collection.find( { "type": "route" }, { "ip_src": 1, "ipRouteIfIndex": 1, "ipRouteNextHop": 1, "ipRouteDest": 1, "ipRouteMask": 1, "_id": 0 } ):
-
-for entry in collection.find( { "type": "route" } ):
+for entry in collection.find( { "type": "route", "ipRouteType" : "3" } ):
     
-    
-    
-    print entry
+    # print entry
 
     graph.add_router_route(entry["ip_src"], entry["ipRouteIfIndex"], entry["ipRouteNextHop"])
     graph.add_edge(entry["ipRouteNextHop"], 32, entry["ipRouteDest"], entry["ipRouteMask"])
+
+for entry in collection.find( { "type": "route", "ipRouteType" : {"$ne": "3"} } ):
+    
+    graph.add_router_indirect_route(entry["ip_src"], entry["ipRouteDest"], entry["ipRouteMask"], entry["ipRouteNextHop"], entry["ipRouteIfIndex"])
+              
 
 graph_to_graphmlfile(graph, "test.route.graphml")
 

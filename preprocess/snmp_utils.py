@@ -42,9 +42,10 @@ class Interface(Node):
 
     """ This class represents a router interface """
 
-    def __init__(self, ip, ifnumber):
+    def __init__(self, ip, ifnumber, netmask):
         super(Interface, self).__init__(ip, 32)
         self.ifnumber = ifnumber
+        self.netmask = netmask
 
     def toGML(self):
         return '\n'.join([  '    <node id="{0}">',
@@ -56,7 +57,7 @@ class Interface(Node):
         return str(self.ip) + "/32"
    
     def getLabel(self):
-        return str(self.ifnumber) + "_" + str(self.ip) 
+        return str(self.ifnumber) + "_" + str(self.ip) + "/" + str(self.netmask)
         
 class Subnet(Node):
     
@@ -124,21 +125,38 @@ class Graph(object):
         key = str(ip_nexthop) + "/32"
         if key not in self.graphdb:
             self.graphdb[key] = Node(ip_nexthop, 32)
-        if "router_" + ip_router + "/32" not in self.graphdb:
-            self.add_router(ip_router)
         if str(ip_router) + "_" + str(if_number) not in self.interfacedb:
+            print ip_router + " / " + if_number
             self.add_router_interface(ip_router, "???", if_number)
         self.interfacedb[str(ip_router) + "_" + str(if_number)].edges.add(self.graphdb[key])
- 
-    def add_router_interface(self, ip_router, ip_interface, if_number):
+        
+         
+    def add_router_interface(self, ip_router, ip_interface, if_number, ip_netmask):
         """ Add interface to router """
         key = str(ip_interface) + "/32"
         if key not in self.graphdb:
-            self.graphdb[key] = Interface(ip_interface, if_number)
+            self.graphdb[key] = Interface(ip_interface, if_number, ip_netmask)
         self.graphdb[key].__class__ = Interface
         self.graphdb[key].ifnumber = if_number
-        self.graphdb["router_" + ip_router + "/32"].edges.add( self.graphdb[key] )
         self.interfacedb[str(ip_router) + "_" + str(if_number)] = self.graphdb[key]
+        if "router_" + ip_router + "/32" not in self.graphdb:
+            self.add_router(ip_router)
+        self.graphdb["router_" + ip_router + "/32"].edges.add( self.graphdb[key] )
+
+    def add_router_indirect_route(self, ip_router, ip_dst, mask_dst, ip_nexthop, if_number):
+        if str(ip_nexthop) + "/32" not in self.graphdb:
+            if "router_" + ip_router + "/32" not in self.graphdb:
+                self.add_router(ip_router)
+            if if_number == "0":
+                if str(ip_nexthop) + "/32" not in self.graphdb:
+                    node = Node(ip_nexthop, 32)
+                else:
+                    node = self.graphdb[str(ip_nexthop) + "/32"]
+                self.graphdb["router_" + ip_router + "/32"].edges.add(node)
+            else:
+                self.add_router_route(ip_router, if_number, ip_nexthop)
+            self.add_edge(ip_nexthop, 32, ip_dst, mask_dst)
+
 
 
 
