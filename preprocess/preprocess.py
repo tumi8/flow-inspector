@@ -41,6 +41,7 @@ parser.add_argument("--dst-user", nargs="?", default=config.db_user, help="Backe
 parser.add_argument("--dst-password", nargs="?", default=config.db_password, help="Backend database password")
 parser.add_argument("--dst-database", nargs="?", default=config.db_name, help="Backend database name")
 parser.add_argument("--clear-database", nargs="?", type=bool, default=False, const=True, help="Whether to clear the whole databse before importing any flows.")
+parser.add_argument("--slice-and-aggregate", nargs="?", type=bool, default=False, const=True, help="Defines whether to slice and aggregate the data into buckets.")
 parser.add_argument("--backend", nargs="?", default=config.db_backend, const=True, help="Selects the backend type that is used to store the data")
 
 args = parser.parse_args()
@@ -101,6 +102,81 @@ class FlowHandler:
 		"""
 		return int(timestamp) / int(interval) * int(interval)
 	
+	def storeNonSlicedFlows(self, flow):
+		"""Stores flows in the database, but does not perform any slicing into buckets, 
+		   but performs aggregation (it is simililar to handleFlow() otherwise)
+		"""
+		self.num_flows += 1
+		
+		proto = common.getProto(flow)
+
+		bucket = self.get_bucket(flow[common.COL_FIRST_SWITCHED], self.bucket_interval)
+		key = self.get_id(bucket, flow)	
+
+		# check if we hit the cache
+		doc = None
+		if self.cache != None:
+			doc = self.cache.get(key, None)
+			if doc == None:
+				self.cache_misses += 1
+			else:
+				self.cache_hits += 1
+
+		if doc == None:
+			doc = { "$set": { common.COL_BUCKET: bucket }, "$inc": {} }
+			
+			# set unknown ports to None
+			if self.filter_ports:
+				for v in self.aggr_values:
+					if v == common.COL_SRC_PORT or v == common.COL_DST_PORT:
+						set_value = None
+						value = flow.get(v, None)
+						if value != None and value in self.filter_ports:
+							filter_proto = int(flow.get(common.COL_PROTO, -1))
+							if filter_proto == -1 or filter_proto in self.filter_ports[value]:
+								set_value = value
+						doc["$set"][v] = set_value
+					else:
+						doc["$set"][v] = flow.get(v, None)
+			else:
+				for v in self.aggr_values:
+					doc["$set"][v] = flow.get(v, None)
+						
+			for s in self.aggr_sum:
+				doc["$inc"][s] = 0
+				doc["$inc"][proto + "." + s] = 0
+			doc["$inc"][common.COL_FLOWS] = 0
+			doc["$inc"][proto + "." + common.COL_FLOWS ] = 0
+				
+			if self.cache != None:
+				# insert into cache
+				self.cache[key] = doc
+				self.cache_queue.append(key)
+			
+		for s in self.aggr_sum:
+			val = int( flow.get(s, 0))
+			doc["$inc"][s] += val
+			keyString = proto + "." + s
+			if not keyString in doc["$inc"]:
+				doc["$inc"][keyString] = val
+			else:
+				doc["$inc"][keyString] += val
+					
+		# count number of aggregated flows in the bucket
+		doc["$inc"][common.COL_FLOWS] += 1
+ 
+		keyString = proto + "." + common.COL_FLOWS
+		if not keyString in doc["$inc"]:
+			doc["$inc"][keyString] = 1
+		else:
+			doc["$inc"][keyString] += 1
+			
+		# if caching is actived then insert into cache
+		if self.cache != None:
+			self.handleCache()
+		else:
+			self.updateCollection(key, doc)
+		
 	def handleFlow(self, flow):
 		"""Slice a flow from the queue into buckets and insert into MongoDB.
 		"""
@@ -358,7 +434,10 @@ while True:
 	
 		# Bucket slicing
 		for handler in handlers:
-			handler.handleFlow(obj)
+			if args.slice_and_aggregate:
+				handler.handleFlow(obj)
+			else:
+				handler.storeNonSlicedFlows(obj)
 			
 		common.update_node_index(obj, node_index_collection, config.flow_aggr_sums)
 		common.update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports)
