@@ -11,9 +11,12 @@ import pymongo
 
 from snmp_utils import Graph, Node, Router, Interface, Subnet, graph_to_graphmlfile
 
+from copy import deepcopy
+
 import common
 import backend
 import config
+import time
 
 parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 parser.add_argument("--dst-host", nargs="?", default=config.db_host, help="Backend database host")
@@ -35,43 +38,79 @@ collection = db["snmp_raw"]
 graph = Graph()
 
 
-for entry in collection.find( { "type": "interface", "ifOperStatus": "1" } ):
-   
-    graph.add_router(entry["router"])
-    if "ipAdEntAddr" not in entry:
-        entry["ipAdEntAddr"] = entry["router"] + "jjj"
-        entry["ipAdEntNetMask"] = "fuck"
-    graph.add_router_interface(entry["router"], entry["ipAdEntAddr"], entry ["ifIndex"], entry["ipAdEntNetMask"])
+for entry in collection.find( { "type": "interface_log" } ):
+    """ add interfaces and routers to graph """   
+    
+    if_phy_info = collection.find( { 
+        "type":"interface_phy", "router": entry["router"], "ifIndex": entry["ipAdEntIfIndex"]
+    } )[0]
+
+    if if_phy_info["ifOperStatus"] == "1":
+        graph.addInterface(
+            entry["router"],
+            entry["ipAdEntAddr"],
+            entry["ipAdEntNetMask"],
+            entry["ipAdEntIfIndex"],
+            if_phy_info["ifDescr"],
+            str(entry)
+        )
+
+graph_copy = deepcopy(graph)
 
 
 for entry in collection.find( { "type": "route", "ipRouteType" : "3" } ):
+    """ add direct routes """
+
+    graph.addConnectedSubnet(
+        entry["ip_src"],
+        entry["ipRouteNextHop"],
+        entry["ipRouteDest"],
+        entry["ipRouteMask"],
+        str(entry)
+    )
+
+graph_to_graphmlfile(graph, "test.route.connected.graphml")
+
+
+graph = deepcopy(graph_copy)
+
+for entry in collection.find( { "type": "route", "ipRouteProto" : "2" } ):
+    """ add direct routes """
+
+    graph.addConnectedSubnet(
+        entry["ip_src"],
+        entry["ipRouteNextHop"],
+        entry["ipRouteDest"],
+        entry["ipRouteMask"],
+        str(entry)
+    )
+
+graph_to_graphmlfile(graph, "test.route.local.graphml")
+
+
+## create eigrp grahp ##
+
+graph = deepcopy(graph_copy)
+
+for entry in collection.find( { "type":"eigrp", "cEigrpRouteOriginType":"Connected" } ):
+    """ add direct routes """
+
+    if_phy_info = collection.find( {
+        "type":"interface_phy", "router": entry["ip_src"], "ifDescr": entry["cEigrpNextHopInterface"]
+    } )[0]
+
+    # print if_phy_info
     
-    # print entry
-
-    graph.add_router_route(entry["ip_src"], entry["ipRouteIfIndex"], entry["ipRouteNextHop"])
-    graph.add_edge(entry["ipRouteNextHop"], 32, entry["ipRouteDest"], entry["ipRouteMask"])
-
-for entry in collection.find( { "type": "route", "ipRouteType" : {"$ne": "3"} } ):
-    
-    graph.add_router_indirect_route(entry["ip_src"], entry["ipRouteDest"], entry["ipRouteMask"], entry["ipRouteNextHop"], entry["ipRouteIfIndex"])
-              
-
-graph_to_graphmlfile(graph, "test.route.graphml")
+    if_log_info = collection.find( {
+        "type":"interface_log", "router": entry["ip_src"], "ipAdEntIfIndex": if_phy_info["ifIndex"]
+    } )[0]
 
 
-
-
-## create eigrp graph ##
-
-graph = Graph()
-
-for entry in collection.find( { "type": "interfaces" }, { "ip_src": 1, "ipAdEntAddr": 1, "ipAdEntIfIndex" : 1}):
-     graph.add_router(entry["ip_src"])
-     graph.add_router_interface(entry["ip_src"], entry["ipAdEntAddr"], entry ["ipAdEntIfIndex"])
-    
-for entry in collection.find( {"type": "eigrp"}, {"ip_src": 1, "cEigrpNextHopAddress": 1, "ip_dst": 1, "cEigrpRouteMask": 1,  "_id": 0} ):
-
-    graph.add_edge(entry["ip_src"], 32, entry["cEigrpNextHopAddress"], 32)
-    graph.add_edge(entry["cEigrpNextHopAddress"], 32, entry["ip_dst"], entry["cEigrpRouteMask"])
+    graph.addConnectedSubnet(
+        entry["ip_src"],
+        if_log_info["ipAdEntAddr"],
+        entry["ip_dst"],
+        entry["cEigrpRouteMask"]
+    )
 
 graph_to_graphmlfile(graph, "test.eigrp.graphml")

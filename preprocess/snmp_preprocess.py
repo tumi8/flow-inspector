@@ -152,8 +152,8 @@ for file in args.file:
     for line in file:
         index = line.find(" ")
         value = line[index+1:]
-        value = value.strip("\\\"")
         value = value.strip("\n")
+        value = value.strip('"')
         line = line[0:index]
 
 
@@ -166,10 +166,9 @@ for file in args.file:
             if oid in oidmap:
                 update_doc(
                     ip_src + "int" + interface,
-                    { "router": ip_src, "if_number": interface, "timestamp": timestamp, "type": "interface" },
+                    { "router": ip_src, "if_number": interface, "timestamp": timestamp, "type": "interface_phy" },
                     { oidmap[oid]["name"] : oidmap[oid]["fct"](value) }
                 )
-
 
         # parse ip oid
         elif line.startswith(".1.3.6.1.2.1.4.20.1"):
@@ -180,13 +179,9 @@ for file in args.file:
             if oid in oidmap:
                 update_doc(
                     ip_src + "_ip_" + ip,
-                    { "router": ip_src, "timestamp": timestamp, "type": "interface" },
+                    { "router": ip_src, "if_ip": ip, "timestamp": timestamp, "type": "interface_log" },
                     { oidmap[oid]["name"] : oidmap[oid]["fct"](value) }
                 )
-
-            if oid == ".1.3.6.1.2.1.4.20.1.2":
-                 doc[ip_src + "_ip_" + ip][0].update( { "if_number": value } )
-                 #print doc[ip_src + "_ip_" + ip]
 
         # parse ip route oid
         elif line.startswith(".1.3.6.1.2.1.4.21.1"):
