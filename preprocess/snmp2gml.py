@@ -41,6 +41,41 @@ graph = Graph()
 for entry in collection.find( { "type": "interface_log" } ):
     """ add interfaces and routers to graph """   
     
+    
+    ## filter for secondary ip -- quick and dirty ##
+    if entry["ipAdEntAddr"] in ["130.197.14.254", 
+        "130.197.46.252",
+        "130.197.36.252",
+        "130.197.37.252",
+        "130.197.38.252",
+        "130.197.39.252",
+        "130.197.36.254",
+        "130.197.37.254",
+        "130.197.38.254",
+        "130.197.39.254",
+        "130.197.46.254",
+        "130.197.24.252",
+        "130.197.24.254",
+        "130.197.17.252",
+        "130.197.17.254",
+        "130.197.47.252",
+        "130.197.47.254",
+        "130.197.97.252",
+        "130.197.98.252",
+        "130.197.99.252",
+        "130.197.97.254",
+        "130.197.98.254",
+        "130.197.99.254",
+        "130.197.117.252",
+        "130.197.117.254",
+        "130.197.219.12",
+        "130.197.219.14",
+        "130.197.2.252",
+        "130.197.2.254"]:
+            print "secondary address found " + entry["ipAdEntAddr"]
+            continue 
+    
+    
     if_phy_info = collection.find( { 
         "type":"interface_phy", "router": entry["router"], "ifIndex": entry["ipAdEntIfIndex"]
     } )[0]
