@@ -89,8 +89,9 @@ ORACLE_COLUMNMAP = {
 	COL_PROTO_TCP.upper()      : COL_PROTO_TCP,
 	COL_PROTO_UDP.upper()      : COL_PROTO_UDP,
 	COL_PROTO_ICMP.upper()     : COL_PROTO_ICMP,
-	COL_PROTO_OTHER.upper()    : COL_PROTO_OTHER
-	
+	COL_PROTO_OTHER.upper()    : COL_PROTO_OTHER,
+	"FLOWSTARTMILLISECONDS"	   : "flowStartMilliSeconds",
+	"FLOWENDMILLISECONDS"	   : "flowEndMilliSeconds"
 }
 
 MYSQL_TYPE_MAPPER = {
