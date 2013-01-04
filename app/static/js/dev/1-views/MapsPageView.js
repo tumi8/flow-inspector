@@ -1,7 +1,17 @@
 var MapsPageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
 	},
 	initialize: function() {
+		this.timelineModel = new TimelineModel();
+		this.timelineView = new TimelineView({
+			model: this.timelineModel
+		});
+		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
+		this.timelineModel.bind("change:bucket_size", this.changeBucketSize, this);
+
+
 		this.markerList = new Array();
 		var myLatlng = new google.maps.LatLng(48.1333, 11.5667);
 		var marker = new google.maps.Marker({
@@ -18,12 +28,17 @@ var MapsPageView = PageView.extend({
 		this.geoInfoQuery = new GeoInfoQuery()
 		this.geoInfoQuery.bind("reset", this.updateGeoCache, this);
 
-		this.nodesIndex.fetch();
+		//this.nodesIndex.fetch();
 	},
 	render: function() {
 		var that = this;
 
 		$(this.el).html(this.template());
+
+		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
+
+		$("#footbar", this.el).append(this.timelineView.el);
 
 		var mapOptions = {
 			center: new google.maps.LatLng(48.1333, 11.5667),
@@ -71,5 +86,23 @@ var MapsPageView = PageView.extend({
 			});
 		}
 		this.render();
-	}
+	},
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
+	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+	},
+	changeBucketInterval: function(model, interval) {
+
+	},
+	changeBucketSize: function(model, bucket_size) {
+	},
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
+	},
 });

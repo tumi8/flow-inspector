@@ -299,6 +299,7 @@ def api_index(name):
 
 @get("/api/geoip")
 def api_geoip():
+	return { "lookups": [] }
 	gi = pygeoip.GeoIP(config.geoip_dat_file)
 
 	# get ip list from get request
