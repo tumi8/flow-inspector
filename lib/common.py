@@ -1,4 +1,6 @@
 import os 
+import math
+import sys
 
 
 # flow time interval column names
@@ -67,6 +69,7 @@ LEGACY_COLUMNMAP = {
         "FIRSTSWITCHED" : COL_FIRST_SWITCHED,
         "LASTSWITCHED"  : COL_LAST_SWITCHED,
 }
+
 
 ORACLE_COLUMNMAP = {
 	COL_ID.upper()             : COL_ID,
@@ -351,4 +354,19 @@ def update_port_index(obj, collection, aggr_sum, filter_ports):
 		collection.update({COL_ID : "total", COL_BUCKET: obj[COL_BUCKET]}, doc, True)
 	else:
 		collection.update({COL_ID : "total"}, doc, True)
+
+
+# width defines bar width
+# percent defines current percentage
+def progress(width, percent):
+	marks = math.floor(width * (percent / 100.0))
+	spaces = math.floor(width - marks)
+ 
+ 	loader = '[' + ('=' * int(marks)) + (' ' * int(spaces)) + ']'
+ 
+	sys.stdout.write("%s %d%%\r" % (loader, percent))
+	if percent >= 100:
+		sys.stdout.write("\n")
+	sys.stdout.flush()
+
 

@@ -3,8 +3,6 @@
 
 """
 Preprocess flows taken from Redis queue.
-Keep this script running forever if you want live data:
-nohup ./preprocess.py
 
 It is save to run multiple instances of this script!
 
