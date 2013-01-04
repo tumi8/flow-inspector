@@ -1,8 +1,10 @@
 var MapsPageView = PageView.extend({
 	events: {
 		"click .timeline-value a": "clickTimelineValue",
+		"click .hostview-value a": "clickHostviewValue",
 	},
 	initialize: function() {
+
 		this.timelineModel = new TimelineModel();
 		this.timelineView = new TimelineView({
 			model: this.timelineModel
@@ -12,23 +14,16 @@ var MapsPageView = PageView.extend({
 		this.timelineModel.bind("change:bucket_size", this.changeBucketSize, this);
 
 
-		this.markerList = new Array();
-		var myLatlng = new google.maps.LatLng(48.1333, 11.5667);
-		var marker = new google.maps.Marker({
-			position: myLatlng,
-			title: "MÃnchen!"
-			});
-		this.markerList.push(marker);
-
-
 		this.template = _.template($("#maps-page-template").html());
-		this.nodesIndex = new IndexQuery(null, { index: "nodes" });
+		this.nodesIndex = new DynamicIndexQuery(null, {index: "nodes"});
 		this.nodesIndex.bind("reset", this.getGeoInfo, this);
 
-		this.geoInfoQuery = new GeoInfoQuery()
-		this.geoInfoQuery.bind("reset", this.updateGeoCache, this);
+		this.mapViewModel =  new MapsViewModel();
+		this.mapView = new MapsView({ model: this.mapViewModel, index: new DynamicIndexQuery(null, { index: "nodes" }), fetchEmptyInterval: false});
 
-		//this.nodesIndex.fetch();
+		this.hostModel = new HostViewModel();
+		this.hostModel.bind("change:value", this.changeHostViewValue, this);
+		this.hostView = new HostView({ model: this.hostModel, index: new DynamicIndexQuery(null, { index: this.hostModel.get("index") }), fetchEmptyInterval: false});
 	},
 	render: function() {
 		var that = this;
@@ -37,55 +32,14 @@ var MapsPageView = PageView.extend({
 
 		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
 			.addClass("active");
-
+		$(".hostview-value li[data-value='" + this.hostModel.get("value") + "']", this.el)
+			.addClass("active");
+	
+		$(".viz-mapview", this.el).append(this.mapView.el);
 		$("#footbar", this.el).append(this.timelineView.el);
 
-		var mapOptions = {
-			center: new google.maps.LatLng(48.1333, 11.5667),
-			zoom : 2,
-			mapTypeId : google.maps.MapTypeId.ROADMAP
-		};
-		this.map = new google.maps.Map(
-			document.getElementById("map_canvas"),
-			mapOptions);
-
-		if (this.markerList.length > 0) {
-			this.markerList.forEach(function(marker) {
-				marker.setMap(that.map);
-			});
-		}
-
+		this.hostView.render();
 		return this;
-	},
-	getGeoInfo : function() {
-		var data = {}
-		if (this.nodesIndex.length > 0) {
-			var lookup_ips = "";
-			this.nodesIndex.each(function(node) {
-				if (lookup_ips.length > 0) {
-					lookup_ips += ",";
-				}
-				lookup_ips += FlowInspector.ipToStr(node.id);
-			});
-			data["ips"] = lookup_ips;
-			this.geoInfoQuery.fetch({data: data});
-		}
-
-	},
-	updateGeoCache : function() {
-		if (this.geoInfoQuery.length > 0) {
-			var that = this;
-			this.geoInfoQuery.each(function(node) {
-				var myLatlng = new google.maps.LatLng(node.get("latitude"), node.get("longitude"));
-				var marker = new google.maps.Marker({
-					position: myLatlng,
-					title: node.get("ip")
-				});
-				marker.setMap(this.map);
-				that.markerList.push(marker);
-			});
-		}
-		this.render();
 	},
 	clickTimelineValue: function(e) {
 		var target = $(e.target).parent();
@@ -97,12 +51,26 @@ var MapsPageView = PageView.extend({
 			.addClass("active");
 	},
 	changeBucketInterval: function(model, interval) {
-
+		// change models (if any)
+		this.mapViewModel.set({interval: interval});
 	},
 	changeBucketSize: function(model, bucket_size) {
+		// change models if any
+		this.mapViewModel.set({bucket_size: bucket_size});
 	},
 	clickTimelineValue: function(e) {
 		var target = $(e.target).parent();
 		this.timelineModel.set({ value: target.data("value") });
 	},
+	changeHostViewValue: function(model, value) {
+		$(".hostview-value li", this.el).removeClass("active");
+		$(".hostview-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+	},
+	clickHostviewValue: function(e) {
+		var target = $(e.target).parent();
+		this.hostModel.set({ value: target.data("value") });
+		this.mapsModel.set({ value: target.data("value") });
+	},
+
 });

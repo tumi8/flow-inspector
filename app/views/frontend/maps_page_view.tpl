@@ -57,7 +57,16 @@
 			<div class="page-header">
 				<h1>Google Maps View</h1>
 			</div>
-			<div id="map_canvas" style="width:800px; height:800px"></div>
+			<ul class="pills hostview-value">
+				<li data-value="flows"><a href="javascript:void(0)">Flows</a></li>
+				<li data-value="packetDeltaCount"><a href="javascript:void(0)">Packets</a></li>
+				<li data-value="octetDeltaCount"><a href="javascript:void(0)">Bytes</a></li>
+			</ul>
+			<div class="viz-hostview"></div>
+
+			<div class="viz-mapview">
+				<div id="map_canvas" style="width:800px; height:800px; center"></div>
+			</div>
 		</div>
 		<footer id="footbar" class="well"> 
 			<ul class="pills timeline-value">

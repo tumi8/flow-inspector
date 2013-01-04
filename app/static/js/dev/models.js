@@ -339,3 +339,22 @@ var UndocumentedIPs = CachedCollection.extend({
 	}
 });
 
+var MapsViewModel = Backbone.Model.extend({
+	defaults: {
+		value: "flows",
+		fetchOnInit: false,
+		bucket_size: null,
+		interval: [],
+		fetchEmptyInterval: true,
+		limit: 30,
+
+		filterProtocols: "",
+		filterProtocolsType: "inclusive",
+		filterPorts: "",
+		filterPortsType: "inclusive",
+		filterIPs: "",
+		filterIPsType: "inclusive"
+	}
+});
+
+
