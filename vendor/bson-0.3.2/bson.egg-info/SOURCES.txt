@@ -1,0 +1,10 @@
+README
+setup.py
+bson/__init__.py
+bson/codec.py
+bson/network.py
+bson.egg-info/PKG-INFO
+bson.egg-info/SOURCES.txt
+bson.egg-info/dependency_links.txt
+bson.egg-info/requires.txt
+bson.egg-info/top_level.txt
