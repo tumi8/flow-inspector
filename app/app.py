@@ -13,8 +13,9 @@ import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'pytz-2012h'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'bson-0.3.2'))
 
-import pymongo
 import math
 import bson
 import config
@@ -32,10 +33,12 @@ from bottle import PasteServer
 TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 
 # get database backend (currently: MongoDB)
-db = backend.getBackendObject(config.db_backend, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
+db = backend.flowbackend.getBackendObject(config.db_backend, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
+dataBackend = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_name)
 
 def extract_mongo_query_params():
 	# construct query
+
 	limit = 0
 	if "limit" in request.GET:
 		try:
@@ -57,11 +60,11 @@ def extract_mongo_query_params():
 		sort = map(lambda v: v.strip(), sort.split(","))
 		for i in range(0, len(sort)):
 			field = sort[i].split(" ")
-			order = pymongo.ASCENDING
+			order = 1
 			if field[-1].lower() == "asc":
 				field.pop()
 			elif field[-1].lower() == "desc":
-				order = pymongo.DESCENDING
+				order = -1
 				field.pop()
 			
 			field = " ".join(field)
@@ -120,7 +123,18 @@ def extract_mongo_query_params():
 	biflow = False
 	if "biflow" in request.GET:
 		biflow = True
-		
+
+
+	# protocol filter
+	include_protos = []
+	if "include_protos" in request.GET:
+		include_protos = request.GET["include_protos"].strip()
+		include_protos = map(lambda v: common.getValueFromProto(v.strip()), include_protos.split(","))
+	exclude_protos = []
+	if "exclude_protos" in request.GET:
+		exclude_protos = request.GET["exclude_protos"].strip()
+		exclude_protos = map(lambda v: common.getValueFromProto(v.strip()), exclude_protos.split(","))
+
 	
 	# port filter
 	include_ports = []
@@ -155,41 +169,44 @@ def extract_mongo_query_params():
 
 	# only stated fields will be available, all others will be aggregated toghether	
 	# filter for known aggregation values
-	if fields != None:
-		fields = [v for v in fields if v in config.flow_aggr_values]
+	#if fields != None:
+	#	fields = [v for v in fields if v in config.flow_aggr_values]
+	black_others = False
+	if "black_others" in request.GET:
+		black_others = True
 
-	spec = {}
-	if start_bucket > 0 or end_bucket < sys.maxint:
-		spec["bucket"] = {}
-		if start_bucket > 0:
-			spec["bucket"]["$gte"] = start_bucket
-		if end_bucket < sys.maxint:
-			spec["bucket"]["$lte"] = end_bucket
-	if len(include_ports) > 0:
-		spec["$or"] = [
-			{ common.COL_SRC_PORT: { "$in": include_ports } },
-			{ common.COL_DST_PORT: { "$in": include_ports } }
-		]
-	if len(exclude_ports) > 0:
-		spec[common.COL_SRC_PORT] = { "$nin": exclude_ports }
-		spec[common.COL_DST_PORT] = { "$nin": exclude_ports }
-	
-	if len(include_ips) > 0:
-		spec["$or"] = [
-			{ common.COL_SRC_IP : { "$in": include_ips } },
-			{ common.COL_DST_IP : { "$in": include_ips } }
-		]
+	aggregate = []
+	if "aggregate" in request.GET:
+		aggregate = request.GET["aggregate"].strip()
+		aggregate = map(lambda v: v.strip(), aggregate.split(","))
 
-	if len(exclude_ips) > 0:
-		spec[common.COL_SRC_IP] = { "$in": exclude_ips } 
-		spec[common.COL_DST_IP] = { "$in": exclude_ips } 
+	result = {}
+	result["fields"] = fields
+	result["sort"] = sort
+	result["limit"] = limit
+	result["count"] = count
+	result["start_bucket"] = start_bucket
+	result["end_bucket"] = end_bucket
+	result["resolution"] = resolution
+	result["bucket_size"] = bucket_size
+	result["biflow"] = biflow
+	result["include_ports"] = include_ports
+	result["exclude_ports"] = exclude_ports
+	result["include_ips"] = include_ips
+	result["exclude_ips"] = exclude_ips
+	result["include_protos"] = include_protos
+	result["exclude_protos"] = exclude_protos
+	result["batch_size"] = 1000
+	result["aggregate"] = aggregate
+	result["black_others"] = black_others
 
-	
-	return (spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)
+	return result
 			
 @get("/")
 @get("/dashboard")
 @get("/dashboard/:##")
+@get("/flow-details")
+@get("/flow-details/:##")
 @get("/graph")
 @get("/graph/:##")
 @get("/query-page")
@@ -200,6 +217,8 @@ def extract_mongo_query_params():
 @get("/hive-plot/:##")
 @get("/maps")
 @get("/maps/:##")
+@get("/ip-documentation")
+@get("/ip-documentation/:##")
 @view("index")
 def index():
     # find js files
@@ -226,32 +245,31 @@ def index():
 @get("/api/bucket/query")
 @get("/api/bucket/query/")
 def api_bucket_query():
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	query_params = extract_mongo_query_params()
+	fields = query_params["fields"]
+	bucket_size = query_params["bucket_size"]
 
 	# get proper collection
 	collection = None
-	if (fields != None and len(fields) > 0)  or len(include_ports) > 0 or len(exclude_ports) > 0:
+	if (query_params["fields"] != None and len(query_params["fields"]) > 0)  or len(query_params["include_ports"]) > 0 or len(query_params["exclude_ports"]) > 0 or len(query_params["aggregate"]) > 0:
 		collection = db.getCollection(common.DB_FLOW_PREFIX + str(bucket_size))
 	else:
 		# use preaggregated collection
 		collection = db.getCollection(common.DB_FLOW_AGGR_PREFIX + str(bucket_size))
 
-	if fields != None:
-		query_fields = fields + ["bucket", "flows"] + config.flow_aggr_sums
-	else:
-		query_fields = ["bucket", "flows"] + config.flow_aggr_sums + common.AVAILABLE_PROTOS 
-
-	buckets = collection.bucket_query(spec, query_fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
+	(buckets, total, min_bucket, max_bucket) = collection.bucket_query(query_params)
 	
 	return { 
-		"bucket_size": bucket_size,
+		"bucket_size": query_params["bucket_size"],
+		"global_min_bucket": min_bucket,
+		"global_max_bucket": max_bucket,
 		"results": buckets
 	}
 
 @get("/api/dynamic/index/:name")
 def api_dynamic_index(name):
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
-	(total, results) = db.dynamic_index_query(name, spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
+	query_params = extract_mongo_query_params()
+	(results, total) = db.dynamic_index_query(name, query_params)
 
 	return { "totalCounter" : total, "results": results }
 
@@ -259,7 +277,7 @@ def api_dynamic_index(name):
 @get("/api/index/:name")
 @get("/api/index/:name/")
 def api_index(name):
-	(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips)= extract_mongo_query_params()
+	query_params =  extract_mongo_query_params()
 
 	collection = None
 	if name == "nodes":
@@ -270,11 +288,14 @@ def api_index(name):
 	if collection == None:
 		raise HTTPError(404, "Index name not known.")
 
+	# static indexes don't konw about start and end times
+	# remove them from the query params
+	query_params["start_bucket"] = None
+	query_params["end_bucket"] = None
 
-	(result, total) = collection.index_query(spec, fields, sort, limit, count, start_bucket, end_bucket, resolution, bucket_size, biflow, include_ports, exclude_ports, include_ips, exclude_ips, 1000)
+	(result, total) = collection.index_query(query_params)
 
 	return { "totalCounter": total, "results": result }
-
 
 @get("/api/geoip")
 def api_geoip():
@@ -299,6 +320,12 @@ def api_geoip():
 			lookups.append({ "ip": ip, "longitude": record["longitude"], "latitude": record["latitude"] })
 	return { "lookups": lookups }
 
+@get("/api/hostinfo/")
+def api_hostinfo():
+	quer_params =  extract_mongo_query_params()
+	data = dataBackend.data_query(common.HOST_INFORMATION_COLLECTION, None)
+	return { "results": data }
+	
 @get("/static/:path#.+#")
 def server_static(path):
 	return static_file(path, root=os.path.join(os.path.dirname(__file__), "static"))

@@ -1,11 +1,20 @@
 var EdgeBundlePageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
+
 		"change #layoutTension": "changeTension",
 		"change #filterGroupBytes": "changeGroupBytes",
 		"change #filterNodeLimit": "changeNodeLimit",
+		"change #hoverDirection": "changeHoverDirection",
+
+		"click a.apply-filter": "clickApplyFilter",
+		"blur #filterProtocols": "changeFilterProtocols",
 		"blur #filterPorts": "changeFilterPorts",
+		"blur #filterIPs": "changeFilterIPs",
 		"change #filterPortsType": "changeFilterPortsType",
-		"change #hoverDirection": "changeHoverDirection"
+		"change #filterProtocolsType": "changeFilterProtocolsType",
+		"change #filterIPsType": "changeFilterIPsType",
+
 	},
 	initialize: function() {
 		this.template = _.template($("#edge-bundle-page-template").html());
@@ -36,11 +45,10 @@ var EdgeBundlePageView = PageView.extend({
 		this.flows.bind("reset", this.updateIfLoaded, this);
     	
 		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
 		this.edgeBundleModel.bind("change:tension", this.tensionChanged, this);
 		this.edgeBundleModel.bind("change:groupBytes", this.groupBytesChanged, this);
 		this.edgeBundleModel.bind("change:nodeLimit", this.nodeLimitChanged, this);
-		this.edgeBundleModel.bind("change:filterPorts", this.filterPortsChanged, this);
-		this.edgeBundleModel.bind("change:filterPortsType", this.filterPortsTypeChanged, this);
 		this.edgeBundleModel.bind("change:hoverDirection", this.hoverDirectionChanged, this);
     	
 		// fetch at the end because a cached request calls render immediately!
@@ -85,10 +93,18 @@ var EdgeBundlePageView = PageView.extend({
 		$("#layoutTension", this.el).val(this.edgeBundleModel.get("tension"));
 		$("#filterGroupBytes", this.el).val(this.edgeBundleModel.get("groupBytes"));
 		$("#filterNodeLimit", this.el).val(this.edgeBundleModel.get("nodeLimit"));
-		$("#filterPorts", this.el).val(this.edgeBundleModel.get("filterPorts"));
-		$("#filterPortsType", this.el).val(this.edgeBundleModel.get("filterPortsType"));
 		$("#hoverDirection", this.el).val(this.edgeBundleModel.get("hoverDirection"));
-    	
+
+    		$("#filterPorts", this.el).val(this.edgeBundleModel.get("filterPorts"));
+		$("#filterPortsType", this.el).val(this.edgeBundleModel.get("filterPortsType"));
+    		$("#filterIPs", this.el).val(this.edgeBundleModel.get("filterIPs"));
+		$("#filterIPsType", this.el).val(this.edgeBundleModel.get("filterIPsType"));
+    		$("#filterProtocols", this.el).val(this.edgeBundleModel.get("filterProtocols"));
+		$("#filterProtocolsType", this.el).val(this.edgeBundleModel.get("filterProtocolsType"));
+
+		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
+	
 		$("aside .help", this.el).popover({ offset: 24 });
 		
 		return this;
@@ -113,36 +129,19 @@ var EdgeBundlePageView = PageView.extend({
 	fetchFlows: function() {
 		var interval = this.timelineModel.get("interval");
 		var bucket_size = this.timelineModel.get("bucket_size");
-		var filter_ports = $.trim(this.edgeBundleModel.get("filterPorts"));
-		var filter_ports_type = this.edgeBundleModel.get("filterPortsType");
-    	
+
 		var data = { 
-			"fields": "srcIP,dstIP",
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
-			"bucket_size": bucket_size
+			"bucket_size": bucket_size,
 		};
-    	
-		var ports = filter_ports.split("\n");
-		filter_ports = "";
-		for(var i = 0; i < ports.length; i++) {
-			var p = parseInt(ports[i]);
-			// test for NaN
-			if(p === p) {
-    				if(filter_ports.length > 0) {
-					filter_ports += ",";
-				}
-    				filter_ports += p;
-			}
+    
+		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP
+		data = FlowInspector.addToFilter(data, this.edgeBundleModel, aggregate_fields, true);
+		if (data == null) {
+			return;
 		}
 
-		if(filter_ports) {
-			if(filter_ports_type === "exclusive") {
-				data["exclude_ports"] = filter_ports;
-			} else {
-				data["include_ports"] = filter_ports;
-			}
-		}
 		this.flows.fetch({ data: data });
 	},
 	changeBucketInterval: function(model, interval) {
@@ -173,26 +172,6 @@ var EdgeBundlePageView = PageView.extend({
 	nodeLimitChanged: function(model, value) {
 		$("#filterNodeLimit", this.el).val(value);
 	},
-	changeFilterPorts: function() {
-		this.edgeBundleModel.set({
-			filterPorts: $("#filterPorts", this.el).val()
-		});
-	},
-	filterPortsChanged: function(model, value) {
-		$("#filterPorts", this.el).val(value);
-		this.loader.show();
-		this.fetchFlows();
-	},
-	changeFilterPortsType: function() {
-		this.edgeBundleModel.set({
-			filterPortsType: $("#filterPortsType", this.el).val()
-		});
-	},
-	filterPortsTypeChanged: function(model, value) {
-		$("#filterPortsType", this.el).val(value);
-		this.loader.show();
-		this.fetchFlows();
-	},
 	changeHoverDirection: function() {
 		this.edgeBundleModel.set({
 			hoverDirection: $("#hoverDirection", this.el).val()
@@ -200,5 +179,48 @@ var EdgeBundlePageView = PageView.extend({
 	},
 	hoverDirectionChanged: function(model, value) {
 		$("#hoverDirection", this.el).val(value);
-	}
+	},
+	changeFilterProtocols : function(model, value) {
+		this.edgeBundleModel.set({
+			filterProtocols: $("#filterProtocols", this.el).val()
+		});
+	},
+	changeFilterPorts : function(model, value) {
+		this.edgeBundleModel.set({
+			filterPorts: $("#filterPorts", this.el).val()
+		});
+	},
+	changeFilterIPs : function(model, value) {
+		this.edgeBundleModel.set({
+			filterIPs: $("#filterIPs", this.el).val()
+		});
+	},
+	changeFilterPortsType : function(model, value) {
+		this.edgeBundleModel.set({
+			filterPortsType: $("#filterPortsType", this.el).val()
+		});
+	},
+	changeFilterProtocolsType : function(model, value) {
+		this.edgeBundleModel.set({
+			filterProtocolsType: $("#filterProtocolsType", this.el).val()
+		});
+	},
+	changeFilterIPsType : function(model, value) {
+		this.edgeBundleModel.set({
+			filterIPsType: $("#filterIPsType", this.el).val()
+		});
+	},
+	clickApplyFilter : function() {
+		this.loader.show();
+		this.fetchFlows();
+	},
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
+	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+	},
 });

@@ -16,6 +16,12 @@ var DonutChartView = Backbone.View.extend({
 		this.index = options.index;
 		this.index.bind("reset", this.render, this);
 
+		if (options.fetchEmptyInterval !== undefined) {
+			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
+		}
+
+		this.showLimit = this.model.get("limit") + 1;
+
 		// fetch at the end because a cached request calls render immediately!
 		if (this.model.get("fetchOnInit")) {
 			this.fetchData();
@@ -54,7 +60,6 @@ var DonutChartView = Backbone.View.extend({
 			return;
 		}
 
-	
 		if(data.length > this.showLimit) {
 			var others = data[this.showLimit].clone();
 			others.id = -1;
@@ -63,10 +68,17 @@ var DonutChartView = Backbone.View.extend({
 			for(var i = 0; i < this.showLimit; i++) {
 				topNodeValues += data[i].attributes[num_val];
 			}
+
 			// we need to double the number of total flows, bytes, or packets as we count them 
 			// both twice (once for src and once for dst)
+
+			// TODO: This is only true for pre-calculated indexes, e.g. as they are produced
+			// by preprocess.py. However, this is not true if we calculate them on the fly 
+			// Think about how to handle this ...
+
 			others.attributes[num_val] = 2 * this.index.totalCounter[num_val] - topNodeValues;
 			var data = data.slice(0, this.showLimit);
+			others.attributes[num_val] =  this.index.totalCounter[num_val] - topNodeValues;
 			data[this.showLimit] = others;
 		}
 
@@ -86,7 +98,7 @@ var DonutChartView = Backbone.View.extend({
 			}
 		} else {
 			getLabel = function(d) { 
-				if(d.data.id) 
+				if(d.data.id > 0) 
 					return d.data.id; 
 				else if(d.data.id === -1) 
 					return "others";
@@ -138,10 +150,17 @@ var DonutChartView = Backbone.View.extend({
 		this.index.models = [];
 		this.render();
 
+		var fetchEmptyInterval = this.model.get("fetchEmptyInterval");
+		var interval = this.model.get("interval");
+		if (!fetchEmptyInterval && interval.length == 0) {
+			return; 
+		}
+
+		var index	= this.model.get("index");
 		var limit       = this.model.get("limit");
 		var sortField   = this.model.get("value");
-		var interval    = this.model.get("interval");
 		var bucket_size = this.model.get("bucket_size");
+
 		var data = {
 			"limit": limit + 1,
 			"sort": sortField + " desc"
@@ -150,9 +169,25 @@ var DonutChartView = Backbone.View.extend({
 		if (interval.length > 0) {
 			data["start_bucket"] =  Math.floor(interval[0].getTime() / 1000);
 			data["end_bucket"] =  Math.floor(interval[1].getTime() / 1000);
+		} else {
+			data["start_bucket"] = 0;
+			data["end_bucket"] = 0;
 		}
 		if (bucket_size) {
 			data["bucket_size"] = bucket_size;
+		}
+
+		if (index == "nodes") {
+			aggregate_field = FlowInspector.COL_IPADDRESS;
+		} else if (index == "ports") {
+			aggregate_field = FlowInspector.COL_PORT;
+		} else {
+			alert("DonutChart shows unknown index!");
+		}
+
+		data = FlowInspector.addToFilter(data, this.model, aggregate_field, false);
+		if (data == null) {
+			return;
 		}
 
 		this.index.fetch({data: data});

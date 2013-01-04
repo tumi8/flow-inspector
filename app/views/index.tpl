@@ -21,10 +21,12 @@
 					<!--<li class="pcap"><a href="/pcap">PCAP</a></li>
 					<li class="query-page"><a href="/query-page">Flow Querys</a></li>-->
 					<li class="dashboard"><a href="/dashboard">Dashboard</a></li>
+					<li class="flow-details"><a href="/flow-details">Flow Details</a></li>
 					<li class="graph"><a href="/graph">Graph</a></li>
 					<li class="edge-bundle"><a href="/hierarchical-edge-bundle">Hierarchical Edge Bundle</a></li>
 					<li class="hive-plot"><a href="/hive-plot">Hive Plot</a></li>
 					<li class="maps"><a href="/maps">Maps</a></li>
+					<!--<li class="ip-documentation"><a href="/ip-documentation">IPDB</a></li>-->
 				</ul>
 				
 				<ul class="nav secondary-nav">

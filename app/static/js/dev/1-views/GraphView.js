@@ -22,6 +22,9 @@ var GraphView = Backbone.View.extend({
 	},
 	render: function() {
 		var container = $(this.el).empty();
+		var charge = this.model.get("charge");
+		var linkDistance = this.model.get("linkDistance");
+		var gravity = this.model.get("gravity");
 	
 		if(this.data_nodes.length <= 0) {
     			return;
@@ -37,9 +40,9 @@ var GraphView = Backbone.View.extend({
 			this.force.stop();
 		}
 		this.force = d3.layout.force()
-			//.charge(-120)
-			.gravity(0.05)
-			.linkDistance(100)
+			.charge(charge)
+			.gravity(gravity)
+			.linkDistance(linkDistance)
 			.nodes(this.data_nodes)
 			.links(this.data_links)
 			.size([this.w, this.h]);
@@ -50,7 +53,7 @@ var GraphView = Backbone.View.extend({
 			.data(this.data_links)
 		.enter().append("line")
 			.attr("class", "link")
-			//.style("stroke-width", function(d) { return Math.sqrt(d.value); })
+			.style("stroke-width", function(d) { return Math.sqrt(d.value); })
 			.attr("x1", function(d) { return d.source.x; })
 			.attr("y1", function(d) { return d.source.y; })
 			.attr("x2", function(d) { return d.target.x; })
@@ -94,7 +97,7 @@ var GraphView = Backbone.View.extend({
 		if(this.nodes.length <= 0) {
 			return;
 		}
-    	
+
 		this.data_nodes = [];
 		this.node_map = {};
 		var node_limit = this.model.get("nodeLimit");
@@ -102,10 +105,10 @@ var GraphView = Backbone.View.extend({
 		// create special "other" node
 		var other_nodes = { 
   			name: "others", 
-			bytes: 0, 
-			flows: 0, 
-			pkts: 0, 
 			nodes: 0 };
+		other_nodes[FlowInspector.COL_BYTES] = 0;
+		other_nodes[FlowInspector.COL_FLOWS] = 0;
+		other_nodes[FlowInspector.COL_PKTS] =  0;
 		var that = this;
     	
 		var nodes = [];
@@ -113,6 +116,8 @@ var GraphView = Backbone.View.extend({
 			nodes.push(node);
 		});
     	
+		// nodes should be sorted by the server (requested by GraphPageView or 
+		// any other Page that embedds GraphView
 		nodes.forEach(function(m, i) {
 			if(!node_limit || i < node_limit) {
 				var node = {
@@ -125,9 +130,9 @@ var GraphView = Backbone.View.extend({
 			else if (showOthers) {
 				// add node to other nodes
 				other_nodes.nodes++;
-				other_nodes.flows += m.get("flows");
-				other_nodes.bytes += m.get("bytes");
-				other_nodes.pkts += m.get("pkts");
+				other_nodes[FlowInspector.COL_FLOWS] += m.get(FlowInspector.COL_FLOWS);
+				other_nodes[FlowInspector.COL_BYTES] += m.get(FlowInspector.COL_BYTES);
+				other_nodes[FlowInspector.COL_PKTS]  += m.get(FlowInspector.COL_PKTS);
 				that.node_map[m.id] = other_nodes;
 			}
 		});
@@ -141,16 +146,16 @@ var GraphView = Backbone.View.extend({
 		if(node_limit && showOthers) {
 			this.data_nodes.push(other_nodes);
 		}
-    	
+
 		this.render();
-    	
+
     		this.hilbertLayout();
 	},
 	updateFlows: function() {
 		if(this.data_nodes.length <= 0) {
 			this.updateNodes();
 		}
-    	
+
 		var that = this;
 		this.data_links = [];
     	
@@ -158,8 +163,8 @@ var GraphView = Backbone.View.extend({
     		var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
     	
 		this.flows.each(function(m) {
-			var source = that.node_map[m.get("srcIP")];
-			var target = that.node_map[m.get("dstIP")];
+			var source = that.node_map[m.get(FlowInspector.COL_SRC_IP)];
+			var target = that.node_map[m.get(FlowInspector.COL_DST_IP)];
 			if (source === undefined || target === undefined) {
 				return;
 			}
@@ -175,7 +180,7 @@ var GraphView = Backbone.View.extend({
 				t: t
 			});
 		});
-		
+
 		this.render();
 	},
 	stop: function() {

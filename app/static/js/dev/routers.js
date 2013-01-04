@@ -2,18 +2,22 @@ var MainRouter = Backbone.Router.extend({
 	routes: {
    		"": "overviewDashboard",
    		"dashboard": "pageDashboard",
+		"flow-details": "flowDetailsPage",
 		"query-page": "queryPage",
    		"graph": "pageGraph",
    		"hierarchical-edge-bundle": "pageEdgeBundle",
    		"hive-plot": "pageHivePlot",
-		"pcap": "pagePCAP",
-		"maps": "pageMaps"
+		"maps": "pageMaps",
+		"ip-documentation": "pageIPDocumentation",
 	},
 	initialize: function(options) {
 		this.model = options.model;
 	},
 	overviewDashboard: function() {
 		this.model.set({page: "overview"});
+	},
+	flowDetailsPage: function() {
+		this.model.set({page: "flow-details"});
 	},
 	queryPage: function() {
 		this.model.set({page: "query-page"});
@@ -30,11 +34,11 @@ var MainRouter = Backbone.Router.extend({
 	pageHivePlot: function() {
 		this.model.set({page: "hive-plot"});
 	},
-	pagePCAP: function() {
-		this.model.set({page: "pcap"});
-	},
 	pageMaps: function() {
 		this.model.set({page: "maps"});
-	}
+	},
+	pageIPDocumentation: function() {
+		this.model.set({page: "ip-documentation"});
+	},
 });
 

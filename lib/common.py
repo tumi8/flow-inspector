@@ -1,16 +1,29 @@
 import os 
+import math
+import sys
 
 
 # flow time interval column names
-COL_FIRST_SWITCHED = "firstSwitched"
-COL_LAST_SWITCHED = "lastSwitched"
+COL_FIRST_SWITCHED = "flowStartSeconds"
+COL_LAST_SWITCHED = "flowEndSeconds"
 # column names of IP addresses
-COL_SRC_IP = "srcIP"
-COL_DST_IP = "dstIP"
+COL_SRC_IP = "sourceIPv4Address"
+COL_DST_IP = "destinationIPv4Address"
+
+COL_IPADDRESS = "ipaddress"
+COL_PORT = "port"
+
 # column names of ports and protocol
-COL_SRC_PORT = "srcPort"
-COL_DST_PORT = "dstPort"
-COL_PROTO = "proto"
+COL_SRC_PORT = "sourceTransportPort"
+COL_DST_PORT = "destinationTransportPort"
+COL_PROTO = "protocolIdentifier"
+COL_BUCKET = "bucket"
+
+
+COL_BYTES = "octetDeltaCount"
+COL_PKTS = "packetDeltaCount"
+COL_FLOWS = "flows"
+COL_ID = "id"
 
 COL_PROTO_TCP = "tcp"
 COL_PROTO_UDP = "udp"
@@ -28,15 +41,6 @@ DB_INDEX_NODES = "index_nodes"
 # the collection to use for the port index
 DB_INDEX_PORTS = "index_ports"
 
-PCAP_DB_ALL = "all_flows"
-PCAP_DB_GAP = "with_gaps"
-PCAP_DB_LOWTHROUGHPUT = "low_throughput"
-PCAP_STATS = "pcap_stats"
-
-
-INDEX_ADD = "add"
-INDEX_REMOVE = "remove"
-
 IGNORE_COLUMNS = ["firstSwitchedMillis", "lastSwitchedMillis"]
 
 # Print output every ... in seconds
@@ -47,36 +51,81 @@ PORTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'config', 'service-na
 
 REDIS_QUEUE_KEY = "entry:queue"
 
+HOST_INFORMATION_COLLECTION = "HOST_INFORMATION_CHECKER"
+
 # Oracle is a professional environment. We therefore need to perform
 # some special mappings for table column names: Oracle is case sensitive
 # and does not cope with anything that is not upper case *sigh*
-COLUMNMAP = {
-        "SRCIP" : "srcIP",
-        "DSTIP" : "dstIP",
-        "SRCPORT" : "srcPort",
-        "DSTPORT" : "dstPort",
-        "PROTO" : "proto",
-        "BYTES" : "bytes",
-        "PKTS"  : "pkts",
-        "FIRSTSWITCHED" : "firstSwitched",
-        "LASTSWITCHED" : "lastSwitched"
+LEGACY_COLUMNMAP = {
+	"ID"	        : COL_ID,
+	"FLOWS"         : COL_FLOWS,
+        "SRCIP"         : COL_SRC_IP,
+        "DSTIP"         : COL_DST_IP,
+        "SRCPORT"       : COL_SRC_PORT,
+        "DSTPORT"       : COL_DST_PORT,
+        "PROTO"         : COL_PROTO,
+        "BYTES"         : COL_BYTES,
+        "PKTS"          : COL_PKTS,
+        "FIRSTSWITCHED" : COL_FIRST_SWITCHED,
+        "LASTSWITCHED"  : COL_LAST_SWITCHED,
+}
+
+
+ORACLE_COLUMNMAP = {
+	COL_ID.upper()             : COL_ID,
+	COL_BUCKET.upper()         : COL_BUCKET,
+	COL_FLOWS.upper()          : COL_FLOWS,
+	COL_SRC_IP.upper()         : COL_SRC_IP,
+	COL_DST_IP.upper()         : COL_DST_IP,
+	COL_SRC_PORT.upper()       : COL_SRC_PORT,
+	COL_DST_PORT.upper()       : COL_DST_PORT,
+	COL_PROTO.upper()          : COL_PROTO,
+	COL_BYTES.upper()          : COL_BYTES,
+	COL_PKTS.upper()           : COL_PKTS,
+	COL_FIRST_SWITCHED.upper() : COL_FIRST_SWITCHED,
+	COL_LAST_SWITCHED.upper()  : COL_LAST_SWITCHED,
+	"SRC"                      : "src",
+	"DST"                      : "dst",
+	COL_PROTO_TCP.upper()      : COL_PROTO_TCP,
+	COL_PROTO_UDP.upper()      : COL_PROTO_UDP,
+	COL_PROTO_ICMP.upper()     : COL_PROTO_ICMP,
+	COL_PROTO_OTHER.upper()    : COL_PROTO_OTHER,
+	"FLOWSTARTMILLISECONDS"	   : "flowStartMilliSeconds",
+	"FLOWENDMILLISECONDS"	   : "flowEndMilliSeconds"
 }
 
 MYSQL_TYPE_MAPPER = {
-	"srcIP"         : "INTEGER(10) UNSIGNED",
-	"dstIP"         : "INTEGER(10) UNSIGNED",
-	"srcPort"       : "SMALLINT(5) UNSIGNED",
-	"dstPort"       : "SMALLINT(5) UNSIGNED",
-	"proto"         : "TINYINT(3) UNSIGNED",
-	"flows"         : "BIGINT(20) UNSIGNED",
-	"bytes"         : "BIGINT(20) UNSIGNED",
-	"pkts"          : "BIGINT(20) UNSIGNED",
-	"firstSwitched" : "INTEGER(10) UNSIGNED",
-	"lastSwitched"  : "INTEGER(10) UNSIGNED"
+	COL_ID		   : "INTEGER(20) UNSIGNED",
+	COL_BUCKET	   : "INTEGER(10) UNSIGNED",
+	COL_SRC_IP         : "INTEGER(10) UNSIGNED",
+	COL_DST_IP         : "INTEGER(10) UNSIGNED",
+	COL_SRC_PORT       : "SMALLINT(5) UNSIGNED",
+	COL_DST_PORT       : "SMALLINT(5) UNSIGNED",
+	COL_PROTO          : "TINYINT(3) UNSIGNED",
+	COL_FLOWS          : "BIGINT(20) UNSIGNED",
+	COL_BYTES          : "BIGINT(20) UNSIGNED",
+	COL_PKTS           : "BIGINT(20) UNSIGNED",
+	COL_FIRST_SWITCHED : "INTEGER(10) UNSIGNED",
+	COL_LAST_SWITCHED  : "INTEGER(10) UNSIGNED"
+}
+
+ORACLE_TYPE_MAPPER = {
+	COL_ID		   : "NUMBER(20)",
+	COL_BUCKET	   : "NUMBER(10)",
+	COL_SRC_IP         : "NUMBER(10)",
+	COL_DST_IP         : "NUMBER(10)",
+	COL_SRC_PORT       : "NUMBER(5)",
+	COL_DST_PORT       : "NUMBER(5)",
+	COL_PROTO          : "NUMBER(3)",
+	COL_FLOWS          : "NUMBER(20)",
+	COL_BYTES          : "NUMBER(20)",
+	COL_PKTS           : "NUMBER(20)",
+	COL_FIRST_SWITCHED : "NUMBER(10)",
+	COL_LAST_SWITCHED  : "NUMBER(10)"
 }
 
 def getProto(obj):
-	return getProtoFromValue(obj.get("proto", 0))
+	return getProtoFromValue(obj.get(COL_PROTO, 0))
 
 def getProtoFromValue(proto):
 	if proto == 17 or proto == "UDP":
@@ -90,190 +139,14 @@ def getProtoFromValue(proto):
 
 	return result
 
-def update_node_index(obj, collection, aggr_sum, operation):
-	"""Update the node index collection in MongoDB with the current flow.
-	
-	:Parameters:
-	 - `obj`: A dictionary containing a flow.
-	 - `collection`: A pymongo collection to insert the documents.
-	 - `aggr_sum`: A list of keys which will be sliced and summed up.
-	 - `operation`: Whether to add or remove the flow to/from the index
-	"""
-
-	# logic check. operation must be either INDEX_ADD or INDEX_REMOVE
-	if operation != INDEX_ADD and operation != INDEX_REMOVE:
-		raise Exception("Logic Error: operation is neither INDEX_ADD nor INDEX_REMOVE")
-	
-	# update source node
-	doc = { "$inc": {} }
-
-	proto = getProto(obj)
-
-	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = obj.get(s,0)
-			doc["$inc"]["src." + s] = obj.get(s, 0)
-			doc["$inc"]["src." + proto + "." + s] = obj.get(s,0)
-		else:
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = -obj.get(s,0)
-			doc["$inc"]["src." + s] = -obj.get(s, 0)
-			doc["$inc"]["src." + proto + "." + s] = -obj.get(s,0)
-
-
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"][proto + ".flows"] = 1
-		doc["$inc"]["src.flows"] = 1
-		doc["$inc"]["src." + proto + ".flows"] = 1
-	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"][proto + ".flows"] = -obj.get(proto + ".flows")
-		doc["$inc"]["src.flows"] = -obj.get("src.flows") 
-		doc["$inc"]["src." + proto + ".flows"] = -obj.get("src." + proto + ".flows") 
-	
-	# insert if not exists, else update sums
-	collection.update({ "_id": obj[COL_SRC_IP] }, doc, True)
-	
-	# update destination node
-	doc = { "$inc": {} }
-	
-	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = obj.get(s,0)
-			doc["$inc"]["dst." + s] = obj.get(s, 0)
-			doc["$inc"]["dst." + proto + "." + s] = obj.get(s,0)
-		else:
-			doc["$inc"][proto + "." + s] = -obj.get(s,0)
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"]["dst." + s] = -obj.get(s, 0)
-			doc["$inc"]["dst." + proto + "." + s] = -obj.get(s,0)
-
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"][proto + ".flows"] = 1
-		doc["$inc"]["dst.flows"] = 1
-		doc["$inc"]["dst." + proto + ".flows"] = 1
-	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"][proto + ".flows"] = -obj.get(proto + ".flows")
-		doc["$inc"]["dst.flows"] = -obj.get("dst.flows") 
-		doc["$inc"]["dst." + proto + ".flows"] = -obj.get("dst." + proto + ".flows") 
-					
-	# insert if not exists, else update sums
-	collection.update({ "_id": obj[COL_DST_IP] }, doc, True)
-
-	# update total counters
-	doc = { "$inc": {} }
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"][proto + ".flows"] = 1
-	else:
-		# remove
-		doc["$inc"]["flows"] =  -obj.get("flows")
-		doc["$inc"][proto + "flows"] =  -obj.get("flows")
-	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = obj.get(s, 0)
-		else:
-			# remove
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"][proto + "." + s] = -obj.get(s, 0)
-	collection.update({"_id": "total"}, doc, True)
-			
-	
-def update_port_index(obj, collection, aggr_sum, filter_ports, operation):
-	"""Update the port index collection in MongoDB with the current flow.
-	
-	:Parameters:
-	 - `obj`: A dictionary containing a flow.
-	 - `collection`: A pymongo collection to insert the documents.
-	 - `aggr_sum`: A list of keys which will be sliced and summed up.
-	 - `filter_ports`: A dictionary of ports and protocols to remove unknown ports
-	 - `operation`: Whether to add or remove the flow to/from the index.
-	"""
-	
-	# update source port
-	doc = { "$inc": {} }
-
-	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"]["src." + s] = obj.get(s, 0)
-		else:
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"]["src." + s] = -obj.get(s, 0)
-
-
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"]["src.flows"] = 1
-	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"]["src.flows"] = -obj.get("flows") 
-		
-
-	# set unknown ports to None
-	port = obj.get(COL_SRC_PORT, None)
-	if filter_ports and port != None:
-		if port in filter_ports:
-			proto = int(obj.get(COL_PROTO, -1))
-			if proto >= 0 and not proto in filter_ports[port]:
-				port = None
-		else:
-			port = None
-	
-	# insert if not exists, else update sums
-	collection.update({ "_id": port }, doc, True)
-	
-	# update destination port
-	doc = { "$inc": {} }
-
-	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-			doc["$inc"]["dst." + s] = obj.get(s, 0)
-		else:
-			doc["$inc"][s] = -obj.get(s, 0)
-			doc["$inc"]["dst." + s] = -obj.get(s, 0)
-
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-		doc["$inc"]["dst.flows"] = 1
-	else:
-		# remove 
-		doc["$inc"]["flows"] = -obj.get("flows")
-		doc["$inc"]["dst.flows"] = -obj.get("flows") 
-		
-	for s in aggr_sum:
-		doc["$inc"][s] = obj.get(s, 0)
-		doc["$inc"]["dst." + s] = obj.get(s, 0)
-	doc["$inc"]["flows"] = 1
-	doc["$inc"]["dst.flows"] = 1
-	
-	# insert if not exists, else update sums
-	collection.update({ "_id": port }, doc, True)
-
-	# update total counters
-	doc = { "$inc": {} }
-	if operation == INDEX_ADD:
-		doc["$inc"]["flows"] = 1
-	else:
-		# remove
-		doc["$inc"]["flows"] =  -obj.get("flows")
-	for s in aggr_sum:
-		if operation == INDEX_ADD:
-			doc["$inc"][s] = obj.get(s, 0)
-		else:
-			# remove
-			doc["$inc"][s] = -obj.get(s, 0)
-	collection.update({"_id": "total"}, doc, True)
+def getValueFromProto(proto):
+	if proto == COL_PROTO_UDP:
+		return 17
+	if proto == COL_PROTO_TCP:
+		return 6
+	if proto == COL_PROTO_ICMP:
+		return 1
+	return 0
 	
 # read ports for special filtering
 def getKnownPorts(flow_filter_unknown_ports):
@@ -318,3 +191,183 @@ def getKnownPorts(flow_filter_unknown_ports):
 					else:
 						known_ports[number] = [protocol]
 					number += 1
+
+
+def update_node_index(obj, collection, aggr_sum):
+	"""Update the node index collection in MongoDB with the current flow.
+	
+	:Parameters:
+	 - `obj`: A dictionary containing a flow.
+	 - `collection`: A pymongo collection to insert the documents.
+	 - `aggr_sum`: A list of keys which will be sliced and summed up.
+	"""
+
+	# update source node
+	doc = { "$inc": {} }
+	
+
+	proto = getProto(obj)
+
+	for s in aggr_sum:
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"][proto + "." + s] = obj.get(s,0)
+		doc["$inc"]["src." + s] = obj.get(s, 0)
+		doc["$inc"]["src." + proto + "." + s] = obj.get(s,0)
+
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
+	else:
+		flows = 1
+
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"][proto + "." + COL_FLOWS] = flows
+	doc["$inc"]["src." + COL_FLOWS] = flows
+	doc["$inc"]["src." + proto + "." + COL_FLOWS] = flows
+	
+	# insert if not exists, else update sums
+	if COL_BUCKET in obj:
+		collection.update({COL_ID: obj[COL_SRC_IP], COL_BUCKET: obj[COL_BUCKET] }, doc, True)
+	else:
+		collection.update({COL_ID: obj[COL_SRC_IP] }, doc, True)
+	
+	# update destination node
+	doc = { "$inc": {} }
+	
+	for s in aggr_sum:
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"][proto + "." + s] = obj.get(s,0)
+		doc["$inc"]["dst." + s] = obj.get(s, 0)
+		doc["$inc"]["dst." + proto + "." + s] = obj.get(s,0)
+
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
+	else:
+		flows = 1
+
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"][proto + "." + COL_FLOWS] = flows 
+	doc["$inc"]["dst." + COL_FLOWS] = flows 
+	doc["$inc"]["dst." + proto + "." + COL_FLOWS] = flows
+					
+	# insert if not exists, else update sums
+	if COL_BUCKET in obj:
+		collection.update({COL_ID: obj[COL_DST_IP], COL_BUCKET: obj[COL_BUCKET] }, doc, True)
+	else:
+		collection.update({COL_ID: obj[COL_DST_IP] }, doc, True)
+
+	# update total counters
+	doc = { "$inc": {} }
+
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
+	else:
+		flows = 1
+
+	doc["$inc"][COL_FLOWS] = flows 
+	doc["$inc"][proto + "." + COL_FLOWS]= flows 
+
+
+	for s in aggr_sum:
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"][proto + "." + s] = obj.get(s, 0)
+
+	if COL_BUCKET in obj:
+		collection.update({COL_ID:  "total", COL_BUCKET: obj[COL_BUCKET] }, doc, True)
+	else:
+		collection.update({COL_ID : "total"  }, doc, True)
+
+	
+def update_port_index(obj, collection, aggr_sum, filter_ports):
+	"""Update the port index collection in MongoDB with the current flow.
+	
+	:Parameters:
+	 - `obj`: A dictionary containing a flow.
+	 - `collection`: A pymongo collection to insert the documents.
+	 - `aggr_sum`: A list of keys which will be sliced and summed up.
+	 - `filter_ports`: A dictionary of ports and protocols to remove unknown ports
+	"""
+	
+	# update source port
+	doc = { "$inc": {} }
+
+	for s in aggr_sum:
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"]["src." + s] = obj.get(s, 0)
+
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
+	else:
+		flows = 1
+
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"]["src." + COL_FLOWS] = flows
+
+	# set unknown ports to None
+	port = obj.get(COL_SRC_PORT, None)
+	if filter_ports and port != None:
+		if port in filter_ports:
+			proto = int(obj.get(COL_PROTO, -1))
+			if proto >= 0 and not proto in filter_ports[port]:
+				port = None
+		else:
+			port = None
+	
+	# insert if not exists, else update sums
+	if COL_BUCKET in obj:
+		collection.update({ COL_ID: port, COL_BUCKET: obj[COL_BUCKET]}, doc, True)
+	else:
+		collection.update({ COL_ID: port }, doc, True)
+	
+	# update destination port
+	doc = { "$inc": {} }
+
+	for s in aggr_sum:
+		doc["$inc"][s] = obj.get(s, 0)
+		doc["$inc"]["dst." + s] = obj.get(s, 0)
+
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
+	else:
+		flows = 1
+	
+	doc["$inc"][COL_FLOWS] = flows
+	doc["$inc"]["dst." + COL_FLOWS] = flows
+	
+	# insert if not exists, else update sums
+	if COL_BUCKET in obj:
+		collection.update({COL_ID:  port, COL_BUCKET: obj[COL_BUCKET] }, doc, True)
+	else:
+		collection.update({COL_ID: port}, doc, True)
+
+	# update total counters
+	doc = { "$inc": {} }
+
+	if COL_FLOWS in obj:
+		flows = obj[COL_FLOWS]
+	else:
+		flows = 1
+
+	doc["$inc"][COL_FLOWS] = flows 
+	for s in aggr_sum:
+		doc["$inc"][s] = obj.get(s, 0)
+
+	if COL_BUCKET in obj:
+		collection.update({COL_ID : "total", COL_BUCKET: obj[COL_BUCKET]}, doc, True)
+	else:
+		collection.update({COL_ID : "total"}, doc, True)
+
+
+# width defines bar width
+# percent defines current percentage
+def progress(width, percent):
+	marks = math.floor(width * (percent / 100.0))
+	spaces = math.floor(width - marks)
+ 
+ 	loader = '[' + ('=' * int(marks)) + (' ' * int(spaces)) + ']'
+ 
+	sys.stdout.write("%s %d%%\r" % (loader, percent))
+	if percent >= 100:
+		sys.stdout.write("\n")
+	sys.stdout.flush()
+
+

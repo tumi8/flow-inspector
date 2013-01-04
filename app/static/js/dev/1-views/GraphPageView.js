@@ -1,13 +1,25 @@
 var GraphPageView = PageView.extend({
 	events: {
+		"click .timeline-value a": "clickTimelineValue",
+
 		"click a.reset": "clickLayoutReset",
 		"click a.force": "clickLayoutForce",
 		"click a.hilbert": "clickLayoutHilbert",
+
+		"blur #gravity" : "changeGravity",
+		"blur #linkdistance" : "changeLinkDistance",
+		"blur #charge" : "changeCharge",
+
 		"change #filterNodeLimit": "changeNodeLimit",
+
+		"click a.apply-filter": "clickApplyFilter",
+		"blur #filterProtocols": "changeFilterProtocols",
 		"blur #filterPorts": "changeFilterPorts",
 		"blur #filterIPs": "changeFilterIPs",
 		"change #filterPortsType": "changeFilterPortsType",
+		"change #filterProtocolsType": "changeFilterProtocolsType",
 		"change #filterIPsType": "changeFilterIPsType",
+
 		"change #showOthers": "changeShowOthers"
 	},
 	initialize: function() {
@@ -22,6 +34,7 @@ var GraphPageView = PageView.extend({
 		this.nodes = new IndexQuery(null, { index: "nodes" });
 		this.flows = new Flows();
 		this.timelineModel = new TimelineModel();
+		this.timelineModel.bind("change:value", this.changeTimelineValue, this);
 		this.graphModel = new GraphModel();
 
 		this.timelineView = new TimelineView({
@@ -40,12 +53,8 @@ var GraphPageView = PageView.extend({
     	
 		this.timelineModel.bind("change:interval", this.changeBucketInterval, this);
 		this.graphModel.bind("change:nodeLimit", this.nodeLimitChanged, this);
-		this.graphModel.bind("change:filterPorts", this.filterPortsChanged, this);
-		this.graphModel.bind("change:filterPortsType", this.filterPortsTypeChanged, this);
-		this.graphModel.bind("change:filterIPs", this.filterIPsChanged, this);
-		this.graphModel.bind("change:filterIPsType", this.filterIPsTypeChanged, this);
 		this.graphModel.bind("change:showOthers", this.showOthersChanged, this);
-    	
+
 		// fetch at the end because a cached request calls render immediately!
 		this.fetchNodes();
 	},
@@ -87,11 +96,23 @@ var GraphPageView = PageView.extend({
 		this.updateIfLoaded();
     	
 		// form defaults
-		$("#filterNodeLimit", this.el).val(this.graphModel.get("nodeLimit"));
 		$("#filterPorts", this.el).val(this.graphModel.get("filterPorts"));
 		$("#filterPortsType", this.el).val(this.graphModel.get("filterPortsType"));
-		$("#showOthers", this.el).attr("checked", this.graphModel.get("showOthers"));
-    	
+    		$("#filterIPs", this.el).val(this.graphModel.get("filterIPs"));
+		$("#filterIPsType", this.el).val(this.graphModel.get("filterIPsType"));
+    		$("#filterProtocols", this.el).val(this.graphModel.get("filterProtocols"));
+		$("#filterProtocolsType", this.el).val(this.graphModel.get("filterProtocolsType"));
+
+		$("#charge", this.el).val(this.graphModel.get("charge"));
+		$("#gravity", this.el).val(this.graphModel.get("gravity"));
+		$("#linkdistance", this.el).val(this.graphModel.get("linkDistance"));
+
+		$("#filterNodeLimit", this.el).val(this.graphModel.get("nodeLimit"));
+    		$("#showOthers", this.el).attr("checked", this.graphModel.get("showOthers"));
+
+    		$(".timeline-value li[data-value='" + this.timelineModel.get("value") + "']", this.el)
+			.addClass("active");
+	
 		$("aside .help", this.el).popover({ offset: 24 });
 
 		return this;
@@ -148,53 +169,39 @@ var GraphPageView = PageView.extend({
 	fetchFlows: function() {
 		var interval = this.timelineModel.get("interval");
 		var bucket_size = this.timelineModel.get("bucket_size");
-		var filter_ports = $.trim(this.graphModel.get("filterPorts"));
-		var filter_ports_type = this.graphModel.get("filterPortsType");
 		var showOthers = this.graphModel.get("showOthers");
-    	
+		var nodeLimit = this.graphModel.get("nodeLimit")
+
+
 		var data = { 
-			"fields": "srcIP,dstIP",
+			"fields": FlowInspector.COL_BUCKET,
 			"start_bucket": Math.floor(interval[0].getTime() / 1000),
 			"end_bucket": Math.floor(interval[1].getTime() / 1000),
 			"bucket_size": bucket_size,
-			"biflow": 1
+			"biflow": 1,
 		};
     	
-		var ports = filter_ports.split("\n");
-		filter_ports = "";
-		for(var i = 0; i < ports.length; i++) {
-			var p = parseInt(ports[i]);
-    			// test for NaN
-    			if(p === p) {
-    				if(filter_ports.length > 0) {
-    					filter_ports += ",";
-    				}
-    				filter_ports += p;
-    			}
-		}
-		
-		if(filter_ports) {
-			if(filter_ports_type === "exclusive") {
-				data["exclude_ports"] = filter_ports;
-			} else {
-				data["include_ports"] = filter_ports;
-			}
-		}
-		
-		if (!showOthers) {
+		if (nodeLimit > 0) {
 			// we only need to take flows to the top nodes within the nodeLimit
 			// into account. So if we have the nodes, we can limit our flow extraction 
 			// to them ...
 			if (this.nodes.length > 0) {
-				var filter_ips = "";
+				var f = "";
 				this.nodes.each(function(node) {
-					if (filter_ips.length > 0) {
-						filter_ips += ",";
+					if (f.length > 0) {
+						f += ",";
 					}
-					filter_ips += node.id;
+					f += node.id;
 				});
-				data["include_ips"] = filter_ips;
+				data["include_ips"] = f;
 			}
+			data["black_others"] = true;
+		}
+
+		aggregate_fields =  FlowInspector.COL_SRC_IP + "," + FlowInspector.COL_DST_IP;
+		data = FlowInspector.addToFilter(data, this.graphModel, aggregate_fields, true);
+		if (data == null) {
+			return;
 		}
 
 		this.flows.fetch({ data: data });
@@ -202,6 +209,10 @@ var GraphPageView = PageView.extend({
 	changeBucketInterval: function(model, interval) {
 		this.loader.show();
 		this.fetchFlows();
+	},
+	clickTimelineValue: function(e) {
+		var target = $(e.target).parent();
+		this.timelineModel.set({ value: target.data("value") });
 	},
 	clickLayoutReset: function() {
 		if(this.nodes.length <= 0 || this.flows.length <= 0) {
@@ -226,55 +237,20 @@ var GraphPageView = PageView.extend({
 			nodeLimit: Number($("#filterNodeLimit", this.el).val())
 		});
 	},
+	changeTimelineValue: function(model, value) {
+		$(".timeline-value li", this.el).removeClass("active");
+		$(".timeline-value li[data-value='" + value + "']", this.el)
+			.addClass("active");
+	},
 	nodeLimitChanged: function(model, value) {
 		$("#filterNodeLimit", this.el).val(value);
-		this.loader.show();
+		this.loader.show()
 		this.fetchNodes();
 	},
 	showOthersChanged: function(model, value) {
 		$("#showOthers", this.el).attr("checked", value);
 		this.loader.show();
 		this.fetchNodes();
-	},
-	changeFilterPorts: function() {
-		this.graphModel.set({
-			filterPorts: $("#filterPorts", this.el).val()
-		});
-	},
-	changeFilterIPs: function() {
-		alert("changeFilterIPs");
-	},
-	filterPortsChanged: function(model, value) {
-		$("#filterPorts", this.el).val(value);
-		this.loader.show();
-		this.fetchFlows();
-	},
-	filterIPsChanged: function(model, value) {
-		$("#filterIPs", this.el).val(value);
-		// TODO: We have to check the nodes, too ...
-		this.loader.show();
-		this.fetchFlows();
-	},
-	changeFilterPortsType: function() {
-		this.graphModel.set({
-			filterPortsType: $("#filterPortsType", this.el).val()
-		});
-	},
-	changeFilterIPsType: function() {
-		this.graphModel.set({
-			filterIPsType: $("#filterIPsType", this.el).val()
-		});
-	},
-	filterPortsTypeChanged: function(model, value) {
-		$("#filterPortsType", this.el).val(value);
-		this.loader.show();
-		this.fetchFlows();
-	},
-	filterIPsTypeChanged: function(model, value) {
-		$("#filterIPsType", this.el).val(value);
-		this.loader.show();
-		// TODO: we also have to check the nodes ...
-		this.fetchFlows();
 	},
 	changeShowOthers: function() {
 		var checkbox = $("#showOthers", this.el);
@@ -285,5 +261,58 @@ var GraphPageView = PageView.extend({
 		this.graphModel.set({
 			showOthers: val
 		});
-	}
+	},
+	changeFilterProtocols : function(model, value) {
+		this.graphModel.set({
+			filterProtocols: $("#filterProtocols", this.el).val()
+		});
+	},
+	changeFilterPorts : function(model, value) {
+		this.graphModel.set({
+			filterPorts: $("#filterPorts", this.el).val()
+		});
+	},
+	changeFilterIPs : function(model, value) {
+		this.graphModel.set({
+			filterIPs: $("#filterIPs", this.el).val()
+		});
+	},
+	changeFilterPortsType : function(model, value) {
+		this.graphModel.set({
+			filterPortsType: $("#filterPortsType", this.el).val()
+		});
+	},
+	changeFilterProtocolsType : function(model, value) {
+		this.graphModel.set({
+			filterProtocolsType: $("#filterProtocolsType", this.el).val()
+		});
+	},
+	changeFilterIPsType : function(model, value) {
+		this.graphModel.set({
+			filterIPsType: $("#filterIPsType", this.el).val()
+		});
+	},
+	clickApplyFilter : function() {
+		this.loader.show();
+		this.fetchFlows();
+	},
+	changeGravity: function() {
+		this.graphModel.set({
+			gravity: $("#gravity", this.el).val()
+		});
+		this.graphView.render();
+	},
+	changeLinkDistance: function() {
+		this.graphModel.set({
+			linkDistance: $("#linkdistance", this.el).val()
+		});
+		this.graphView.render();
+	},
+
+	changeCharge: function() {
+		this.graphModel.set({
+			charge: $("#charge", this.el).val()
+		});
+		this.graphView.render();
+	},
 });

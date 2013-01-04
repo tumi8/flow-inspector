@@ -91,6 +91,7 @@ body {
 	width: 180px;
 	margin-bottom: 0;
 	outline: none;
+	overflow: auto;
 }
 .container-fixed > aside .form-stacked {
 	padding-left: 0;
@@ -109,7 +110,7 @@ body {
 	position: absolute;
 	left: 240px;
 	bottom: 10px;
-	height: 90px;
+	height: 120px;
 	right: 10px;
 	margin: 0;
 	padding: 5px;
@@ -119,7 +120,7 @@ body {
 	left: 240px;
 	right: 10px;
 	top: 10px;
-	bottom: 120px;
+	bottom: 150px;
 	overflow: auto;
 	outline: none;
 }

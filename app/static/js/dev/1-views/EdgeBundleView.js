@@ -50,8 +50,8 @@ var EdgeBundleView = Backbone.View.extend({
 			.attr("title", function(d) { 
 				return "<strong>" + d.name + "</strong><br />" +
 					"Flows: " + d.flows + "<br />" +
-					"Pakets: " + (d3.format(".2f"))(d.pkts/1000) + "k<br />" +
-					"Bytes: " + (d3.format(".2f"))(d.bytes/1024/1024) + " MB";
+					"Pakets: " + (d3.format(".2f"))(d[FlowInspector.COL_PKTS]/1000) + "k<br />" +
+					"Bytes: " + (d3.format(".2f"))(d[FlowInspector.COL_BYTES]/1024/1024) + " MB";
 			})
 			.attr("data-placement", function(d) {
 				if(d.x < 90 || d.x > 270) {
@@ -61,9 +61,9 @@ var EdgeBundleView = Backbone.View.extend({
 			})
 			.on("mouseover", function(d) {
 	    			d3.select(this).selectAll("text")
-    					.style("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).darker(); });
+    					.style("fill", function(d) { return d3.rgb(arc_color(d[FlowInspector.COL_PKTS] / arc_max_value)).darker(); });
     				d3.select(this).selectAll(".arc")
-    					.attr("fill", function(d) { return d3.rgb(arc_color(d.pkts / arc_max_value)).brighter(3); })
+    					.attr("fill", function(d) { return d3.rgb(arc_color(d[FlowInspector.COL_PKTS] / arc_max_value)).brighter(3); })
    	 				.style("opacity", 1);
     				
    				var direction = that.model.get("hoverDirection");
@@ -80,18 +80,18 @@ var EdgeBundleView = Backbone.View.extend({
 			d3.select(this).selectAll("text")
 				.style("fill", null);
 			d3.select(this).selectAll(".arc")
-				.attr("fill", function(d) { return arc_color(d.pkts / arc_max_value); })
-				.style("opacity", function(d) { return arc_opacity(d.pkts); });
+				.attr("fill", function(d) { return arc_color(d[FlowInspector.COL_PKTS] / arc_max_value); })
+				.style("opacity", function(d) { return arc_opacity(d[FlowInspector.COL_PKTS]); });
 			svg_links.style("display", null);
 		});
 			
 		var arc_color = d3.interpolateRgb("#0064cd", "#c43c35");
-		var arc_max_value = d3.max(nodes, function(d) { return d.pkts; });
+		var arc_max_value = d3.max(nodes, function(d) { return d[FlowInspector.COL_PKTS]; });
 		var arc_scale = d3.scale.linear().range([r0+70, r]).domain([0, arc_max_value]);
 		var arc_opacity = d3.scale.linear().range([0.1, 0.6]).domain([0, arc_max_value]);
 		var arc = d3.svg.arc()
 			.innerRadius(r0)
-			.outerRadius(function(d) { return arc_scale(d.pkts); })
+			.outerRadius(function(d) { return arc_scale(d[FlowInspector.COL_PKTS]); })
 			.startAngle(function(d, i) {
 				var prev;
 				if(i == 0) {
@@ -139,8 +139,8 @@ var EdgeBundleView = Backbone.View.extend({
 		svg_nodes.append("svg:path")
 			.attr("class", "arc")
 			.attr("d", arc)
-			.attr("fill", function(d) { return arc_color(d.pkts / arc_max_value); })
-			.style("opacity", function(d) { return arc_opacity(d.pkts); });
+			.attr("fill", function(a) { return arc_color(a[FlowInspector.COL_PKTS] / arc_max_value); })
+			.style("opacity", function(b) { return arc_opacity(b[FlowInspector.COL_PKTS]); });
 			
 		svg_nodes.append("svg:text")
 			.attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
@@ -185,7 +185,7 @@ var EdgeBundleView = Backbone.View.extend({
 			.attr("class", "link")
 			.attr("d", function(d) { return line(d.bundle); })
 			.attr("stroke", function(d) { return color(d.link.t); });
-			
+
 		var svg_legend = this.svg.append("svg:g")
 			.attr("class", "legend")
 			.attr("transform", "translate(" + (r - 80) + "," + (r - 20) + ")");
@@ -218,13 +218,13 @@ var EdgeBundleView = Backbone.View.extend({
 		this.data_nodes = { name: "root", parent: null };
 		// create special "other" node
 		var other_nodes = { 
-			name: "others",
+  			name: "others", 
 			parent: this.data_nodes, 
-			bytes: 0, 
-			flows: 0, 
-			pkts: 0, 
 			nodes: 0 };
-    	
+		other_nodes[FlowInspector.COL_BYTES] = 0;
+		other_nodes[FlowInspector.COL_FLOWS] = 0;
+		other_nodes[FlowInspector.COL_PKTS] =  0;
+   	
 		var nodes = [];
 		this.nodes.each(function(node) {
 			nodes.push(node);
@@ -233,7 +233,7 @@ var EdgeBundleView = Backbone.View.extend({
 		if(node_limit) {
 			// sort nodes by number of flows descending if there is a node limit
 			nodes.sort(function(a,b) {
-				return b.get("flows") - a.get("flows");
+				return b.get(FlowInspector.COL_FLOWS) - a.get(FlowInspector.COL_FLOWS);
 			});
 		}
     	
@@ -263,10 +263,11 @@ var EdgeBundleView = Backbone.View.extend({
 				if(!child) {
 					child = { 
 						name: name, 
-						parent: pos, 
-						flows: 0, 
-						bytes: 0,
-						pkts: 0};
+						parent: pos 
+					};
+					child[FlowInspector.COL_FLOWS] = 0; 
+					child[FlowInspector.COL_BYTES] = 0;
+					child[FlowInspector.COL_PKTS] = 0;
 					if(i === 0) {
 						child["model"] = node;
 					}
@@ -274,9 +275,9 @@ var EdgeBundleView = Backbone.View.extend({
 				}
 				
 				// sum up values
-				child.flows += node.get("flows");
-				child.bytes += node.get("bytes");
-				child.pkts += node.get("pkts");
+				child[FlowInspector.COL_FLOWS] += node.get(FlowInspector.COL_FLOWS);
+				child[FlowInspector.COL_BYTES] += node.get(FlowInspector.COL_BYTES);
+				child[FlowInspector.COL_PKTS] += node.get(FlowInspector.COL_PKTS);
 				
 				pos = child;
 			}
@@ -291,9 +292,9 @@ var EdgeBundleView = Backbone.View.extend({
 			else {
 				// add node to other nodes
 				other_nodes.nodes++;
-				other_nodes.flows += node.get("flows");
-				other_nodes.bytes += node.get("bytes");
-				other_nodes.pkts += node.get("pkts");
+				other_nodes[FlowInspector.COL_FLOWS] += node.get(FlowInspector.COL_FLOWS);
+				other_nodes[FlowInspector.COL_BYTES] += node.get(FlowInspector.COL_BYTES);
+				other_nodes[FlowInspector.COL_PKTS] += node.get(FlowInspector.COL_PKTS);
 				that.node_map[node.id] = other_nodes;
 			}
 		});
@@ -301,24 +302,33 @@ var EdgeBundleView = Backbone.View.extend({
 		if(node_limit) {
 			this.data_nodes.children.push(other_nodes);
 		}
+		this.updateFlows();
 	},
 	updateFlows: function() {
 		if(!this.data_nodes) {
 			this.updateNodes();
+			// if we don't have data_nodes know, the node data 
+			// has not yet been received. this can happen when 
+			// fetching nodes takes longer than fetching the flows
+			//  We'll have updateFlows called  after running updateFlows updateNodes(). 
+			return;
+		}
+		if (this.flows.length <= 0) {
+			return;
 		}
     	
 		var that = this;
 		this.data_links = [];
 		
-		var min_bucket = d3.min(this.flows.models, function(d) { return d.get("bucket"); });
-		var max_bucket = d3.max(this.flows.models, function(d) { return d.get("bucket"); });
-		
+		var min_bucket = d3.min(this.flows.models, function(d) { return d.get(FlowInspector.COL_BUCKET); });
+		var max_bucket = d3.max(this.flows.models, function(d) { return d.get(FlowInspector.COL_BUCKET); });
+
 		this.flows.each(function(m) {
-			var source = that.node_map[m.get("srcIP")];
-			var target = that.node_map[m.get("dstIP")];
+			var source = that.node_map[m.get(FlowInspector.COL_SRC_IP)];
+			var target = that.node_map[m.get(FlowInspector.COL_DST_IP)];
 			var t = 1.0;
 			if(min_bucket < max_bucket) {
-				t = (m.get("bucket").getTime() - min_bucket.getTime()) / (max_bucket.getTime() - min_bucket.getTime());
+				t = (m.get(FlowInspector.COL_BUCKET).getTime() - min_bucket.getTime()) / (max_bucket.getTime() - min_bucket.getTime());
 			}
 				
 			// filter flows with target = source
