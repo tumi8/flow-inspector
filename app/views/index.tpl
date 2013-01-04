@@ -20,6 +20,7 @@
 					<li class="overview"><a href="/">Overview</a></li>
 					<!--<li class="pcap"><a href="/pcap">PCAP</a></li>
 					<li class="query-page"><a href="/query-page">Flow Querys</a></li>-->
+					<li class="rrd-graph"><a href="/rrd-graph">RRD Graphs</a></li>
 					<li class="dashboard"><a href="/dashboard">Dashboard</a></li>
 					<li class="flow-details"><a href="/flow-details">Flow Details</a></li>
 					<li class="graph"><a href="/graph">Graph</a></li>

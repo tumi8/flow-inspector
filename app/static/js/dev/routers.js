@@ -7,7 +7,8 @@ var MainRouter = Backbone.Router.extend({
    		"graph": "pageGraph",
    		"hierarchical-edge-bundle": "pageEdgeBundle",
    		"hive-plot": "pageHivePlot",
-		"ip-documentation": "pageIPDocumentation"
+		"ip-documentation": "pageIPDocumentation",
+		"rrd-graph": "pageRRDGraph"
 	},
 	initialize: function(options) {
 		this.model = options.model;
@@ -35,6 +36,9 @@ var MainRouter = Backbone.Router.extend({
 	},
 	pageIPDocumentation: function() {
 		this.model.set({page: "ip-documentation"});
+	},
+	pageRRDGraph: function() {
+		this.model.set({page: "rrd-graph"});
 	}
 });
 

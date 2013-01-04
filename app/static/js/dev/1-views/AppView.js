@@ -20,7 +20,8 @@ var AppView = Backbone.View.extend({
    		 	"graph": GraphPageView,
    		 	"edge-bundle": EdgeBundlePageView,
    		 	"hive-plot": HivePlotPageView,
-			"ip-documentation": IPDocumentationPageView
+			"ip-documentation": IPDocumentationPageView,
+			"rrd-graph" : RRDGraphPageView,
     	};
     },
     render: function() {

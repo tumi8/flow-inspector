@@ -80,3 +80,7 @@ host_info_password = "password"
 host_info_name = "hostinfo"
 
 
+# RRD Path directory for images created by flowgrepper
+#----------------------------------------------------------------
+rrd_file_directory=/data/flowgrepper/ 
+

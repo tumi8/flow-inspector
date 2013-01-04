@@ -540,9 +540,9 @@ class SQLBaseBackend(Backend):
 			else:
 				result.append(resultDoc)
 
-		print "Got Results: ", len(result)
-		print "Total: ", total
-		print "Result: ", result
+		#print "Got Results: ", len(result)
+		#print "Total: ", total
+		#print "Result: ", result
 		#for r in result: 
 		#	print r
 		return (result, total)

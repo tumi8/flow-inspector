@@ -215,6 +215,8 @@ def extract_mongo_query_params():
 @get("/hive-plot/:##")
 @get("/ip-documentation")
 @get("/ip-documentation/:##")
+@get("/rrd-graph")
+@get("/rrd-graph/:##")
 @view("index")
 def index():
     # find js files
@@ -298,6 +300,10 @@ def api_hostinfo():
 	quer_params =  extract_mongo_query_params()
 	data = dataBackend.data_query(common.HOST_INFORMATION_COLLECTION, None)
 	return { "results": data }
+
+@get("/api/rrd/images/:path#.+#")
+def rrd_images(path):
+	return static_file(path, root=config.rrd_file_directory)
 	
 @get("/static/:path#.+#")
 def server_static(path):
