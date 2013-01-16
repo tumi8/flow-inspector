@@ -11,6 +11,7 @@ class OracleBackend(SQLBaseBackend):
 		SQLBaseBackend.__init__(self, host, port, user, password, databaseName)
 		self.column_map = common.ORACLE_COLUMNMAP
 		self.type_map = common.ORACLE_TYPE_MAPPER
+		self.type = "oracle"
 
 	def connect(self):
 		import cx_Oracle

@@ -3,6 +3,11 @@ import common
 import sys
 
 ########################## functions
+def compareTables(a, b):
+	compsA = a.split('_')
+	compsB = b.split('_')
+	return -cmp(int(compsA[1]), int(compsB[1])) or cmp(int(compsA[2]), int(compsB[2])) or cmp(int(compsA[3]), int(compsB[3]))
+
 
 def ip2int(string):
 	ip_fields=string.split('.')
@@ -105,6 +110,8 @@ class BaseImporter:
 				except Exception, e:
 					print >> sys.stderr, "Could not connect to source database:", e
 					sys.exit(1)
+
+
 	
 class VermontDB(BaseImporter):
 	def __init__(self, args):
@@ -130,6 +137,7 @@ class VermontDB(BaseImporter):
 			return ret
 	
 		flow = self.c.fetchone()
+
 		if flow == None:
 			if len(self.tables) == 0:
 				return None
@@ -139,28 +147,48 @@ class VermontDB(BaseImporter):
 			self.c.execute("SELECT * FROM " + table)
 			return self.get_next_flow()
 
+
 		obj = dict()
 		revObj = dict()
 		haveReverse = False
-		for j, col in enumerate(self.c.description):
-			if col[0] not in common.IGNORE_COLUMNS:
+		for j, colDesc in enumerate(self.c.description):
+			# oracle returns column names in upper cases, which we do not expect
+			# translate the name to what we expect and what we get from all the
+			# normal databases
+			if self.TYPE == "oracle":
+				if colDesc[0].startswith('REV'):
+					fieldName = colDesc[0][3:len(col[0])]
+					if fieldName in common.ORACLE_COLUMNMAP:
+						col = 'rev' + common.ORACLE_COLUMNMAP[fieldName]
+					else:
+						# will probably be ignored
+						col = colDesc[0]
+				else:
+					if colDesc[0] in common.ORACLE_COLUMNMAP:
+						col = common.ORACLE_COLUMNMAP[colDesc[0]]
+					else:
+						col = colDesc[0]
+			else:
+				col = colDesc[0]
+
+			if col not in common.IGNORE_COLUMNS:
 				# vermont tables may contain reverse flow information
 				# if they have been produced using the biflowaggregation feature. 
 				# create a revObj which matches the reverse flow
-				if col[0] == common.COL_SRC_IP:
+				if col == common.COL_SRC_IP:
 					revObj[common.COL_DST_IP] = flow[j]
-				if col[0] == common.COL_DST_IP:
+				if col == common.COL_DST_IP:
 					revObj[common.COL_SRC_IP] = flow[j]
-				if col[0] == common.COL_SRC_PORT:
+				if col == common.COL_SRC_PORT:
 					revObj[common.COL_DST_PORT] = flow[j]
-				if col[0] == common.COL_DST_PORT:
+				if col == common.COL_DST_PORT:
 					revObj[common.COL_SRC_PORT] = flow[j]
-				if col[0] == common.COL_PROTO:
+				if col == common.COL_PROTO:
 					revObj[common.COL_PROTO] = flow[j]
 
-				if col[0].startswith('rev'):
+				if col.startswith('rev'):
 					haveReverse = True
-					fieldName = col[0][3:len(col[0])]
+					fieldName = col[3:len(col)]
 					# vermont flows can contain MilliSecond fields instead of second fields
 					# flow-inspector requires seconds. hence, we produce the second fields
 					# from the milliseconds
@@ -174,11 +202,11 @@ class VermontDB(BaseImporter):
 					# vermont flows can contain MilliSecond fields instead of second fields
 					# flow-inspector requires seconds. hence, we produce the second fields
 						# from the milliseconds
-					if col[0] == "flowStartMilliSeconds":
+					if col == "flowStartMilliSeconds":
 							obj[common.COL_FIRST_SWITCHED] = flow[j] / 1000
-					elif col[0] == "flowEndMilliSeconds":
+					elif col == "flowEndMilliSeconds":
 						obj[common.COL_LAST_SWITCHED] = flow[j] / 1000
-					obj[col[0]] = flow[j]
+					obj[col] = flow[j]
 
 		# if we have at least one reverse flow field, we need to create the reverse field
 		# we will store the reversefield and return it on the next call to get_next_flow
