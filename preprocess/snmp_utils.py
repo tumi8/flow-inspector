@@ -6,7 +6,7 @@ class Node(object):
 
     """ The base class for all nodes """
 
-    def __init__(self, ip, netmask="/32", reason_creation=""):
+    def __init__(self, ip, netmask="32", reason_creation=""):
         self.ip = ip
         self.netmask = netmask
         self.successors = set()
@@ -37,7 +37,7 @@ class Router(Node):
         return '\n'.join(['    <node id="{0}">',
                           '      <data key="r">255</data>',
                           '      <data key="label">{1}</data>',
-                          '      <date key="z">10</date>',
+                          '      <data key="z">10</data>',
                           '    </node>']).format(self.getID(),
                                                  self.getLabel())
 
@@ -64,10 +64,18 @@ class Interface(Node):
         self.reason_creation = reason_creation
 
     def toGML(self):
-        return '\n'.join(['    <node id="{0}">',
-                          '      <data key="g">255</data>',
-                          '      <data key="label">{1}</data>',
-                          '    </node>']).format(self.getID(),
+        if self.description.startswith("Tunnel"):
+            return '\n'.join(['    <node id="{0}">',
+                              '      <data key="r">255</data>'
+                              '      <data key="g">165</data>',
+                              '      <data key="label">{1}</data>',
+                              '    </node>']).format(self.getID(),
+                                                 self.getLabel())
+        else:
+            return '\n'.join(['    <node id="{0}">',
+                              '      <data key="g">255</data>',
+                              '      <data key="label">{1}</data>',
+                              '    </node>']).format(self.getID(),
                                                  self.getLabel())
 
     def getID(self):
@@ -116,7 +124,7 @@ class Graph(object):
             "Interface": dict(),
             "Subnet": dict()
         }
-        self.all_nodes = list()
+        self.all_nodes = set()
 
     def __str__(self):
         return "\n".join([
@@ -130,14 +138,14 @@ class Graph(object):
         return str(ip) + "/" + str(netmask) in self.db["Node"]
 
     def getNode(self, ip, netmask=32, reason_creation=""):
-        if not self.isNode(str(ip) + "/" + str(netmask)):
+        if not self.isNode(str(ip), str(netmask)):
             self.addNode(ip, netmask, reason_creation)
         return self.db["Node"][str(ip) + "/" + str(netmask)]
 
     def addNode(self, ip, netmask=32, reason_create=""):
         node = Node(ip, netmask, reason_create)
         self.db["Node"][str(ip) + "/" + str(netmask)] = node
-        self.all_nodes.append(node)
+        self.all_nodes.add(node)
 
     def isRouter(self, ip):
         return str(ip) + "/32" in self.db["Router"]
@@ -150,7 +158,7 @@ class Graph(object):
     def addRouter(self, ip):
         router = Router(ip)
         self.db["Router"][str(ip) + "/32"] = router
-        self.all_nodes.append(router)
+        self.all_nodes.add(router)
 
     def isInterface(self, router_ip, interface_ip):
         return str(router_ip) + "_" + str(interface_ip) in self.db["Interface"]
@@ -160,10 +168,10 @@ class Graph(object):
             self.addInterface(router_ip, interface_ip,
                               "", "", "", "interface missing")
             print "!!! Interface missing !!!"
+            print reason_creation
         return self.db["Interface"][str(router_ip) + "_" + str(interface_ip)]
 
-    def getInterfaceByNumber(self, router_ip,
-                             interface_number, reason_creation=""):
+    def getInterfaceByNumber(self, router_ip,interface_number, reason_creation=""):
         for interface in self.db["Interface"].itervalues():
             if (interface.router.ip == router_ip and
                     interface.ifnumber == interface_number):
@@ -205,7 +213,7 @@ class Graph(object):
             (self.db["Interface"]
                 [str(router_ip) + "_" + str(interface_ip)]) = interface
             router.successors.add(interface)
-            self.all_nodes.append(interface)
+            self.all_nodes.add(interface)
         return interface
 
     def isSubnet(self, ip, netmask):
@@ -216,7 +224,7 @@ class Graph(object):
             subnet = Subnet(ip, netmask, reason_creation)
             self.db["Subnet"][str(ip) + "/" + str(netmask)] = subnet
             self.db["Node"][str(ip) + "/" + str(netmask)] = subnet
-            self.all_nodes.append(subnet)
+            self.all_nodes.add(subnet)
 
     def getSubnet(self, ip, netmask, reason_creation=""):
         if not self.isSubnet(ip, netmask):
@@ -237,11 +245,28 @@ class Graph(object):
         subnet = self.getSubnet(subnet_ip, subnet_mask, reason_creation)
         interface.successors.add(subnet)
 
-    def addRoute_If2Node(self, router_ip, interface_number,
-                         nexthop_ip, reason_creation=""):
-        node = self.getNode(nexthop_ip, 32, reason_creation)
-        interface = self.getInterfaceByIP(router_ip, interface_number)
+    def addRoute_If2Node(self, router_ip, interface_ip,
+                         node_ip, node_netmask=32, reason_creation=""):
+        #print "========="
+        #print str(router_ip) + "_" + str(interface_ip) + " -> " + str(node_ip)
+        #print "Node exists " + str(self.isNode(node_ip, node_netmask))
+        node = self.getNode(node_ip, node_netmask, reason_creation)
+        #print "Interface exists " + str(self.isInterface(router_ip, interface_ip))
+        interface = self.getInterfaceByIP(router_ip, interface_ip)
         interface.successors.add(node)
+        #print interface.successors
+
+    def addRoute_Node2Subnet(self, node_ip, node_netmask, 
+                             subnet_ip, subnet_mask, reason_creation=""):
+        node = self.getNode(node_ip, node_netmask, reason_creation)
+        subnet = self.getSubnet(subnet_ip, subnet_mask, reason_creation)
+        node.successors.add(subnet)
+
+    def addRoute_Subnet2Node(self, subnet_ip, subnet_netmask,
+                             node_ip, node_netmask, reason_creation=""):
+        subnet = self.getSubnet(subnet_ip, subnet_netmask, reason_creation)
+        node = self.getNode(node_ip, node_netmask, reason_creation)
+        subnet.successors.add(node)
 
     def addRoute_Node2Node(self, ip_a, netmask_a, ip_b, netmask_b):
         node_a = self.getNode(ip_a, netmask_a)
