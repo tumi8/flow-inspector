@@ -24,6 +24,9 @@ class Node(object):
         """ Return label for GraphML document """
         return str(self.ip) + "/" + str(self.netmask)
 
+    def __str__(self):
+        return "Node " + str(self.ip) + "/" + str(self.netmask)
+
 
 class Router(Node):
 
@@ -49,6 +52,9 @@ class Router(Node):
         """ Return label for GraphML document """
         return "Router " + str(self.ip)
 
+    def __str__(self):
+        return "Router " + str(selp.ip)
+
 
 class Interface(Node):
 
@@ -57,8 +63,9 @@ class Interface(Node):
     def __init__(self, ip, netmask, ifnumber,
                  description, router, reason_creation):
         super(Interface, self).__init__(ip)
+        self.ip = set()
+        self.ip.add(str(ip) + "/" + str(netmask))
         self.ifnumber = ifnumber
-        self.netmask = netmask
         self.router = router
         self.description = description
         self.reason_creation = reason_creation
@@ -79,15 +86,19 @@ class Interface(Node):
                                                  self.getLabel())
 
     def getID(self):
-        return str(self.router.ip + "_" + self.ifnumber + "_" + self.ip)
+        return str(self.router.ip) + "_" + str(self.ifnumber)
 
-    def getLabel(self):
-        return (str(self.description) + "_" + str(self.ifnumber) + "_" +
-                str(self.ip) + "/" + str(self.netmask))
+    def getLabel(self):     
+        label = str(self.description) + "_" + str(self.ifnumber) + "_"
+        for ip in sorted(self.ip):
+            label += ip + ", "
+        return label[:-2]
 
     def __str__(self):
-        return ("Interface " + self.router.ip + "_" + self.ifnumber + "_" +
-                self.ip + "/" + self.netmask + "; " + reason_creation)
+        string = "Interface " + self.router.ip + "_" + self.ifnumber + ": "
+        for ip in sorted(self.ip):
+            string += ip + ", "
+        return string[:-2]
 
 
 class Subnet(Node):
@@ -110,6 +121,9 @@ class Subnet(Node):
 
     def getLabel(self):
         return str(self.ip) + "/" + str(self.netmask)
+
+    def __str__(self):
+        return "Subnet " + str(self.ip) + "/" + str(self.netmask)
 
 
 class Graph(object):
@@ -160,24 +174,26 @@ class Graph(object):
         self.db["Router"][str(ip) + "/32"] = router
         self.all_nodes.add(router)
 
-    def isInterface(self, router_ip, interface_ip):
-        return str(router_ip) + "_" + str(interface_ip) in self.db["Interface"]
+    def isInterface(self, router_ip, interface_number):
+        return str(router_ip) + "_" + str(interface_number) in self.db["Interface"]
 
-    def getInterfaceByIP(self, router_ip, interface_ip, reason_creation=""):
-        if not self.isInterface(router_ip, interface_ip):
-            self.addInterface(router_ip, interface_ip,
-                              "", "", "", "interface missing")
+    def getInterfaceByNumber(self, router_ip, interface_number, reason_creation=""):
+        if not self.isInterface(router_ip, interface_number):
+            self.addInterface(router_ip, "???", "???",
+                              interface_number, "", reason_creation)
             print "!!! Interface missing !!!"
+            print str(router_ip) + "_" + str(interface_number)
             print reason_creation
-        return self.db["Interface"][str(router_ip) + "_" + str(interface_ip)]
+        return self.db["Interface"][str(router_ip) + "_" + str(interface_number)]
 
-    def getInterfaceByNumber(self, router_ip,interface_number, reason_creation=""):
+    def getInterfacebByIP(self, router_ip, interface_ip, reason_creation=""):
         for interface in self.db["Interface"].itervalues():
-            if (interface.router.ip == router_ip and
-                    interface.ifnumber == interface_number):
-                return interface
+            if (interface.router.ip == router_ip):
+                for ip in interface.ip:
+                    if (interface_ip == ip.split("/")[0]):
+                        return interface
         interface = self.addInterface(
-            router_ip, "???", "???", "", interface_number)
+            router_ip, interface_ip, "???", "???", "???", reason_creation)
         print "!!! Interface missing 222 !!!"
         return interface
 
@@ -186,8 +202,11 @@ class Graph(object):
                      reason_creation=""):
 
         # Check whether interface already exists
-        if not self.isInterface(router_ip, interface_ip):
-
+        if self.isInterface(router_ip, interface_number):
+            interface = self.getInterfaceByNumber(router_ip, interface_number)
+            interface.ip.add(str(interface_ip) + "/" + str(interface_netmask))
+            self.db["Node"][str(interface_ip) + "/32"] = interface
+        else:
             router = self.getRouter(router_ip)
 
             # Check whether a generic node with this ip exists
@@ -197,7 +216,7 @@ class Graph(object):
                 # change existing node to type Interface
                 interface = self.db["Node"][str(interface_ip) + "/32"]
                 interface.__class__ = Interface
-                interface.netmask = interface_netmask
+                interface.ips.add(str(interface_ip) + "/" + str(interface_netmask))
                 interface.ifnumber = interface_number
                 interface.router = router
                 interface.description = interface_description
@@ -211,9 +230,10 @@ class Graph(object):
                 self.db["Node"][str(interface_ip) + "/32"] = interface
 
             (self.db["Interface"]
-                [str(router_ip) + "_" + str(interface_ip)]) = interface
+                [str(router_ip) + "_" + str(interface_number)]) = interface
             router.successors.add(interface)
             self.all_nodes.add(interface)
+        
         return interface
 
     def isSubnet(self, ip, netmask):
@@ -245,14 +265,14 @@ class Graph(object):
         subnet = self.getSubnet(subnet_ip, subnet_mask, reason_creation)
         interface.successors.add(subnet)
 
-    def addRoute_If2Node(self, router_ip, interface_ip,
+    def addRoute_If2Node(self, router_ip, interface_number,
                          node_ip, node_netmask=32, reason_creation=""):
         #print "========="
         #print str(router_ip) + "_" + str(interface_ip) + " -> " + str(node_ip)
         #print "Node exists " + str(self.isNode(node_ip, node_netmask))
         node = self.getNode(node_ip, node_netmask, reason_creation)
         #print "Interface exists " + str(self.isInterface(router_ip, interface_ip))
-        interface = self.getInterfaceByIP(router_ip, interface_ip)
+        interface = self.getInterfaceByNumber(router_ip, interface_number)
         interface.successors.add(node)
         #print interface.successors
 

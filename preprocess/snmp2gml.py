@@ -33,6 +33,30 @@ db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
 collection = db["snmp_raw"]
 
 
+def do_checks(graph):
+    print "Checking for interfaces without successor"
+    for interface in graph.db["Interface"].itervalues():
+        if len(interface.successors) == 0:
+            print "Interface ohne Nachfolger: " + str(interface)
+
+    print "Checking for unknown nodes"
+    for node in graph.db["Node"].itervalues():
+        if node.__class__ == Node:
+            print "Unknown Node: " + str(node)
+
+    print "Checking for wrongly assigned next hop nodes"
+    for node in graph.db["Node"].itervalues():
+        if node.__class__ == Node:
+            for interface in graph.db["Interface"].itervalues():
+                for ip in interface.ip:
+                    if node.ip == ip.split("/")[0]:
+                        print str(node.ip) + "/" + str(node.netmask) + " is not(!) unknown, belongs to " + str(interface) 
+    
+    print "Checking for self-loop-nodes"
+    for node in graph.db["Node"].itervalues():
+        if node in node.successors:
+            print "Self-loop-node " + str(node)
+
 ## create ip route graph ##
 
 graph = Graph()
@@ -42,43 +66,12 @@ print "Creating router and interfaces"
 for entry in collection.find( { "type": "interface_log" } ):
     """ add interfaces and routers to graph """   
     
-    ## filter for secondary ip -- quick and dirty ##
-#    if entry["ipAdEntAddr"] in ["130.197.14.254", 
-#        "130.197.46.252",
-#        "130.197.36.252",
-#        "130.197.37.252",
-#        "130.197.38.252",
-#        "130.197.39.252",
-#        "130.197.36.254",
-#        "130.197.37.254",
-#        "130.197.38.254",
-#        "130.197.39.254",
-#        "130.197.46.254",
-#        "130.197.24.252",
-#        "130.197.24.254",
-#        "130.197.17.252",
-#        "130.197.17.254",
-#        "130.197.47.252",
-#        "130.197.47.254",
-#        "130.197.97.252",
-#        "130.197.98.252",
-#        "130.197.99.252",
-#        "130.197.97.254",
-#        "130.197.98.254",
-#        "130.197.99.254",
-#        "130.197.117.252",
-#        "130.197.117.254",
-#        "130.197.219.12",
-#        "130.197.219.14",
-#        "130.197.2.252",
-#        "130.197.2.254"]:
-#            print "secondary address found " + entry["ipAdEntAddr"]
-#            continue 
-    
-    
     if_phy_info = collection.find( { 
         "type":"interface_phy", "router": entry["router"], "ifIndex": entry["ipAdEntIfIndex"]
     } )[0]
+   
+    if entry["ipAdEntIfIndex"] == "375":
+         print entry
 
     if if_phy_info["ifOperStatus"] == "1":
         graph.addInterface(
@@ -93,32 +86,32 @@ for entry in collection.find( { "type": "interface_log" } ):
 graph_copy = deepcopy(graph)
 
 
-print "Creating route.connected"
+#print "Creating route.connected"
 
-for entry in collection.find( { "type": "route", "ipRouteType" : "3" } ):
-    """ add direct routes """
+#for entry in collection.find( { "type": "route", "ipRouteType" : "3" } ):
+#    """ add direct routes """
 
-    graph.addConnectedSubnet(
-        entry["ip_src"],
-        entry["ipRouteNextHop"],
-        entry["ipRouteDest"],
-        entry["ipRouteMask"],
-        str(entry)
-    )
+#    graph.addConnectedSubnetByNumber(
+#        entry["ip_src"],
+#        entry["ipRouteIfIndex"],
+#        entry["ipRouteDest"],
+#        entry["ipRouteMask"],
+#        str(entry)
+#    )
 
-graph_to_graphmlfile(graph, "ba.route.connected.graphml")
+#graph_to_graphmlfile(graph, "ba.route.connected.graphml")
 
+#graph = deepcopy(graph_copy)
 
-graph = deepcopy(graph_copy)
 
 print "Creating route.local"
 
 # parse local / direct routes
 for entry in collection.find( { "type": "route", "ipRouteProto" : "2", "ipRouteType" : "3" } ):
 
-    graph.addConnectedSubnet(
+    graph.addConnectedSubnetByNumber(
         entry["ip_src"],
-        entry["ipRouteNextHop"],
+        entry["ipRouteIfIndex"],
         entry["ipRouteDest"],
         entry["ipRouteMask"],
         str(entry)
@@ -130,7 +123,7 @@ for entry in collection.find( { "type": "route", "ipRouteProto" : "2", "ipRouteT
     # determine interface to reach the new router (aka longest prefix matching)
     
     router_ip = IPAddress(entry["ipRouteNextHop"])
-    interface_ip = None
+    interface_number = None
     interface_netmask = None
     interface_netaddress = None
     
@@ -139,34 +132,25 @@ for entry in collection.find( { "type": "route", "ipRouteProto" : "2", "ipRouteT
         interface_network = IPNetwork(str(interface["ipAdEntAddr"]) + "/" + str(interface["ipAdEntNetMask"]))
         if (router_ip in interface_network):
             interface_netmask = interface["ipAdEntNetMask"]
-            interface_ip = interface["ipAdEntAddr"]
+            interface_number = interface["ipAdEntIfIndex"]
             interface_netaddress = interface_network.network
             break
-           
-
-    print str(router_ip) + " in " + str(interface_network)
-
-    if not graph.isInterface(entry["ip_src"], interface_ip):
-        print "Blaaaaaa"
             
     if graph.isSubnet(interface_netaddress, interface_netmask):
         graph.addRoute_Subnet2Node(interface_netaddress, interface_netmask,
                                    entry["ipRouteNextHop"], 32)
     else:
-        graph.addRoute_If2Node(entry["ip_src"], interface_ip,
+        graph.addRoute_If2Node(entry["ip_src"], interface_number,
                                entry["ipRouteNextHop"], 32, "55555")
 
-#    graph.addRoute_If2Node(entry["ip_src"], interface_ip, 
-#                           entry["ipRouteNextHop"], 32, "55555")
-
-#    graph.addSubnet(entry["ipRouteDest"], entry["ipRouteMask"], str(entry))
-
-    if entry["ipRouteMask"] < 32:
+    if int(entry["ipRouteMask"]) < 32:
         graph.addRoute_Node2Subnet(entry["ipRouteNextHop"], "32", entry["ipRouteDest"], entry["ipRouteMask"])
     else:
         graph.addRoute_Node2Node(entry["ipRouteNextHop"], "32", entry["ipRouteDest"], entry["ipRouteMask"])
 
+do_checks(graph)
 graph_to_graphmlfile(graph, "ba.route.local.graphml")
+
 
 ## create eigrp grahp ##
 
@@ -181,19 +165,48 @@ for entry in collection.find( { "type":"eigrp", "cEigrpRouteOriginType":"Connect
         "type":"interface_phy", "router": entry["ip_src"], "ifDescr": entry["cEigrpNextHopInterface"]
     } )[0]
 
-    # print if_phy_info
-    
     if_log_info = collection.find( {
         "type":"interface_log", "router": entry["ip_src"], "ipAdEntIfIndex": if_phy_info["ifIndex"]
     } )[0]
 
-
-    graph.addConnectedSubnet(
+    graph.addConnectedSubnetByNumber(
         entry["ip_src"],
-        if_log_info["ipAdEntAddr"],
+        if_log_info["ipAdEntIfIndex"],
         entry["ip_dst"],
         entry["cEigrpRouteMask"],
         str(entry)
     )
 
+# parse RStatic routes
+for entry in collection.find( { "type":"eigrp", "cEigrpRouteOriginType":"Rstatic"} ):
+    
+    # determine interface to reach the new router (aka longest prefix matching)
+    router_ip = IPAddress(entry["cEigrpNextHopAddress"])
+    interface_number = None
+    interface_netmask = None
+    interface_netaddress = None
+    
+    for interface in (collection.find({"type": "interface_log", "router": entry["ip_src"]})
+                               .sort("ipAdEntNetMask", -1)):
+        interface_network = IPNetwork(str(interface["ipAdEntAddr"]) + "/" + str(interface["ipAdEntNetMask"]))
+        if (router_ip in interface_network):
+            interface_netmask = interface["ipAdEntNetMask"]
+            interface_number = interface["ipAdEntIfIndex"]
+            interface_netaddress = interface_network.network
+            break
+            
+    if graph.isSubnet(interface_netaddress, interface_netmask):
+        graph.addRoute_Subnet2Node(interface_netaddress, interface_netmask,
+                                   entry["cEigrpNextHopAddress"], 32)
+    else:
+        graph.addRoute_If2Node(entry["ip_src"], interface_number,
+                               entry["cEigrpNextHopAddress"], 32, "55555")
+
+    if int(entry["cEigrpRouteMask"]) < 32:
+        graph.addRoute_Node2Subnet(entry["cEigrpNextHopAddress"], "32", entry["ip_dst"], entry["cEigrpRouteMask"])
+    else:
+        graph.addRoute_Node2Node(entry["cEigrpNextHopAddress"], "32", entry["ip_dst"], entry["cEigrpRouteMask"])
+
+do_checks(graph)
 graph_to_graphmlfile(graph, "ba.eigrp.graphml")
+

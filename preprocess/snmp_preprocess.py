@@ -205,7 +205,39 @@ oidmap = {
     ".1.3.6.1.4.1.9.9.449.1.3.1.1.15":
     {"name": "cEigrpDistance", "fct": plain},
     ".1.3.6.1.4.1.9.9.449.1.3.1.1.16":
-    {"name": "cEigrpReportDistance", "fct": plain}
+    {"name": "cEigrpReportDistance", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.1":
+    {"name": "ipCidrRouteDest", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.2":
+    {"name": "ipCidrRouteMask", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.3":
+    {"name": "ipCidrRouteTos", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.4":
+    {"name": "ipCidrRouteNextHop", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.5":
+    {"name": "ipCidrRouteIfIndex", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.6":
+    {"name": "ipCidrRouteType", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.7":
+    {"name": "ipCidrRouteProto", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.8":
+    {"name": "ipCidrRouteAge", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.9":
+    {"name": "ipCidrRouteInfo", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.10":
+    {"name": "ipCidrRouteNextHopAS", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.11":
+    {"name": "ipCidrRouteMetric1", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.12":
+    {"name": "ipCidrRouteMetric2", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.13":
+    {"name": "ipCidrRouteMetric3", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.14":
+    {"name": "ipCidrRouteMetric14", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.15":
+    {"name": "ipCidrRouteMetric5", "fct": plain},
+    ".1.3.6.1.2.1.4.24.4.1.16":
+    {"name": "ipCidrRouteStatus", "fct": plain}
 }
 
 
@@ -297,6 +329,25 @@ for file in args.file:
                     {"cEigrpRouteMask": line[23],
                         oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
                 )
+
+        # parse ipcidrroute oid
+        elif line.startswith(".1.3.6.1.2.1.4.24.4.1"):
+            line = line.split(".")
+            oid = '.'.join(line[0:12])
+            ip_dst = '.'.join(line[12:16])
+            mask_dst = '.'.join(line[16:20])
+            ip_gtw = '.'.join(line[21:24])
+
+            print "To " + ip_dst + "/" + mask_dst + " via " + ip_gtw
+
+            if oid in oidmap:
+                update_doc(
+                    ip_src + ip_dst + mask_dst + ip_gtw,
+                    {"ip_src": ip_src, "timestamp": timestamp, "ip_dst": ip_dst
+                        "mask_dst": mask_dst, "ip_gtw": ip_gtw, "type": "ipCidrRoute"},
+                    {oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+                )
+
 
         # incremt counter for processed lines
         counter = counter + 1
