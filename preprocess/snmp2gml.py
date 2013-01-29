@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
@@ -19,6 +18,7 @@ import config
 import time
 
 parser = argparse.ArgumentParser(description="Preprocess SNMP data")
+parser.add_argument("--timestamp")
 parser.add_argument("--dst-host", nargs="?", default=config.db_host, help="Backend database host")
 parser.add_argument("--dst-port", nargs="?", default=config.db_port, type=int, help="Backend database port")
 parser.add_argument("--dst-user", nargs="?", default=config.db_user, help="Backend database user")
@@ -32,6 +32,10 @@ args = parser.parse_args()
 db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
 collection = db["snmp_raw"]
 
+if args.timestamp:
+    timestamp = args.timestamp
+else:
+    timestamp = sorted(collection.distinct("timestamp"), reverse=True)[0]
 
 def do_checks(graph):
     print "Checking for interfaces without successor"
@@ -63,11 +67,11 @@ graph = Graph()
 
 print "Creating router and interfaces"
 
-for entry in collection.find( { "type": "interface_log" } ):
+for entry in collection.find( { "type": "interface_log", "timestamp": timestamp } ):
     """ add interfaces and routers to graph """   
     
     if_phy_info = collection.find( { 
-        "type":"interface_phy", "router": entry["router"], "ifIndex": entry["ipAdEntIfIndex"]
+        "type":"interface_phy", "router": entry["router"], "ifIndex": entry["ipAdEntIfIndex"], "timestamp": timestamp
     } )[0]
    
     if entry["ipAdEntIfIndex"] == "375":
@@ -107,22 +111,22 @@ graph_copy = deepcopy(graph)
 print "Creating route.local"
 
 # parse local / direct routes
-for entry in collection.find( { "type": "route", "ipRouteProto" : "2", "ipRouteType" : "3" } ):
+for entry in collection.find( { "type": "ipCidrRoute", "ipCidrRouteProto" : "2", "ipCidrRouteType" : "3", "timestamp": timestamp } ):
 
     graph.addConnectedSubnetByNumber(
         entry["ip_src"],
-        entry["ipRouteIfIndex"],
-        entry["ipRouteDest"],
-        entry["ipRouteMask"],
+        entry["ipCidrRouteIfIndex"],
+        entry["ip_dst"],
+        entry["mask_dst"],
         str(entry)
     )
 
 # parse local / indirect route
-for entry in collection.find( { "type": "route", "ipRouteProto" : "2", "ipRouteType" : "4" } ):
+for entry in collection.find( { "type": "ipCidrRoute", "ipCidrRouteProto" : "3", "ipCidrRouteType" : "4", "timestamp": timestamp } ):
 
     # determine interface to reach the new router (aka longest prefix matching)
     
-    router_ip = IPAddress(entry["ipRouteNextHop"])
+    router_ip = IPAddress(entry["ip_gtw"])
     interface_number = None
     interface_netmask = None
     interface_netaddress = None
@@ -138,19 +142,18 @@ for entry in collection.find( { "type": "route", "ipRouteProto" : "2", "ipRouteT
             
     if graph.isSubnet(interface_netaddress, interface_netmask):
         graph.addRoute_Subnet2Node(interface_netaddress, interface_netmask,
-                                   entry["ipRouteNextHop"], 32)
+                                   entry["ip_gtw"], 32)
     else:
         graph.addRoute_If2Node(entry["ip_src"], interface_number,
-                               entry["ipRouteNextHop"], 32, "55555")
+                               entry["ip_gtw"], 32, "55555")
 
-    if int(entry["ipRouteMask"]) < 32:
-        graph.addRoute_Node2Subnet(entry["ipRouteNextHop"], "32", entry["ipRouteDest"], entry["ipRouteMask"])
+    if int(entry["mask_dst"]) < 32:
+        graph.addRoute_Node2Subnet(entry["ip_gtw"], "32", entry["ip_dst"], entry["mask_dst"])
     else:
-        graph.addRoute_Node2Node(entry["ipRouteNextHop"], "32", entry["ipRouteDest"], entry["ipRouteMask"])
+        graph.addRoute_Node2Node(entry["ip_gtw"], "32", entry["ip_dst"], entry["mask_dst"])
 
 do_checks(graph)
 graph_to_graphmlfile(graph, "ba.route.local.graphml")
-
 
 ## create eigrp grahp ##
 

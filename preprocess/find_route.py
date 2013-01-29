@@ -22,6 +22,7 @@ import time
 parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 parser.add_argument("source_ip")
 parser.add_argument("dst_ip")
+parser.add_argument("--timestamp")
 parser.add_argument("--dst-host", nargs="?", default=config.db_host, help="Backend database host")
 parser.add_argument("--dst-port", nargs="?", default=config.db_port, type=int, help="Backend database port")
 parser.add_argument("--dst-user", nargs="?", default=config.db_user, help="Backend database user")
@@ -36,37 +37,44 @@ collection = db["snmp_raw"]
 ip_source = IPAddress(args.source_ip)
 ip_dst = IPAddress(args.dst_ip)
 
+if args.timestamp:
+    timestamp = args.timestamp
+else:
+    timestamp = sorted(collection.distinct("timestamp"), reverse=True)[0]
+
+
 print "Using IP route table information"
 
 router_to_process = deque()
 router_done = set()
 
-for route in collection.find({"type":"route", "ipRouteProto": "2"}):
-    if route["ipRouteDest"] == "0.0.0.0":
+for route in collection.find({"type":"ipCidrRoute", "ipCidrRouteProto": "2", "timestamp": timestamp}):
+    if route["ip_dst"] == "0.0.0.0":
         continue
-    network_route = IPNetwork(str(route["ipRouteDest"]) + "/" + str(route["ipRouteMask"]))
+    network_route = IPNetwork(str(route["ip_dst"]) + "/" + str(route["mask_dst"]))
     if ip_source in network_route:
-        print "Source network found: " + str(network_route) + " via router " + route["ip_src"]
+        print "Source network: " + str(network_route) + " via router " + route["ip_src"]
         router_to_process.append(route["ip_src"])
 
 while router_to_process:
     router = router_to_process.popleft()
     if router in router_done:
         continue
-    for route in collection.find({"type":"route", "ip_src": router}).sort("ipRouteMask", -1):
-        if route["ipRouteDest"] == "0.0.0.0":
+    for route in collection.find({"type":"ipCidrRoute", "ip_src": router, "timestamp": timestamp}).sort("mask_dst", -1):
+        if route["ip_dst"] == "0.0.0.0":
             continue
-        if (ip_dst in IPNetwork(str(route["ipRouteDest"]) + "/" + str(route["ipRouteMask"]))):
-            result = collection.find({"type":"interface_log", "ipAdEntAddr":route["ipRouteNextHop"]})
-            if route["ipRouteProto"] == "2":
-                print "Connected/Static (" + route["ipRouteType"] + ") from " + router + " to " + str(route["ipRouteDest"]) + "/" + str(route["ipRouteMask"])
+        if (ip_dst in IPNetwork(str(route["ip_dst"]) + "/" + str(route["mask_dst"]))):
+            result = collection.find({"type":"interface_log", "ipAdEntAddr":route["ip_gtw"], "timestamp": timestamp})
+            if route["ipCidrRouteProto"] == "2":
+                print "Connected/Static (" + route["ipCidrRouteType"] + ") from " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"])
+            
             else:
                 if result.count() > 1:
-                    print "Suspicious IP " + route["ipRouteNextHop"]
+                    print "Suspicious IP " + route["ip_gtw"]
                 elif result.count() == 0:
-                    print "No further information, next hop gateway is " + route["ipRouteNextHop"]
+                    print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"]) + " via " + route["ip_gtw"] + " (unknown IP)"
                 else:
-                    print "Next Hop: " + router + " to " + str(route["ipRouteDest"]) + "/" + str(route["ipRouteMask"]) + " via " + route["ipRouteNextHop"] + " belongs to " + result[0]["router"]
+                    print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"]) + " via " + route["ip_gtw"] + " belongs to " + result[0]["router"]
                     router_to_process.append(result[0]["router"])
             router_done.add(router)
 
@@ -77,7 +85,7 @@ print "Using EIGRP route information"
 router_to_process = deque()
 router_done = set()
 
-for route in collection.find({"type":"eigrp", "$or": [{"cEigrpRouteOriginType": "Connected"}, {"cEigrpRouteOriginType": "Rstatic"}]}):
+for route in collection.find({"type":"eigrp", "$or": [{"cEigrpRouteOriginType": "Connected"}, {"cEigrpRouteOriginType": "Rstatic"}], "timestamp": timestamp}):
     if route["ip_dst"] == "0.0.0.0":
         continue
     network_route = IPNetwork(str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"]))
@@ -89,14 +97,14 @@ while router_to_process:
     router = router_to_process.popleft()
     if router in router_done:
         continue
-    for route in collection.find({"type":"eigrp", "ip_src": router}).sort("cEigrpRouteMask", -1):
+    for route in collection.find({"type":"eigrp", "ip_src": router, "timestamp": timestamp}).sort("cEigrpRouteMask", -1):
         if route["ip_dst"] == "0.0.0.0":
             continue
         if (ip_dst in IPNetwork(str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"]))):
             if route["cEigrpRouteOriginType"] in {"Connected", "RStatic"}:
                 print route["cEigrpRouteOriginType"] + " " + router + " to " + str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"])
             else:
-                result = collection.find({"type":"interface_log", "ipAdEntAddr":route["cEigrpNextHopAddress"]})
+                result = collection.find({"type":"interface_log", "ipAdEntAddr":route["cEigrpNextHopAddress"], "timestamp": timestamp})
                 if result.count() > 1:
                     print "Suspicious IP " + route["cEigrpNextHopAddress"]
                 elif result.count() == 0:

@@ -233,7 +233,7 @@ oidmap = {
     ".1.3.6.1.2.1.4.24.4.1.13":
     {"name": "ipCidrRouteMetric3", "fct": plain},
     ".1.3.6.1.2.1.4.24.4.1.14":
-    {"name": "ipCidrRouteMetric14", "fct": plain},
+    {"name": "ipCidrRouteMetric4", "fct": plain},
     ".1.3.6.1.2.1.4.24.4.1.15":
     {"name": "ipCidrRouteMetric5", "fct": plain},
     ".1.3.6.1.2.1.4.24.4.1.16":
@@ -253,11 +253,12 @@ begin = time.time()
 last = begin
 counter = 0
 
+# local document storage
+doc = {}
+lines_since_commit = 0
+
 for file in args.file:
-
-    # local document storage
-    doc = {}
-
+    
     # parse file name
     params = os.path.basename(file).rstrip(".txt").split("-")
     source_type = params[0]
@@ -336,21 +337,19 @@ for file in args.file:
             oid = '.'.join(line[0:12])
             ip_dst = '.'.join(line[12:16])
             mask_dst = '.'.join(line[16:20])
-            ip_gtw = '.'.join(line[21:24])
-
-            print "To " + ip_dst + "/" + mask_dst + " via " + ip_gtw
+            ip_gtw = '.'.join(line[21:25])
 
             if oid in oidmap:
                 update_doc(
                     ip_src + ip_dst + mask_dst + ip_gtw,
-                    {"ip_src": ip_src, "timestamp": timestamp, "ip_dst": ip_dst
-                        "mask_dst": mask_dst, "ip_gtw": ip_gtw, "type": "ipCidrRoute"},
+                    {"ip_src": ip_src, "timestamp": timestamp, "ip_dst": ip_dst,
+                        "mask_dst": netmask2int(mask_dst), "ip_gtw": ip_gtw, "type": "ipCidrRoute"},
                     {oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
                 )
 
-
-        # incremt counter for processed lines
-        counter = counter + 1
+        # increment counter for processed lines
+        counter = counter + 1        
+        lines_since_commit = lines_since_commit + 1
 
         # do statistical calculation
         current = time.time()
@@ -360,10 +359,59 @@ for file in args.file:
                 (current - begin),
                 counter / (current - begin))
             last = current
+        
+        # commit local doc to mongo to db 
+        if lines_since_commit > 1000000:
+            print "Commiting " + str(len(doc)) + " entries to MongoDB"
+            begin_local = time.time()
+            last_local = begin_local
+            counter_local = 0
+            for value in doc.itervalues():
+                collection.update(value[0], value[1], True)
+            
+                counter_local = counter_local + 1
+                current_local = time.time()
+                if (current_local - last_local > 5):
+                    print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
+                        str(counter_local),
+                        (current_local - begin_local),
+                        counter_local / (current_local - begin_local))
+                    last_local = current_local 
+            doc = {}
+            lines_since_commit = 0
+            current_local = time.time()
+            print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
+                str(counter_local),
+                (current_local - begin_local),
+                counter_local / (current_local - begin_local))
 
-    # commit local doc to mongo db
-    for value in doc.itervalues():
-        collection.update(value[0], value[1], True)
+
+
+# commit local doc to mongo db in the end
+print "Commiting " + str(len(doc)) + " entries to MongoDB"
+begin_local = time.time()
+last_local = begin_local
+counter_local = 0
+counter_total = len(doc)
+for value in doc.itervalues():
+    collection.update(value[0], value[1], True)
+            
+    counter_local = counter_local + 1
+    current_local = time.time()
+    if (current_local - last_local > 5):
+        print "Processed {0} entries in {1} seconds ({2} entries per second, {3}% done)".format(
+            str(counter_local),
+            (current_local - begin_local),
+            counter_local / (current_local - begin_local),
+            counter_local * 100.0 / counter_total)
+        last_local = current_local 
+        doc = {}
+        lines_since_commit = 0
+        current_local = time.time()
+print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
+    str(counter_local),
+    (current_local - begin_local),
+    counter_local / (current_local - begin_local))
 
 # do some statistics in the end
 current = time.time()
