@@ -65,17 +65,13 @@ while router_to_process:
             continue
         if (ip_dst in IPNetwork(str(route["ip_dst"]) + "/" + str(route["mask_dst"]))):
             result = collection.find({"type":"interface_log", "ipAdEntAddr":route["ip_gtw"], "timestamp": timestamp})
-            if route["ipCidrRouteProto"] == "2":
-                print "Connected/Static (" + route["ipCidrRouteType"] + ") from " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"])
-            
+            if result.count() > 1:
+                print "Suspicious IP " + route["ip_gtw"]
+            elif result.count() == 0:
+                print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"]) + " via " + route["ip_gtw"] + " (unknown IP, " + route["ipCidrRouteProto"] + ", " + route["ipCidrRouteType"] + ")"
             else:
-                if result.count() > 1:
-                    print "Suspicious IP " + route["ip_gtw"]
-                elif result.count() == 0:
-                    print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"]) + " via " + route["ip_gtw"] + " (unknown IP)"
-                else:
-                    print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"]) + " via " + route["ip_gtw"] + " belongs to " + result[0]["router"]
-                    router_to_process.append(result[0]["router"])
+                print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["mask_dst"]) + " via " + route["ip_gtw"] + " belongs to " + result[0]["router"]
+                router_to_process.append(result[0]["router"])
             router_done.add(router)
 
 
@@ -101,15 +97,12 @@ while router_to_process:
         if route["ip_dst"] == "0.0.0.0":
             continue
         if (ip_dst in IPNetwork(str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"]))):
-            if route["cEigrpRouteOriginType"] in {"Connected", "RStatic"}:
-                print route["cEigrpRouteOriginType"] + " " + router + " to " + str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"])
+            result = collection.find({"type":"interface_log", "ipAdEntAddr":route["cEigrpNextHopAddress"], "timestamp": timestamp})
+            if result.count() > 1:
+                print "Suspicious IP " + route["cEigrpNextHopAddress"]
+            elif result.count() == 0:
+                print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"]) + " from " + router + " is " + route["cEigrpNextHopAddress"] + " (unknown IP, " + route["cEigrpRouteOriginType"] + ")"
             else:
-                result = collection.find({"type":"interface_log", "ipAdEntAddr":route["cEigrpNextHopAddress"], "timestamp": timestamp})
-                if result.count() > 1:
-                    print "Suspicious IP " + route["cEigrpNextHopAddress"]
-                elif result.count() == 0:
-                    print "No further information, next hop gateway to " + str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"]) + " from " + router + " is " + route["cEigrpNextHopAddress"]
-                else:
-                    print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"]) + " via " + route["cEigrpNextHopAddress"] + " belongs to " + result[0]["router"]
-                    router_to_process.append(result[0]["router"])
+                print "Next Hop: " + router + " to " + str(route["ip_dst"]) + "/" + str(route["cEigrpRouteMask"]) + " via " + route["cEigrpNextHopAddress"] + " belongs to " + result[0]["router"]
+                router_to_process.append(result[0]["router"])
             router_done.add(router)

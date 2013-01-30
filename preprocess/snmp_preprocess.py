@@ -361,7 +361,7 @@ for file in args.file:
             last = current
         
         # commit local doc to mongo to db 
-        if lines_since_commit > 1000000:
+        if lines_since_commit > 999999999:
             print "Commiting " + str(len(doc)) + " entries to MongoDB"
             begin_local = time.time()
             last_local = begin_local
