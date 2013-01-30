@@ -24,6 +24,8 @@ class SQLBaseBackend(Backend):
 		self.cursor = None
 		self.connect()
 
+		self.dbType = None
+
 		self.executeTimes = 0
 		self.executeManyTimes = 0
 		self.executeManyObjects = 0
@@ -458,17 +460,21 @@ class SQLBaseBackend(Backend):
 			dstQuery = "SELECT " + dstDirection + " as " + bothDirection + " %s FROM %s %s GROUP BY %s " % (fieldList, collectionName, queryString, dstDirection)
 			addList = ""
 			for field in config.flow_aggr_sums + [ common.COL_FLOWS ]:
-				addList += ",(" + field + " + " + field +") as " + field
+				addList += ",SUM(" + field +") as " + field
 				for p in common.AVAILABLE_PROTOS:
-					addList += ",(" + p + "_" + field + "+" + p + "_" + field + ") as " + p + "_" + field
+					addList += ",SUM(" + p + "_" + field + ") as " + p + "_" + field
 
-			queryString = "SELECT %s as %s%s FROM ((%s) UNION (%s)) " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery)
+			if self.type == "oracle": 
+				queryString = "SELECT %s as %s%s FROM ((%s) UNION ALL (%s)) " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery)
+			else:
+				queryString = "SELECT %s as %s%s FROM ((%s) UNION (%s)) as T " % (bothDirection, common.COL_ID, addList, srcQuery, dstQuery)
+				
 
 		else:
 			queryString = "SELECT %s FROM %s %s " % (fieldList, collectionName, queryString)
 
 
-		if aggregate and (not doIPAddress and not doPort):
+		if aggregate:
 			queryString += "GROUP BY "
 			firstField = True
 			for field in aggregate:
@@ -541,8 +547,8 @@ class SQLBaseBackend(Backend):
 				result.append(resultDoc)
 
 		print "Got Results: ", len(result)
-		print "Total: ", total
-		print "Result: ", result
+		#print "Total: ", total
+		#print "Result: ", result
 		#for r in result: 
 		#	print r
 		return (result, total)
