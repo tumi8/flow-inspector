@@ -13,8 +13,9 @@ import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'pytz-2012h'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'bson-0.3.2'))
 
-import pymongo
 import math
 import bson
 import config
@@ -58,11 +59,11 @@ def extract_mongo_query_params():
 		sort = map(lambda v: v.strip(), sort.split(","))
 		for i in range(0, len(sort)):
 			field = sort[i].split(" ")
-			order = pymongo.ASCENDING
+			order = 1
 			if field[-1].lower() == "asc":
 				field.pop()
 			elif field[-1].lower() == "desc":
-				order = pymongo.DESCENDING
+				order = -1
 				field.pop()
 			
 			field = " ".join(field)

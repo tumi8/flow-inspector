@@ -3,8 +3,6 @@
 
 """
 Preprocess flows taken from Redis queue.
-Keep this script running forever if you want live data:
-nohup ./preprocess.py
 
 It is save to run multiple instances of this script!
 
@@ -14,6 +12,9 @@ Author: Mario Volke, Lothar Braun
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'redis-py'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'pytz-2012h'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'bson-0.3.2'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import math
