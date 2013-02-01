@@ -9,6 +9,8 @@
     <link href="/static/css/dev/bootstrap.css" rel="stylesheet">
     <link href="/static/css/dev/jquery.jscrollpane.css" rel="stylesheet">
     <link href="/static/css/dev/screen.css" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="/static/css/dev/jscalendar/jscal2.css" />
+	<link rel="stylesheet" type="text/css" href="/static/css/dev/jscalendar/border-radius.css" />
 </head>
 <body>
 
