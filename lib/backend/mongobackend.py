@@ -56,7 +56,7 @@ class MongoBackend(Backend):
 		try:
 			import pymongo
 		except Exception as inst:
-			print >> sys.stderr, "Cannot connect to Mongo database: pymongo is not installed!"
+			print >> sys.stderr, "Cannot connect to Mongo database: pymongo is not installed!", inst
 			sys.exit(1)
 		try:
 			self.conn = pymongo.Connection(self.host, self.port)

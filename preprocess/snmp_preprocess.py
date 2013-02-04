@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 import common
 import backend
 import config
+import pymongo
 
 parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 parser.add_argument(
@@ -45,6 +46,16 @@ dst_db = backend.flowbackend.getBackendObject(
 
 if args.clear_database:
     dst_db.clearDatabase()
+
+db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
+collection = db["snmp_raw"]
+collection.ensure_index([("router", pymongo.ASCENDING), ("if_number", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+collection.ensure_index([("router", pymongo.ASCENDING), ("if_ip", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("mask_dst", pymongo.ASCENDING), ("ip_gtw", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+
+
+
 
 dst_db.prepareCollections()
 collection = dst_db.getCollection("snmp_raw")

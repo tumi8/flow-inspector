@@ -24,9 +24,6 @@ class Node(object):
         """ Return label for GraphML document """
         return str(self.ip) + "/" + str(self.netmask)
 
-    def __str__(self):
-        return "Node " + str(self.ip) + "/" + str(self.netmask)
-
 
 class Router(Node):
 
@@ -51,9 +48,6 @@ class Router(Node):
     def getLabel(self):
         """ Return label for GraphML document """
         return "Router " + str(self.ip)
-
-    def __str__(self):
-        return "Router " + str(selp.ip)
 
 
 class Interface(Node):
@@ -95,10 +89,7 @@ class Interface(Node):
         return label[:-2]
 
     def __str__(self):
-        string = "Interface " + self.router.ip + "_" + self.ifnumber + ": "
-        for ip in sorted(self.ip):
-            string += ip + ", "
-        return string[:-2]
+        return ("Interface " + self.router.ip + "_" + self.ifnumber)
 
 
 class Subnet(Node):
@@ -121,9 +112,6 @@ class Subnet(Node):
 
     def getLabel(self):
         return str(self.ip) + "/" + str(self.netmask)
-
-    def __str__(self):
-        return "Subnet " + str(self.ip) + "/" + str(self.netmask)
 
 
 class Graph(object):
@@ -205,7 +193,6 @@ class Graph(object):
         if self.isInterface(router_ip, interface_number):
             interface = self.getInterfaceByNumber(router_ip, interface_number)
             interface.ip.add(str(interface_ip) + "/" + str(interface_netmask))
-            self.db["Node"][str(interface_ip) + "/32"] = interface
         else:
             router = self.getRouter(router_ip)
 

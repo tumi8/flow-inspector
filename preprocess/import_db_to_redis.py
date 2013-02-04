@@ -11,7 +11,7 @@ Author: Mario Volke, Lothar Braun
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'redis-py'))
+#sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'redis-py'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import math
