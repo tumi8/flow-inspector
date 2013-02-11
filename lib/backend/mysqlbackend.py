@@ -106,3 +106,21 @@ class MysqlBackend(SQLBaseBackend):
 	
 	def add_limit_to_string(self, string, limit):
 		return string + " LIMIT " + str(limit)
+
+	def prepareCollection(self, name, fieldDict):
+		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
+		first = True
+		primary = ""
+		for field in fieldDict:
+			if not first:
+				createString += ","
+			createString += field + " " + fieldDict[field][0]
+			if fieldDict[field][1] != None:
+				primary = " PRIMARY KEY(" + field + ")"
+			first = False
+		if primary != "":
+			createString += "," + primary
+		createString += ")"
+		self.execute(createString)
+
+

@@ -169,6 +169,17 @@ class Backend:
 		a collection/table in the database. 
 		"""
 		return Collection(self, name)
+
+	def prepareCollection(self, name, fieldDict):
+		"""
+		Prepare a specific data collection based on teh values of fieldDict
+		fieldDict should specify datatypes if they are required (e.g. mongo
+		backends do not specify any datatypes as they are automatically 
+		inferred by the database)
+		fieldDict should contain
+		"""
+		pass
+
 	
 	def prepareCollections(self):
 		"""
