@@ -10,7 +10,7 @@ import argparse
 import pymongo
 
 from snmp_utils import Graph, Node, Router, Interface, Subnet, graph_to_graphmlfile
-from find_route import findRouteIPTable
+from find_route import findRouteIPTable, findRouteEIGRP
 from copy import deepcopy
 from netaddr import *
 from collections import deque
@@ -63,7 +63,8 @@ result = db.index_query("flows_600",
 })
 
 flows_processed = 0
-routes_found = 0
+routes_found_ip = 0
+routes_found_eigrp = 0
 routes_not_found = 0
 
 print "Total flows: %s" % len(result[0])
@@ -71,11 +72,21 @@ print "Total flows: %s" % len(result[0])
 begin = time.time()
 last = begin
 
+file_not_found = open('flows_not_found.txt', 'w')
+
 for flow in result[0]:
-	if (findRouteIPTable(int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"]))):
-		routes_found = routes_found + 1
-	else:
-		route_not_found = routes_not_found + 1
+	
+	ip_table = findRouteIPTable((flow["sourceIPv4Address"]), (flow["destinationIPv4Address"]))
+	if ip_table:
+		routes_found_ip = routes_found_ip + 1
+	
+	eigrp = findRouteEIGRP((flow["sourceIPv4Address"]), (flow["destinationIPv4Address"]))
+	if eigrp:
+		routes_found_eigrp = routes_found_eigrp + 1
+
+	if (not ip_table) and (not eigrp):
+		routes_not_found = routes_not_found + 1
+		file_not_found.write("%s -> %s\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
 
 	flows_processed = flows_processed + 1
 
@@ -84,7 +95,10 @@ for flow in result[0]:
 		print "Processed %s flows in %s seconds (%s flows per second)" % (flows_processed, current - begin, flows_processed / (current - begin))
 		last = current
 
+file_not_found.close()
+
 print "Flows processed: %i" % flows_processed
-print "Routes found: %i" % routes_found
+print "Routes found IP: %i" % routes_found_ip
+print "Routes found EIGRP: %i" % routes_found_eigrp
 print "Routes not found: %s" % routes_not_found
 
