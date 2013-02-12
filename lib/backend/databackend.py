@@ -14,7 +14,6 @@ Author: Lothar Braun
 """
 
 import sys
-import flowbackend
 
 def getBackendObject(backend, host, port, user, password, databaseName):
 	if backend == "mongo":
@@ -27,4 +26,4 @@ def getBackendObject(backend, host, port, user, password, databaseName):
 		from oraclebackend import OracleBackend
 		return OracleBackend(host, port, user, password, databaseName)
 	else:
-		raise Exception("Backend " + backend + " is not a supported backend")	if backend == "mysql":
+		raise Exception("Backend " + backend + " is not a supported backend")
