@@ -53,7 +53,9 @@ class MysqlBackend(SQLBaseBackend):
 			cacheLine = cacheLine + (fieldValue,)
 			valueString += "%s"
 	
-		queryString = "INSERT INTO " + collectionName + " (" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString
+		queryString = "INSERT INTO " + collectionName + " (" + typeString + ") VALUES (" + valueString + ") "
+		if updateString != "":
+			queryString += " ON DUPLICATE KEY UPDATE " + updateString
 
 		if self.doCache:
 			numElem = 1
@@ -99,8 +101,19 @@ class MysqlBackend(SQLBaseBackend):
 			# index already exists. that is ok
 			return False
 
+		if error == 1054:
+			# unknown column in string. This is likely to be a programming error, but we
+			# need more context to understand what it is. Handle this condition in the
+			# caller ...
+			raise 
+
 		# try to reconnect
 		# TODO: Implement better handling
+
+		if error == 1064:
+			# error in SQL syntax! This is a programming error and should result in the termination of 
+			# the process or should be handled by another instance ...
+			raise 
 		self.connect()
 		return True
 	
