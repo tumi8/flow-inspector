@@ -16,39 +16,35 @@ parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 parser.add_argument(
     "file", nargs="*", help="File to parse")
 parser.add_argument(
-    "--dst-host", nargs="?", default=config.db_host,
+    "--dst-host", nargs="?", default=config.data_backend_host,
     help="Backend database host")
 parser.add_argument(
-    "--dst-port", nargs="?", default=config.db_port,
+    "--dst-port", nargs="?", default=config.data_backend_port,
     type=int, help="Backend database port")
 parser.add_argument(
-    "--dst-user", nargs="?", default=config.db_user,
+    "--dst-user", nargs="?", default=config.data_backend_user,
     help="Backend database user")
 parser.add_argument(
     "--dst-password", nargs="?",
-    default=config.db_password, help="Backend database password")
+    default=config.data_backend_password, help="Backend database password")
 parser.add_argument(
     "--dst-database", nargs="?",
-    default=config.db_name, help="Backend database name")
+    default=config.data_backend_snmp_name, help="Backend database name")
 parser.add_argument(
     "--clear-database", nargs="?", type=bool, default=False, const=True,
     help="Whether to clear the whole databse before importing any flows.")
 parser.add_argument(
-    "--backend", nargs="?", default=config.db_backend, const=True,
+    "--backend", nargs="?", default=config.data_backend, const=True,
     help="Selects the backend type that is used to store the data")
 
 args = parser.parse_args()
 
-dst_db = backend.flowbackend.getBackendObject(
+dst_db = backend.databackend.getBackendObject(
     args.backend, args.dst_host, args.dst_port,
     args.dst_user, args.dst_password, args.dst_database)
 
 if args.clear_database:
     dst_db.clearDatabase()
-
-dst_db.prepareCollections()
-collection = dst_db.getCollection("snmp_raw")
-
 
 # parsing function for oid values
 
@@ -90,6 +86,8 @@ def int2ip(i):
     """ convert int to ip """
     return (str(i // (2 ** 24)) + "." + str((i // (2 ** 16)) % 256) + "." +
             str((i // (2 ** 8)) % 256) + "." + str(i % 256))
+
+
 
 
 # dictionary which maps oid -> name and fct to parse oid value
@@ -239,6 +237,35 @@ oidmap = {
     ".1.3.6.1.2.1.4.24.4.1.16":
     {"name": "ipCidrRouteStatus", "fct": plain}
 }
+
+def getFieldDict():
+	fieldDict = dict()
+	for oid in oidmap:
+		if args.backend == "mysql":
+			fieldDict[oidmap[oid]["name"]] = ("VARCHAR(100)", None)
+		elif args.backend == "oracle":
+			fieldDict[oid["name"]] = ("VARCHAR(100)", None)
+		elif args.backend == "mongo":
+			return None
+		else:
+			raise Exception("Unknown data backend: " + args.backend);
+
+	for name in [ 'cEigrpRouteMask', 'router', 'if_number', 'type', 'if_ip', 'ip_src', 'ip_dst', 'mask_dst', 'ip_gtw', 'ipCidrRoute' ]:
+		if args.backend == "mysql":
+			fieldDict[name] = ("VARCHAR(100)", None)
+		elif args.backend == "oracle":
+			fieldDict[name] = ("VARCHAR(100)", None)
+		elif args.backend == "mongo":
+			return None
+		else:
+			raise Exception("Unknown data backend: " + args.backend);
+		
+	return fieldDict
+	
+
+dst_db.prepareCollection("snmp_raw", getFieldDict())
+collection = dst_db.getCollection("snmp_raw")
+
 
 
 def update_doc(doc_key, mongo_key, mongo_values):
@@ -393,6 +420,7 @@ begin_local = time.time()
 last_local = begin_local
 counter_local = 0
 counter_total = len(doc)
+current_local = 0
 for value in doc.itervalues():
     collection.update(value[0], value[1], True)
             
@@ -408,6 +436,8 @@ for value in doc.itervalues():
         doc = {}
         lines_since_commit = 0
         current_local = time.time()
+
+collection.flushCache()
 print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
     str(counter_local),
     (current_local - begin_local),
