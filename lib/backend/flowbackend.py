@@ -39,7 +39,7 @@ class Collection:
 		"""
 		self.backendObject.createIndex(self.collectionName, fieldName)
 
-	def update(self, statement, document, insertIfNotExist, comes_from_cache = False):
+	def update(self, statement, document, insertIfNotExist=False, comes_from_cache = False):
 		"""
 		Updates or creates a flow in the database. 
 		- statement - contains the id of the flow in the database (_id for mongo, primary key for sql)
@@ -112,6 +112,12 @@ class Collection:
 		- batch_size: database should select the flows in batch sizes of batchSize (ignored for most backends)
 		"""
 		return self.backendObject.index_query(self.collectionName, query_params)
+
+	def find(self, spec, fields=None, sort=None):
+		"""
+		Queries the database for the desired fields in the spec dictionary. 
+		"""
+		return self.backendObject.find(self.collectionName, spec=spec, fields=fields, sort=sort)
  
 
 	def find_one(self, spec, fields=None, sort=None):
@@ -119,6 +125,10 @@ class Collection:
 
 	def flushCache(self, collectionName = None):
 		return self.backendObject.flushCache(collectionName)
+
+	def distinct(self, field):
+		return self.backendObject.distinct(self.collectionName, field)
+
 
 class Backend:
 	def __init__(self, host, port, user, password, databaseName):
@@ -237,7 +247,13 @@ class Backend:
 	def find_one(self, collectionName, spec, fields, sort):
 		pass
 
+	def find(self, spec, fields=None, sort=None):
+		pass
+
 	def run_query(self, collectionName, query):
+		pass
+
+	def distinct(self, collectionName, field):
 		pass
 
 	def handle_index_update(self, collectionName, statement, document, insertIfnotExists):

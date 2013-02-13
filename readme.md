@@ -30,6 +30,10 @@ Requirements
 - Redis (tested with v2.4.3)
   pip install redis
 
+### snmp
+
+- netaddr
+
 ### Backends
 
 You can choose between multiple backends for storing flow data. Additional requirements come from your choice of flow data backend. flow-inspector currently supports three backends:

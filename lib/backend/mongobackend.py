@@ -56,7 +56,7 @@ class MongoBackend(Backend):
 		try:
 			import pymongo
 		except Exception as inst:
-			print >> sys.stderr, "Cannot connect to Mongo database: pymongo is not installed!"
+			print >> sys.stderr, "Cannot connect to Mongo database: pymongo is not installed!", inst
 			sys.exit(1)
 		try:
 			self.conn = pymongo.Connection(self.host, self.port)
@@ -439,8 +439,15 @@ class MongoBackend(Backend):
 		return (results, total)
 		
 	
-	def find_one(self, collectionName, spec, fields, sort):
+	def find_one(self, collectionName, spec, fields = None, sort = None):
 		collection = self.dst_db[collectionName]
 		return collection.find_one(spec, fields=fields, sort=sort)
 
+	def find(self, collectionName,  spec, fields=None, sort=None):
+		collection = self.dst_db[collectionName]
+		return collection.find(spec, fields=fields, sort=sort)
 
+	def distinct(self, collectionName, field):
+		collection = self.dst_db[collectionName]
+		return collection.distinct(field)
+		

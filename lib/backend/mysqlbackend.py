@@ -27,6 +27,7 @@ class MysqlBackend(SQLBaseBackend):
 			)         
 			self.conn = MySQLdb.connect(**dns)
 			self.cursor = self.conn.cursor()
+			self.dictCursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to MySQL database: ", inst 
 			sys.exit(1)
@@ -50,6 +51,10 @@ class MysqlBackend(SQLBaseBackend):
 				if updateString != "":
 					updateString += ","
 				updateString += field + "=" + field + " + VALUES(" + field + ")"
+			elif actionType == "SET":
+				if updateString != "":
+					updateString += ","
+				updateString += field + "=" + field
 			cacheLine = cacheLine + (fieldValue,)
 			valueString += "%s"
 	
@@ -128,12 +133,12 @@ class MysqlBackend(SQLBaseBackend):
 			if not first:
 				createString += ","
 			createString += field + " " + fieldDict[field][0]
-			if fieldDict[field][1] != None:
+			if fieldDict[field][1] == "PRIMARY":
 				primary = " PRIMARY KEY(" + field + ")"
+			if fieldDict[field][2] != None:
+				createString += " " + fieldDict[field][2]
 			first = False
 		if primary != "":
 			createString += "," + primary
 		createString += ")"
 		self.execute(createString)
-
-
