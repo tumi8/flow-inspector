@@ -22,33 +22,46 @@ def findRouteIPTable(ip_src, ip_dst, verbose=False):
 	
 	router_to_process = deque()
 	router_done = set()
+	return_value = 0
 
-	print "Source IP: %s" % int2ip(ip_src)
+	print >> sys.stderr, "Source IP: %s" % int2ip(ip_src)
 
-	for route in collection.find({"type": "ipCidrRoute", "ipCidrRouteProto": "2", "timestamp": timestamp, "low_ip": {"$lte": ip_src}, "high_ip": {"$gte": ip_src}}, {"_id": 0}):
+	for route in collection.find({"type": "ipCidrRoute", "$or": [{"ipCidrRouteProto": "2"}, {"ipCidrRouteProto": "3"}], "timestamp": timestamp, "low_ip": {"$lte": ip_src}, "high_ip": {"$gte": ip_src}}, {"_id": 0}):
+		if route["ip_dst"] == 0:
+			continue
+		print >> sys.stderr, "Source network: %s/%s" % (int2ip(route["ip_dst"]), route["mask_dst"])
 		router_to_process.append(route["ip_src"])
 
-	print "Destination IP: %s" % int2ip(ip_dst)
+
+	if len(router_to_process) == 0:
+		router_to_process.append(ip2int("130.198.1.1"))
+		print >> sys.stderr, "No source network found, assuming incoming flow"
+		return_value = return_value + 2
+
+	print >> sys.stderr, "Destination IP: %s" % int2ip(ip_dst)
+	
 	while router_to_process:
 		router = router_to_process.popleft()
 		if router in router_done:
 			continue
-		
-		for route in collection.find({"type": "ipCidrRoute", "ip_src": router, "timestamp": timestamp, "low_ip": {"$lte": ip_dst}, "high_ip": {"$gte": ip_dst}, "ip_dst": {"$ne": 0}}, {"_id": 0}):
+
+		for route in collection.find({"type": "ipCidrRoute", "ip_src": router, "timestamp": timestamp, "low_ip": {"$lte": ip_dst}, "high_ip": {"$gte": ip_dst}}, {"_id": 0}):
+			if route["ip_dst"] == 0:
+				continue
 			result = collection.find({"type": "interface_log", "ipAdEntAddr": route["ip_gtw"], "timestamp": timestamp}, {"router":1, "_id":0})
 			#if result.count() > 1:
 				#print "Suspicious IP " + route["ip_gtw"]
 			if result.count() == 0:
-				print ("Next Hop: %s -> %s/%s via %s (unknown IP, %s, %s)" %
+				print >> sys.stderr, ("Next Hop: %s -> %s/%s via %s (unknown IP, %s, %s)" %
 					(int2ip(router),
 					 int2ip(route["ip_dst"]),
 					 route["mask_dst"],
 					 int2ip(route["ip_gtw"]),
 					 route["ipCidrRouteType"],
 					 route["ipCidrRouteProto"]))
-				return True
+				return return_value + 1
 			else:
-				print ("Next Hop: %s -> %s/%s via %s (belongs to %s)" %
+				print >> sys.stderr, ("Next Hop: %s -> %s/%s via %s (belongs to %s)" %
 					(int2ip(router),
 					 int2ip(route["ip_dst"]),
 					 route["mask_dst"],
@@ -57,7 +70,8 @@ def findRouteIPTable(ip_src, ip_dst, verbose=False):
 				router_to_process.append(ip2int(result[0]["router"]))
 		router_done.add(router)
 
-	return False
+	print >> sys.stderr, "No destination network found, assuming outgoing flow"
+	return return_value + 4
 
 
 def findRouteEIGRP(ip_src, ip_dst):
@@ -70,6 +84,10 @@ def findRouteEIGRP(ip_src, ip_dst):
 		if route["ip_dst"] == 0:
 			continue
 		router_to_process.append(route["ip_src"])
+
+	if len(router_to_process) == 0:
+		router_to_process.append(ip2int("130.198.1.1"))
+		print "Using default gateway"
 
 	while router_to_process:
 		router = router_to_process.popleft()

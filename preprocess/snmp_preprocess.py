@@ -235,6 +235,9 @@ for file in args.file:
 	ip_src = params[1]
 	timestamp = params[2]
 
+
+	print "file: %s" % file
+
 	# read and process file contents
 	file = open(file, "r")
 	for line in file:
@@ -355,7 +358,7 @@ for file in args.file:
 				(current_local - begin_local),
 				counter_local / (current_local - begin_local))
 
-
+	print "counter: %s" % counter
 
 # commit local doc to mongo db in the end
 print "Commiting " + str(len(doc)) + " entries to MongoDB"
@@ -395,10 +398,10 @@ for row in collection.find({"type": "eigrp", "timestamp": timestamp}):
 	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["cEigrpRouteMask"]))
 	collection.update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
 
-for row in collection.find({"type":"interface_log", "timestamp": timestamp}):
-	collection.update(
-		{"type": "ipCidrRoute", "ip_gtw": row["ipAdEntAddr"], "timestamp": timestamp},
-		{"gateway_router": row["router"]})
+#for row in collection.find({"type":"interface_log", "timestamp": timestamp}):
+#	collection.update(
+#		{"type": "ipCidrRoute", "ip_gtw": row["ipAdEntAddr"], "timestamp": timestamp},
+#		{"gateway_router": row["router"]})
 
 
 
