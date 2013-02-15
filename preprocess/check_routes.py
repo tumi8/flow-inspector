@@ -71,6 +71,7 @@ routes_incoming = 0
 routes_outgoing = 0 
 routes_intra = 0
 routes_forward = 0
+routes_invisible = 0
 
 print "Total flows: %s" % len(result[0])
 
@@ -84,25 +85,42 @@ f_incoming = open('flows_incoming.txt', 'w')
 f_outgoing = open('flows_outgoing.txt', 'w')
 f_intra = open('flows_intra.txt', 'w')
 f_forward = open('flows_forward.txt', 'w')
+f_invisible = open('flows_invisible.txt', 'w')
 
 for flow in result[0]:
 	
-	ip_table = findRouteIPTable((flow["sourceIPv4Address"]), (flow["destinationIPv4Address"]))
+	ip_table = findRouteIPTable((flow["sourceIPv4Address"]), (flow["destinationIPv4Address"]), observationPoint = ["130.198.1.1", "130.198.1.2"])
 	if ip_table > 0:
 		kind = "this text is not supposed to be ever printed"
 		if ip_table == 1:
+			routes_invisible = routes_invisible + 1
+			f_invisible.write("%s -> %s (intra)\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
+			kind = "intra"
+		elif ip_table == 3:
+			routes_invisible = routes_invisible + 1
+			f_invisible.write("%s -> %s (incoming)\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
+			kind = "incoming"
+		elif ip_table == 4:
+			routes_invisible = routes_invisible + 1
+			f_invisible.write("%s -> %s (outgoing)\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
+			kind = "outgoing"
+		elif ip_table == 6:
+			routes_invisible = routes_invisible + 1
+			f_invisible.write("%s -> %s (forward)\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
+			kind = "forward"
+		elif ip_table == 9:
 			routes_intra = routes_intra + 1
 			f_intra.write("%s -> %s\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
 			kind = "intra"
-		elif ip_table == 3:
+		elif ip_table == 11:
 			routes_incoming = routes_incoming + 1
 			f_incoming.write("%s -> %s\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
 			kind = "incoming"
-		elif ip_table == 4:
+		elif ip_table == 12:
 			routes_outgoing = routes_outgoing + 1
 			f_outgoing.write("%s -> %s\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
 			kind = "outgoing"
-		elif ip_table == 6:
+		elif ip_table == 14:
 			routes_forward = routes_forward + 1
 			f_forward.write("%s -> %s\n" % (int2ip(flow["sourceIPv4Address"]), int2ip(flow["destinationIPv4Address"])))
 			kind = "forward"
@@ -136,6 +154,7 @@ f_incoming.close()
 f_outgoing.close()
 f_intra.close()
 f_forward.close()
+f_invisible.close()
 
 print "Flows processed: %i" % flows_processed
 print "Routes found IP: %i" % routes_found_ip
@@ -145,4 +164,5 @@ print "Routes incoming: %s" % routes_incoming
 print "Routes outgoing: %s" % routes_outgoing
 print "Routes intra: %s" % routes_intra
 print "Routes forward: %s" % routes_forward
+print "Routes invisible: %s" % routes_invisible
 
