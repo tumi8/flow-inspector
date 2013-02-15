@@ -642,7 +642,7 @@ class SQLBaseBackend(Backend):
 				self.execute(createString)
 
 
-	def find(self, collectionName,  spec, fields=None, sort=None):
+	def find(self, collectionName,  spec, fields=None, sort=None, limit=None):
 		fieldsString = ""
 		if fields == None:
 			fieldsString = "*"
@@ -704,6 +704,9 @@ class SQLBaseBackend(Backend):
 			query += where_clause
 		if order_clause != "":
 			query += order_clause
+		if limit:
+			query = self.add_limit_to_string(query, limit)
+
 
 		self.execute(query, None, self.dictCursor)
 		ret = self.dictCursor.fetchall()
