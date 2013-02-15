@@ -7,7 +7,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import argparse
-import pymongo
 
 from netaddr import *
 from collections import deque
@@ -157,17 +156,17 @@ def main():
 	parser.add_argument("src_ip")
 	parser.add_argument("dst_ip")
 	parser.add_argument("--timestamp")
-	parser.add_argument("--dst-host", nargs="?", default=config.db_host, help="Backend database host")
-	parser.add_argument("--dst-port", nargs="?", default=config.db_port, type=int, help="Backend database port")
-	parser.add_argument("--dst-user", nargs="?", default=config.db_user, help="Backend database user")
-	parser.add_argument("--dst-password", nargs="?", default=config.db_password, help="Backend database password")
-	parser.add_argument("--dst-database", nargs="?", default=config.db_name, help="Backend database name")
+	parser.add_argument("--dst-host", nargs="?", default=config.data_backend_host, help="Backend database host")
+	parser.add_argument("--dst-port", nargs="?", default=config.data_backend_port, type=int, help="Backend database port")
+	parser.add_argument("--dst-user", nargs="?", default=config.data_backend_user, help="Backend database user")
+	parser.add_argument("--dst-password", nargs="?", default=config.data_backend_password, help="Backend database password")
+	parser.add_argument("--dst-database", nargs="?", default=config.data_backend_name, help="Backend database name")
 
 	args = parser.parse_args()
 
 	global collection
-	db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
-	collection = db["snmp_raw"]
+	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name)
+	collection = db.getCollection("snmp_raw")
 	
 	global timestamp
 	if args.timestamp:
@@ -185,6 +184,6 @@ if __name__ == "__main__":
 	main()
 else:
 	global collecion, timestamp
-	db = pymongo.Connection(config.db_host, config.db_port)[config.db_name]
-	collection = db["snmp_raw"]
+	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name)
+	collection = db.getCollection("snmp_raw")
 	timestamp = sorted(collection.distinct("timestamp"), reverse=True)[0]

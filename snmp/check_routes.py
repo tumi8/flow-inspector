@@ -7,7 +7,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import argparse
-import pymongo
 
 from snmp_utils import Graph, Node, Router, Interface, Subnet, graph_to_graphmlfile
 from find_route import findRouteIPTable, findRouteEIGRP
@@ -47,7 +46,7 @@ max_bucket = db.getMaxBucket()
 print min_bucket
 print max_bucket
 
-result = db.index_query("flows_600",
+result = db.index_query("flows_1800",
 {
 	"fields": ["sourceIPv4Address", "destinationIPv4Address"],
 	"sort": "",
@@ -60,7 +59,15 @@ result = db.index_query("flows_600",
 	"exclude_ports": "",
 	"include_ips": "",
 	"exclude_ips": "",
-	"limit": ""
+	"limit": None,
+	"bucket_size": "",
+	"include_protos": "",
+	"exclude_protos": "",
+	"batch_size": "",
+	"aggregate": None,
+	"black_others": "",
+
+	"resolution": ""
 })
 
 flows_processed = 0

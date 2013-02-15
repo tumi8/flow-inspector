@@ -12,9 +12,10 @@ Author: Mario Volke, Lothar Braun
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
-#sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'redis-py'))
-#sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'pytz-2012h'))
-#sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'bson-0.3.2'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'redis-py'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'pytz-2012h'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'bson-0.3.2'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import math
@@ -335,7 +336,6 @@ while True:
 		# this redis call blocks until there is a new entry in the queue
 		obj = r.blpop(common.REDIS_QUEUE_KEY, 0)
 		obj = obj[1]
-		print obj
 		
 		# Terminate if this object is the END flag
 		if obj == "END":

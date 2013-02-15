@@ -6,7 +6,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import argparse
-import pymongo
 
 from snmp_utils import Graph, Node, Router, Interface, Subnet, graph_to_graphmlfile
 from copy import deepcopy
@@ -19,18 +18,21 @@ import time
 
 parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 parser.add_argument("--timestamp")
-parser.add_argument("--dst-host", nargs="?", default=config.db_host, help="Backend database host")
-parser.add_argument("--dst-port", nargs="?", default=config.db_port, type=int, help="Backend database port")
-parser.add_argument("--dst-user", nargs="?", default=config.db_user, help="Backend database user")
-parser.add_argument("--dst-password", nargs="?", default=config.db_password, help="Backend database password")
-parser.add_argument("--dst-database", nargs="?", default=config.db_name, help="Backend database name")
+parser.add_argument("--dst-host", nargs="?", default=config.data_backend_host, help="Backend database host")
+parser.add_argument("--dst-port", nargs="?", default=config.data_backend_port, type=int, help="Backend database port")
+parser.add_argument("--dst-user", nargs="?", default=config.data_backend_user, help="Backend database user")
+parser.add_argument("--dst-password", nargs="?", default=config.data_backend_password, help="Backend database password")
+parser.add_argument("--dst-database", nargs="?", default=config.data_backend_snmp_name, help="Backend database name")
 parser.add_argument("--clear-database", nargs="?", type=bool, default=False, const=True, help="Whether to clear the whole database before importing any flows.")
-parser.add_argument("--backend", nargs="?", default=config.db_backend, const=True, help="Selects the backend type that is used to store the data")
+parser.add_argument("--backend", nargs="?", default=config.data_backend, const=True, help="Selects the backend type that is used to store the data")
 
 args = parser.parse_args()
 
-db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
-collection = db["snmp_raw"]
+dst_db = backend.databackend.getBackendObject(
+        args.backend, args.dst_host, args.dst_port,
+	args.dst_user, args.dst_password, args.dst_database)
+
+collection = dst_db.getCollection("snmp_raw")
 
 if args.timestamp:
 	timestamp = args.timestamp
@@ -131,8 +133,10 @@ for entry in collection.find( { "type": "ipCidrRoute", "ipCidrRouteProto" : "3",
 	interface_netmask = None
 	interface_netaddress = None
 	
-	for interface in (collection.find({"type": "interface_log", "router": entry["ip_src"]})
-							   .sort("ipAdEntNetMask", -1)):
+	print "getting interface"
+	interfaces = collection.find({"type": "interface_log", "router": entry["ip_src"]}, sort={"ipAdEntNetMask": -1})
+ 
+	for interface in interfaces:
 		interface_network = IPNetwork(str(interface["ipAdEntAddr"]) + "/" + str(interface["ipAdEntNetMask"]))
 		if (router_ip in interface_network):
 			interface_netmask = interface["ipAdEntNetMask"]
@@ -189,8 +193,7 @@ for entry in collection.find( { "type":"eigrp", "cEigrpRouteOriginType":"Rstatic
 	interface_netmask = None
 	interface_netaddress = None
 	
-	for interface in (collection.find({"type": "interface_log", "router": entry["ip_src"]})
-							   .sort("ipAdEntNetMask", -1)):
+	for interface in (collection.find({"type": "interface_log", "router": entry["ip_src"]}, sort={"ipAdEntNetMask", -1})):
 		interface_network = IPNetwork(str(interface["ipAdEntAddr"]) + "/" + str(interface["ipAdEntNetMask"]))
 		if (router_ip in interface_network):
 			interface_netmask = interface["ipAdEntNetMask"]

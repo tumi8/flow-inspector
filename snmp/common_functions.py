@@ -45,10 +45,10 @@ def hex2ip2int(value):
 def calc_ip_range(ip, mask):
 	""" calculate smallest and biggest ip belonging to given network """
 	
-	mask_inv = 32 - mask
+	mask_inv = 32 - int(mask)
 
 	# strip network bits
-	bits = ip >> mask_inv
+	bits = int(ip) >> mask_inv
 
 	# calculate network address by shifting network bits to left
 	# efficitvely zeros the '(32-mask)'-right bits of ip

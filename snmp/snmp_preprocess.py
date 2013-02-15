@@ -11,7 +11,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 import common
 import backend
 import config
-import pymongo
 
 from common_functions import *
 
@@ -19,47 +18,56 @@ parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 parser.add_argument(
 	"file", nargs="*", help="File to parse")
 parser.add_argument(
-	"--dst-host", nargs="?", default=config.db_host,
+	"--dst-host", nargs="?", default=config.data_backend_host,
 	help="Backend database host")
 parser.add_argument(
-	"--dst-port", nargs="?", default=config.db_port,
+	"--dst-port", nargs="?", default=config.data_backend_port,
 	type=int, help="Backend database port")
 parser.add_argument(
-	"--dst-user", nargs="?", default=config.db_user,
+	"--dst-user", nargs="?", default=config.data_backend_user,
 	help="Backend database user")
 parser.add_argument(
 	"--dst-password", nargs="?",
-	default=config.db_password, help="Backend database password")
+	default=config.data_backend_password, help="Backend database password")
 parser.add_argument(
 	"--dst-database", nargs="?",
-	default=config.db_name, help="Backend database name")
+	default=config.data_backend_snmp_name, help="Backend database name")
 parser.add_argument(
 	"--clear-database", nargs="?", type=bool, default=False, const=True,
 	help="Whether to clear the whole databse before importing any flows.")
 parser.add_argument(
-	"--backend", nargs="?", default=config.db_backend, const=True,
+	"--backend", nargs="?", default=config.data_backend, const=True,
 	help="Selects the backend type that is used to store the data")
 
 args = parser.parse_args()
 
-dst_db = backend.flowbackend.getBackendObject(
+dst_db = backend.databackend.getBackendObject(
 	args.backend, args.dst_host, args.dst_port,
 	args.dst_user, args.dst_password, args.dst_database)
 
 if args.clear_database:
 	dst_db.clearDatabase()
 
-db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
-collection = db["snmp_raw"]
-collection.ensure_index([("router", pymongo.ASCENDING), ("if_number", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
-collection.ensure_index([("router", pymongo.ASCENDING), ("if_ip", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
-collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
-collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("mask_dst", pymongo.ASCENDING), ("ip_gtw", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+# parsing function for oid values
+
+def plain(value):
+	""" do nothing function """
+	return value
 
 
+def hex2ip(value):
+	""" convert hex to ip (i.e. DE AD BE EF -> 222.173.190.239) """
+	value = value.strip(" ")
+	return '.'.join(str(int(part, 16))
+		for part in [value[0:2], value[3:5], value[6:8], value[9:11]])
 
-dst_db.prepareCollections()
-collection = dst_db.getCollection("snmp_raw")
+
+def netmask2int(netmask):
+	""" convert netmask to int (i.e. 255.255.255.0 -> 24) """
+	tmp = ''
+	for part in netmask.split("."):
+		tmp = tmp + str(bin(int(part)))
+	return tmp.count("1")
 
 
 # dictionary which maps oid -> name and fct to parse oid value
@@ -209,6 +217,63 @@ oidmap = {
 	".1.3.6.1.2.1.4.24.4.1.16":
 	{"name": "ipCidrRouteStatus", "fct": plain}
 }
+
+def getFieldDict():
+	fieldDict = dict()
+	for oid in oidmap:
+		if args.backend == "mysql":
+			fieldDict[oidmap[oid]["name"]] = ("VARCHAR(100)", None, None)
+		elif args.backend == "oracle":
+			fieldDict[oid["name"]] = ("VARCHAR(100)", None, None)
+		elif args.backend == "mongo":
+			return None
+		else:
+			raise Exception("Unknown data backend: " + args.backend);
+
+	for name in [ 'cEigrpRouteMask', 'router', 'if_number', 'type', 'if_ip', 'ip_src', 'ip_dst', 'mask_dst', 'ip_gtw', 'ipCidrRoute', 'low_ip', 'high_ip', 'timestamp' ]:
+		if args.backend == "mysql":
+			fieldDict[name] = ("VARCHAR(100)", None, None)
+		elif args.backend == "oracle":
+			fieldDict[name] = ("VARCHAR(100)", None, None)
+		elif args.backend == "mongo":
+			return None
+		else:
+			raise Exception("Unknown data backend: " + args.backend);
+		
+	if args.backend == "mysql":
+		# autoincrement id field
+		fieldDict["_id"] = ("BIGINT", "PRIMARY", "AUTO_INCREMENT")
+	elif args.backend == "oracle":
+		raise Exception("Not yet implemeneted!")
+	elif args.backend == "mongo":
+		return None
+	else:
+		raise Exception("Unknown data backend: " + args.backend);
+	return fieldDict
+	
+
+dst_db.prepareCollection("snmp_raw", getFieldDict())
+collection = dst_db.getCollection("snmp_raw")
+
+# TODO: hacky ... make something more general ...
+if backend == "mongo":
+	db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
+	collection = db["snmp_raw"]
+	collection.ensure_index([("router", pymongo.ASCENDING), ("if_number", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+	collection.ensure_index([("router", pymongo.ASCENDING), ("if_ip", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+	collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+	collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("mask_dst", pymongo.ASCENDING), ("ip_gtw", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+
+	# restore generic backend collection
+	collection = dst_db.getCollection("snmp_raw")
+else: 
+	collection.createIndex("router")
+	collection.createIndex("if_number")
+	collection.createIndex("timestamp")
+	collection.createIndex("type")
+	collection.createIndex("ip_src")
+	collection.createIndex("ip_dst")
+
 
 
 def update_doc(doc_key, mongo_key, mongo_values):
@@ -366,6 +431,7 @@ begin_local = time.time()
 last_local = begin_local
 counter_local = 0
 counter_total = len(doc)
+current_local = 0
 for value in doc.itervalues():
 	collection.update(value[0], value[1], True)
 			
@@ -381,14 +447,14 @@ for value in doc.itervalues():
 		doc = {}
 		lines_since_commit = 0
 		current_local = time.time()
+
+collection.flushCache()
 print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
 	str(counter_local),
 	(current_local - begin_local),
 	counter_local / (current_local - begin_local))
 
 print "Doing precalculations"
-db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
-collection = db["snmp_raw"]
 
 # calculate ip network ranges
 for row in collection.find({"type": "ipCidrRoute", "timestamp": timestamp}):
@@ -398,10 +464,10 @@ for row in collection.find({"type": "eigrp", "timestamp": timestamp}):
 	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["cEigrpRouteMask"]))
 	collection.update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
 
-#for row in collection.find({"type":"interface_log", "timestamp": timestamp}):
-#	collection.update(
-#		{"type": "ipCidrRoute", "ip_gtw": row["ipAdEntAddr"], "timestamp": timestamp},
-#		{"gateway_router": row["router"]})
+for row in collection.find({"type":"interface_log", "timestamp": timestamp}):
+	collection.update(
+		{"type": "ipCidrRoute", "ip_gtw": row["ipAdEntAddr"], "timestamp": timestamp},
+		{"gateway_router": row["router"]})
 
 
 

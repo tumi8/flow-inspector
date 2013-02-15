@@ -11,6 +11,7 @@ import sys
 import os
 import subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 #sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'pytz-2012h'))
