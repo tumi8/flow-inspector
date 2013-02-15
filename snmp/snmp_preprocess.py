@@ -48,28 +48,6 @@ dst_db = backend.databackend.getBackendObject(
 if args.clear_database:
 	dst_db.clearDatabase()
 
-# parsing function for oid values
-
-def plain(value):
-	""" do nothing function """
-	return value
-
-
-def hex2ip(value):
-	""" convert hex to ip (i.e. DE AD BE EF -> 222.173.190.239) """
-	value = value.strip(" ")
-	return '.'.join(str(int(part, 16))
-		for part in [value[0:2], value[3:5], value[6:8], value[9:11]])
-
-
-def netmask2int(netmask):
-	""" convert netmask to int (i.e. 255.255.255.0 -> 24) """
-	tmp = ''
-	for part in netmask.split("."):
-		tmp = tmp + str(bin(int(part)))
-	return tmp.count("1")
-
-
 # dictionary which maps oid -> name and fct to parse oid value
 oidmap = {
 	".1.3.6.1.2.1.2.2.1.1":
@@ -218,42 +196,139 @@ oidmap = {
 	{"name": "ipCidrRouteStatus", "fct": plain}
 }
 
-def getFieldDict():
-	fieldDict = dict()
-	for oid in oidmap:
-		if args.backend == "mysql":
-			fieldDict[oidmap[oid]["name"]] = ("VARCHAR(100)", None, None)
-		elif args.backend == "oracle":
-			fieldDict[oid["name"]] = ("VARCHAR(100)", None, None)
-		elif args.backend == "mongo":
-			return None
-		else:
-			raise Exception("Unknown data backend: " + args.backend);
+fieldDict = {
+	"interface_phy": {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("VARCHAR(100)", None, None),
+		"router": ("VARCHAR(100)", None, None),
+		"if_number": ("VARCHAR(100)", None, None),
+		"ifIndex": ("VARCHAR(100)", None, None),
+		"ifDescr": ("VARCHAR(100)", None, None),
+		"ifType": ("VARCHAR(100)", None, None),
+		"ifMtu": ("VARCHAR(100)", None, None),
+		"ifSpeed": ("VARCHAR(100)", None, None),
+		"ifPhysAddress": ("VARCHAR(100)", None, None),
+		"ifAdminStatus": ("VARCHAR(100)", None, None),
+		"ifOperStatus": ("VARCHAR(100)", None, None),
+		"ifLastChange": ("VARCHAR(100)", None, None),
+		"ifInOctets": ("VARCHAR(100)", None, None),
+		"ifInUcastPkts": ("VARCHAR(100)", None, None),
+		"ifInNUcastPkts": ("VARCHAR(100)", None, None),
+		"ifInDiscards": ("VARCHAR(100)", None, None),
+		"ifInErrors": ("VARCHAR(100)", None, None),
+		"ifInUnknownProtos": ("VARCHAR(100)", None, None),
+		"ifOutOctets": ("VARCHAR(100)", None, None),
+		"ifOutUcastPkts": ("VARCHAR(100)", None, None),
+		"ifOutNUcastPkts": ("VARCHAR(100)", None, None),
+		"ifOutDiscards": ("VARCHAR(100)", None, None),
+		"ifOutErrors": ("VARCHAR(100)", None, None),
+		"ifOutQLen": ("VARCHAR(100)", None, None),
+		"ifSpecific": ("VARCHAR(100)", None, None)
+	},
 
-	for name in [ 'cEigrpRouteMask', 'router', 'if_number', 'type', 'if_ip', 'ip_src', 'ip_dst', 'mask_dst', 'ip_gtw', 'ipCidrRoute', 'low_ip', 'high_ip', 'timestamp' ]:
-		if args.backend == "mysql":
-			fieldDict[name] = ("VARCHAR(100)", None, None)
-		elif args.backend == "oracle":
-			fieldDict[name] = ("VARCHAR(100)", None, None)
-		elif args.backend == "mongo":
-			return None
-		else:
-			raise Exception("Unknown data backend: " + args.backend);
+	"interface_log": {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("VARCHAR(100)", None, None),
+		"router": ("VARCHAR(100)", None, None),
+		"if_ip": ("VARCHAR(100)", None, None),
+		"ipAdEntAddr": ("VARCHAR(100)", None, None),
+		"ipAdEntIfIndex": ("VARCHAR(100)", None, None),
+		"ipAdEntNetMask": ("VARCHAR(100)", None, None),
+		"ipAdEntBcastAddr": ("VARCHAR(100)", None, None),
+		"ipAdEntReasmMaxSize": ("VARCHAR(100)", None, None)
+	},
 		
+	"ipRoute": {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("VARCHAR(100)", None, None),
+		"ip_src": ("VARCHAR(100)", None, None),
+		"ip_dst": ("VARCHAR(100)", None, None),
+		"low_ip": ("VARCHAR(100)", None, None),
+		"high_ip": ("VARCHAR(100)", None, None),
+		"ipRouteDest": ("VARCHAR(100)", None, None),
+		"ipRouteIfIndex": ("VARCHAR(100)", None, None),
+		"ipRouteMetric1": ("VARCHAR(100)", None, None),
+		"ipRouteMetric2": ("VARCHAR(100)", None, None),
+		"ipRouteMetric3": ("VARCHAR(100)", None, None),
+		"ipRouteMetric4": ("VARCHAR(100)", None, None),
+		"ipRouteMetric5": ("VARCHAR(100)", None, None),
+		"ipRouteNextHop": ("VARCHAR(100)", None, None),
+		"ipRouteProto": ("VARCHAR(100)", None, None),
+		"ipRouteAge": ("VARCHAR(100)", None, None),
+		"ipRouteMask": ("VARCHAR(100)", None, None),
+		"ipRouteInfo": ("VARCHAR(100)", None, None)
+	},
+		
+	"cEigrp": {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("VARCHAR(100)", None, None),
+		"ip_src": ("VARCHAR(100)", None, None),
+		"ip_dst": ("VARCHAR(100)", None, None),
+		"mask_dst": ("VARCHAR(100)", None, None),
+		"low_ip": ("VARCHAR(100)", None, None),
+        "high_ip": ("VARCHAR(100)", None, None),
+		"cEigrpDestNetType": ("VARCHAR(100)", None, None),
+		"cEigrpDestNet": ("VARCHAR(100)", None, None),
+		"cEigrpDestNetPrefixLen": ("VARCHAR(100)", None, None),
+		"cEigrpActive": ("VARCHAR(100)", None, None),
+		"cEigrpStuckInActive": ("VARCHAR(100)", None, None),
+		"cEigrpDestSuccessors": ("VARCHAR(100)", None, None),
+		"cEigrpFdistance": ("VARCHAR(100)", None, None),
+		"cEigrpRouteOriginType": ("VARCHAR(100)", None, None),
+		"cEigrpRouteOriginAddrType": ("VARCHAR(100)", None, None),
+		"cEigrpRouteOriginAddr": ("VARCHAR(100)", None, None),
+		"cEigrpNextHopAddressType": ("VARCHAR(100)", None, None),
+		"cEigrpNextHopAddress": ("VARCHAR(100)", None, None),
+		"cEigrpNextHopInterface": ("VARCHAR(100)", None, None),
+		"cEigrpDistance": ("VARCHAR(100)", None, None),
+		"cEigrpReportDistance": ("VARCHAR(100)", None, None)
+	},
+		
+	"ipCidrRoute": {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("VARCHAR(100)", None, None),
+		"ip_src": ("VARCHAR(100)", None, None),
+		"ip_dst": ("VARCHAR(100)", None, None),
+		"mask_dst": ("VARCHAR(100)", None, None),
+		"ip_gtw": ("VARCHAR(100)", None, None),
+		"low_ip": ("VARCHAR(100)", None, None),
+        "high_ip": ("VARCHAR(100)", None, None),
+		"ipCidrRouteDest": ("VARCHAR(100)", None, None),
+		"ipCidrRouteMask": ("VARCHAR(100)", None, None),
+		"ipCidrRouteTos": ("VARCHAR(100)", None, None),
+		"ipCidrRouteNextHop": ("VARCHAR(100)", None, None),
+		"ipCidrRouteIfIndex": ("VARCHAR(100)", None, None),
+		"ipCidrRouteType": ("VARCHAR(100)", None, None),
+		"ipCidrRouteProto": ("VARCHAR(100)", None, None),
+		"ipCidrRouteAge": ("VARCHAR(100)", None, None),
+		"ipCidrRouteInfo": ("VARCHAR(100)", None, None),
+		"ipCidrRouteNextHopAS": ("VARCHAR(100)", None, None),
+		"ipCidrRouteMetric1": ("VARCHAR(100)", None, None),
+		"ipCidrRouteMetric2": ("VARCHAR(100)", None, None),
+		"ipCidrRouteMetric3": ("VARCHAR(100)", None, None),
+		"ipCidrRouteMetric4": ("VARCHAR(100)", None, None),
+		"ipCidrRouteMetric5": ("VARCHAR(100)", None, None),
+		"ipCidrRouteStatus": ("VARCHAR(100)", None, None)
+	}
+}
+
+def getFieldDict():
 	if args.backend == "mysql":
-		# autoincrement id field
-		fieldDict["_id"] = ("BIGINT", "PRIMARY", "AUTO_INCREMENT")
+		return fieldDict
 	elif args.backend == "oracle":
 		raise Exception("Not yet implemeneted!")
 	elif args.backend == "mongo":
 		return None
 	else:
 		raise Exception("Unknown data backend: " + args.backend);
-	return fieldDict
-	
 
-dst_db.prepareCollection("snmp_raw", getFieldDict())
-collection = dst_db.getCollection("snmp_raw")
+collections = dict()
+for name, fields in getFieldDict().items():
+	dst_db.prepareCollection(name, fields)
+	collections[name] = dst_db.getCollection(name)
+
+print collections
+
 
 # TODO: hacky ... make something more general ...
 if backend == "mongo":
@@ -267,21 +342,22 @@ if backend == "mongo":
 	# restore generic backend collection
 	collection = dst_db.getCollection("snmp_raw")
 else: 
-	collection.createIndex("router")
-	collection.createIndex("if_number")
-	collection.createIndex("timestamp")
-	collection.createIndex("type")
-	collection.createIndex("ip_src")
-	collection.createIndex("ip_dst")
+#	collection.createIndex("router")
+#	collection.createIndex("if_number")
+#	collection.createIndex("timestamp")
+#	collection.createIndex("type")
+#	collection.createIndex("ip_src")
+#	collection.createIndex("ip_dst")
+	pass
 
-
-
-def update_doc(doc_key, mongo_key, mongo_values):
-	""" update local document before comitting to mongo db """
-	if doc_key in doc:
-		doc[doc_key][1]["$set"].update(mongo_values)
+def update_doc(table, table_key, db_key, db_values):
+	""" update local document before comitting to databackend """
+	if not table in doc:
+		doc[table] = dict()
+	if table_key in doc[table]:
+		doc[table][table_key][1]["$set"].update(db_values)
 	else:
-		doc[doc_key] = (mongo_key, {"$set": mongo_values})
+		doc[table][table_key] = (db_key, {"$set": db_values})
 
 # statistical counters
 begin = time.time()
@@ -299,7 +375,6 @@ for file in args.file:
 	source_type = params[0]
 	ip_src = params[1]
 	timestamp = params[2]
-
 
 	print "file: %s" % file
 
@@ -320,9 +395,10 @@ for file in args.file:
 
 			if oid in oidmap:
 				update_doc(
-					ip_src + "int" + interface,
+					"interface_phy",
+					ip_src + interface,
 					{"router": ip_src, "if_number": interface,
-						"timestamp": timestamp, "type": "interface_phy"},
+						"timestamp": timestamp},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
@@ -334,9 +410,10 @@ for file in args.file:
 
 			if oid in oidmap:
 				update_doc(
-					ip_src + "_ip_" + ip,
+					"interface_log",
+					ip_src + ip,
 					{"router": ip_src, "if_ip": ip2int(ip),
-						"timestamp": timestamp, "type": "interface_log"},
+						"timestamp": timestamp},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
@@ -348,9 +425,10 @@ for file in args.file:
 
 			if oid in oidmap:
 				update_doc(
+					"ipRoute",
 					ip_src + ip,
 					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
-						"ip_dst": ip2int(ip), "type": "route"},
+						"ip_dst": ip2int(ip)},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
@@ -362,11 +440,11 @@ for file in args.file:
 
 			if oid in oidmap:
 				update_doc(
-					ip_src + ip,
+					"cEigrp",
+					ip_src + ip + line[23],
 					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
-						"ip_dst": ip2int(ip), "type": "eigrp"},
-					{"cEigrpRouteMask": line[23],
-						oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+						"ip_dst": ip2int(ip), "mask_dst": line[23]},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
 		# parse ipcidrroute oid
@@ -379,15 +457,15 @@ for file in args.file:
 
 			if oid in oidmap:
 				update_doc(
+					"ipCidrRoute",
 					ip_src + ip_dst + mask_dst + ip_gtw,
 					{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
-						"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw), "type": "ipCidrRoute"},
+						"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
 		# increment counter for processed lines
 		counter = counter + 1		
-		lines_since_commit = lines_since_commit + 1
 
 		# do statistical calculation
 		current = time.time()
@@ -397,85 +475,56 @@ for file in args.file:
 				(current - begin),
 				counter / (current - begin))
 			last = current
-		
-		# commit local doc to mongo to db 
-		if lines_since_commit > 999999999:
-			print "Commiting " + str(len(doc)) + " entries to MongoDB"
-			begin_local = time.time()
-			last_local = begin_local
-			counter_local = 0
-			for value in doc.itervalues():
-				collection.update(value[0], value[1], True)
-			
-				counter_local = counter_local + 1
-				current_local = time.time()
-				if (current_local - last_local > 5):
-					print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
-						str(counter_local),
-						(current_local - begin_local),
-						counter_local / (current_local - begin_local))
-					last_local = current_local 
-			doc = {}
-			lines_since_commit = 0
-			current_local = time.time()
-			print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
-				str(counter_local),
-				(current_local - begin_local),
-				counter_local / (current_local - begin_local))
 
 	print "counter: %s" % counter
 
 # commit local doc to mongo db in the end
-print "Commiting " + str(len(doc)) + " entries to MongoDB"
-begin_local = time.time()
-last_local = begin_local
-counter_local = 0
-counter_total = len(doc)
-current_local = 0
-for value in doc.itervalues():
-	collection.update(value[0], value[1], True)
+#print "Commiting " + str(len(doc)) + " entries to databackend"
+#begin_local = time.time()
+#last_local = begin_local
+#counter_local = 0
+#counter_total = len(doc)
+#current_local = 0
+for name, table in doc.items():
+	for value in table.itervalues():
+		collections[name].update(value[0], value[1], True)
 			
-	counter_local = counter_local + 1
-	current_local = time.time()
-	if (current_local - last_local > 5):
-		print "Processed {0} entries in {1} seconds ({2} entries per second, {3}% done)".format(
-			str(counter_local),
-			(current_local - begin_local),
-			counter_local / (current_local - begin_local),
-			counter_local * 100.0 / counter_total)
-		last_local = current_local 
-		doc = {}
-		lines_since_commit = 0
-		current_local = time.time()
+	#counter_local = counter_local + 1
+	#current_local = time.time()
+	#if (current_local - last_local > 5):
+	#	print "Processed {0} entries in {1} seconds ({2} entries per second, {3}% done)".format(
+	#		str(counter_local),
+	#		(current_local - begin_local),
+	#		counter_local / (current_local - begin_local),
+	#		counter_local * 100.0 / counter_total)
+	#	last_local = current_local 
+	#	doc = {}
+	#	lines_since_commit = 0
+	#	current_local = time.time()
 
-collection.flushCache()
-print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
-	str(counter_local),
-	(current_local - begin_local),
-	counter_local / (current_local - begin_local))
+for collection in collections.itervalues():
+	collection.flushCache()
+
+#print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
+#	str(counter_local),
+#	(current_local - begin_local),
+#	counter_local / (current_local - begin_local))
 
 print "Doing precalculations"
 
 # calculate ip network ranges
-for row in collection.find({"type": "ipCidrRoute", "timestamp": timestamp}):
+for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
 	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
-	collection.update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
-for row in collection.find({"type": "eigrp", "timestamp": timestamp}):
-	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["cEigrpRouteMask"]))
-	collection.update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
+	collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
 
-for row in collection.find({"type":"interface_log", "timestamp": timestamp}):
-	collection.update(
-		{"type": "ipCidrRoute", "ip_gtw": row["ipAdEntAddr"], "timestamp": timestamp},
-		{"gateway_router": row["router"]})
-
-
-
+for row in collections["cEigrp"].find({"timestamp": timestamp}):
+	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
+	collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
 
 # do some statistics in the end
-current = time.time()
-print "Processed {0} lines in {1} seconds ({2} lines per second)".format(
-	str(counter),
-	(current - begin),
-	counter / (current - begin)
-)
+#current = time.time()
+#print "Processed {0} lines in {1} seconds ({2} lines per second)".format(
+#	str(counter),
+#	(current - begin),
+#	counter / (current - begin)
+#)

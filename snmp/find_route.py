@@ -52,14 +52,15 @@ def findRouteIPTable(ip_src, ip_dst, useDefaultGatewayIncoming=None, useDefaultG
 	if verbose:
 		print >> sys.stderr, "Source IP: %s" % int2ip(ip_src)
 
-	# 
-	for route in collection.find({"type": "ipCidrRoute", "$or": [{"ipCidrRouteProto": "2"}, {"ipCidrRouteProto": "3"}], "timestamp": timestamp, "low_ip": {"$lte": ip_src}, "high_ip": {"$gte": ip_src}}):
+	# find possisble source networks
+	for route in ipCidrRoute.find({"$or": [{"ipCidrRouteProto": "2"}, {"ipCidrRouteProto": "3"}], "timestamp": timestamp, "low_ip": {"$lte": ip_src}, "high_ip": {"$gte": ip_src}}):
 		if route["ip_dst"] == 0:
 			continue
 		print >> sys.stderr, "Source network: %s/%s attached to %s (%s)" % (int2ip(route["ip_dst"]), route["mask_dst"], int2ip(route["ip_src"]), route["ipCidrRouteProto"])
 		router_to_process.append(route["ip_src"])
 
 
+	
 	if len(router_to_process) == 0 and useDefaultGatewayIncoming:
 		router_to_process.append(ip2int(useDefaultGatewayIncoming))
 		if verbose:
@@ -76,14 +77,14 @@ def findRouteIPTable(ip_src, ip_dst, useDefaultGatewayIncoming=None, useDefaultG
 		if observationPoint and int2ip(router) in observationPoint:
 			return_value |= 8
 
-		for route in collection.find(
-			spec = {"type": "ipCidrRoute", "ip_src": router, "timestamp": timestamp, "low_ip": {"$lte": ip_dst}, "high_ip": {"$gte": ip_dst}},
-			sort = [("mask_dst", -1)],
-			limit = 1
+		for route in ipCidrRoute.find(
+			spec = {"ip_src": router, "timestamp": timestamp, "low_ip": {"$lte": ip_dst}, "high_ip": {"$gte": ip_dst}},
+			sort = "mask_dst"
+			#limit = 1
 		):
 #			if route["ip_dst"] == 0:
 #				continue
-			result = collection.find({"type": "interface_log", "ipAdEntAddr": route["ip_gtw"], "timestamp": timestamp}, {"router":1, "_id":0})
+			result = interface_log.find({"ipAdEntAddr": route["ip_gtw"], "timestamp": timestamp}, {"router":1, "_id":0})
 			#if result.count() > 1:
 				#print "Suspicious IP " + route["ip_gtw"]
 			if result.count() == 0:
@@ -164,10 +165,12 @@ def main():
 
 	args = parser.parse_args()
 
-	global collection
 	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name)
-	collection = db.getCollection("snmp_raw")
 	
+	global ipCidrRoute, interface_log
+	ipCidrRoute = db.getCollection("ipCidrRoute")
+	interface_log = db.getCollection("interface_log")
+
 	global timestamp
 	if args.timestamp:
 		timestamp = args.timestamp
@@ -175,7 +178,7 @@ def main():
 		timestamp = sorted(collection.distinct("timestamp"), reverse=True)[0]
 	
 	print "Using IP route table information"
-	findRouteIPTable(ip2int(args.src_ip), ip2int(args.dst_ip))
+	findRouteIPTable(ip2int(args.src_ip), ip2int(args.dst_ip), Verbose = True)
 	print ""
 	print "Using EIGRP route information"
 	findRouteEIGRP(ip2int(args.src_ip), ip2int(args.dst_ip))
@@ -183,7 +186,7 @@ def main():
 if __name__ == "__main__":
 	main()
 else:
-	global collecion, timestamp
 	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name)
-	collection = db.getCollection("snmp_raw")
-	timestamp = sorted(collection.distinct("timestamp"), reverse=True)[0]
+	ipCidrRoute = db.getCollection("ipCidrRoute")
+	interface_log = db.getCollection("interface_log")
+	timestamp = sorted(ipCidrRoute.distinct("timestamp"), reverse=True)[0]

@@ -46,7 +46,7 @@ max_bucket = db.getMaxBucket()
 print min_bucket
 print max_bucket
 
-result = db.index_query("flows_1800",
+result = db.index_query("flows_600",
 {
 	"fields": ["sourceIPv4Address", "destinationIPv4Address"],
 	"sort": "",
@@ -96,7 +96,7 @@ f_invisible = open('flows_invisible.txt', 'w')
 
 for flow in result[0]:
 	
-	ip_table = findRouteIPTable((flow["sourceIPv4Address"]), (flow["destinationIPv4Address"]), observationPoint = ["130.198.1.1", "130.198.1.2"])
+	ip_table = findRouteIPTable((flow["sourceIPv4Address"]), (flow["destinationIPv4Address"]), observationPoint = ["130.198.1.1", "130.198.1.2"], verbose = True, useDefaultGatewayIncoming = "130.198.1.1", useDefaultGatewayOutgoing = True)
 	if ip_table > 0:
 		kind = "this text is not supposed to be ever printed"
 		if ip_table == 1:
