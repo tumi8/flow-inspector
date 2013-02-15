@@ -439,9 +439,9 @@ class MongoBackend(Backend):
 		return (results, total)
 		
 	
-	def find_one(self, collectionName, spec, fields = None, sort = None):
+	def find_one(self, collectionName, spec, fields = None, sort = None, limit=None):
 		collection = self.dst_db[collectionName]
-		return collection.find_one(spec, fields=fields, sort=sort)
+		return collection.find_one(spec, fields=fields, sort=sort, limit=limit)
 
 	def find(self, collectionName,  spec, fields=None, sort=None):
 		collection = self.dst_db[collectionName]

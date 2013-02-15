@@ -113,7 +113,7 @@ class Collection:
 		"""
 		return self.backendObject.index_query(self.collectionName, query_params)
 
-	def find(self, spec, fields=None, sort=None):
+	def find(self, spec, fields=None, sort=None, limit=None):
 		"""
 		Queries the database for the desired fields in the spec dictionary. 
 		"""
@@ -247,7 +247,7 @@ class Backend:
 	def find_one(self, collectionName, spec, fields, sort):
 		pass
 
-	def find(self, spec, fields=None, sort=None):
+	def find(self, spec, fields=None, sort=None, limit=None):
 		pass
 
 	def run_query(self, collectionName, query):
