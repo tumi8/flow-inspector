@@ -51,10 +51,10 @@ class MysqlBackend(SQLBaseBackend):
 				if updateString != "":
 					updateString += ","
 				updateString += field + "=" + field + " + VALUES(" + field + ")"
-			elif actionType == "SET":
+			elif actionType == "SET" or actionType == "PRIMARY":
 				if updateString != "":
 					updateString += ","
-				updateString += field + "=" + field
+				updateString += field + "=VALUES(" + field + ")"
 			cacheLine = cacheLine + (fieldValue,)
 			valueString += "%s"
 	
