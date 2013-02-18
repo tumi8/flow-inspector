@@ -13,25 +13,12 @@ from find_route import findRouteIPTable, findRouteEIGRP
 from copy import deepcopy
 from netaddr import *
 from collections import deque
+from common_functions import *
 
 import common
 import backend
 import config
 import time
-
-
-def ip2int(ip):
-	""" convert ip to int """
-	ip = ip.split('.')
-	return (int(ip[0]) * (2 ** 24) + int(ip[1]) * (2 ** 16) +
-	        int(ip[2]) * (2 ** 8) + int(ip[3]))
-
-
-def int2ip(i):
-	""" convert int to ip """
-	return (str(i // (2 ** 24)) + "." + str((i // (2 ** 16)) % 256) + "." +
-	        str((i // (2 ** 8)) % 256) + "." + str(i % 256))
-
 
 parser = argparse.ArgumentParser(description="Check routes")
 parser.add_argument("--timestamp")

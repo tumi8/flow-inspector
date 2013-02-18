@@ -199,43 +199,43 @@ oidmap = {
 fieldDict = {
 	"interface_phy": {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
-		"timestamp": ("VARCHAR(100)", None, None),
-		"router": ("VARCHAR(100)", None, None),
-		"if_number": ("VARCHAR(100)", None, None),
-		"ifIndex": ("VARCHAR(100)", None, None),
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"if_number": ("INT", None, None),
+		"ifIndex": ("INT", None, None),
 		"ifDescr": ("VARCHAR(100)", None, None),
-		"ifType": ("VARCHAR(100)", None, None),
-		"ifMtu": ("VARCHAR(100)", None, None),
-		"ifSpeed": ("VARCHAR(100)", None, None),
+		"ifType": ("INT", None, None),
+		"ifMtu": ("INT", None, None),
+		"ifSpeed": ("INT UNSIGNED", None, None),
 		"ifPhysAddress": ("VARCHAR(100)", None, None),
-		"ifAdminStatus": ("VARCHAR(100)", None, None),
-		"ifOperStatus": ("VARCHAR(100)", None, None),
+		"ifAdminStatus": ("INT", None, None),
+		"ifOperStatus": ("INT", None, None),
 		"ifLastChange": ("VARCHAR(100)", None, None),
-		"ifInOctets": ("VARCHAR(100)", None, None),
-		"ifInUcastPkts": ("VARCHAR(100)", None, None),
-		"ifInNUcastPkts": ("VARCHAR(100)", None, None),
-		"ifInDiscards": ("VARCHAR(100)", None, None),
-		"ifInErrors": ("VARCHAR(100)", None, None),
-		"ifInUnknownProtos": ("VARCHAR(100)", None, None),
-		"ifOutOctets": ("VARCHAR(100)", None, None),
-		"ifOutUcastPkts": ("VARCHAR(100)", None, None),
-		"ifOutNUcastPkts": ("VARCHAR(100)", None, None),
-		"ifOutDiscards": ("VARCHAR(100)", None, None),
-		"ifOutErrors": ("VARCHAR(100)", None, None),
-		"ifOutQLen": ("VARCHAR(100)", None, None),
+		"ifInOctets": ("INT UNSIGNED", None, None),
+		"ifInUcastPkts": ("INT UNSIGNED", None, None),
+		"ifInNUcastPkts": ("INT UNSIGNED", None, None),
+		"ifInDiscards": ("INT", None, None),
+		"ifInErrors": ("INT", None, None),
+		"ifInUnknownProtos": ("INT UNSIGNED", None, None),
+		"ifOutOctets": ("INT UNSIGNED", None, None),
+		"ifOutUcastPkts": ("INT UNSIGNED", None, None),
+		"ifOutNUcastPkts": ("INT UNSIGNED", None, None),
+		"ifOutDiscards": ("BIGINT", None, None),
+		"ifOutErrors": ("INT", None, None),
+		"ifOutQLen": ("INT", None, None),
 		"ifSpecific": ("VARCHAR(100)", None, None)
 	},
 
 	"interface_log": {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
-		"timestamp": ("VARCHAR(100)", None, None),
-		"router": ("VARCHAR(100)", None, None),
-		"if_ip": ("VARCHAR(100)", None, None),
-		"ipAdEntAddr": ("VARCHAR(100)", None, None),
-		"ipAdEntIfIndex": ("VARCHAR(100)", None, None),
-		"ipAdEntNetMask": ("VARCHAR(100)", None, None),
-		"ipAdEntBcastAddr": ("VARCHAR(100)", None, None),
-		"ipAdEntReasmMaxSize": ("VARCHAR(100)", None, None)
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"if_ip": ("INT UNSIGNED", None, None),
+		"ipAdEntAddr": ("INT UNSIGNED", None, None),
+		"ipAdEntIfIndex": ("INT", None, None),
+		"ipAdEntNetMask": ("TINYINT", None, None),
+		"ipAdEntBcastAddr": ("INT", None, None),
+		"ipAdEntReasmMaxSize": ("INT", None, None)
 	},
 		
 	"ipRoute": {
@@ -261,12 +261,12 @@ fieldDict = {
 		
 	"cEigrp": {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
-		"timestamp": ("VARCHAR(100)", None, None),
-		"ip_src": ("VARCHAR(100)", None, None),
-		"ip_dst": ("VARCHAR(100)", None, None),
-		"mask_dst": ("VARCHAR(100)", None, None),
-		"low_ip": ("VARCHAR(100)", None, None),
-        "high_ip": ("VARCHAR(100)", None, None),
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"ip_src": ("INT UNSIGNED", None, None),
+		"ip_dst": ("INT UNSIGNED", None, None),
+		"mask_dst": ("TINYINT", None, None),
+		"low_ip": ("INT UNSIGNED", None, None),
+        "high_ip": ("INT UNSIGNED", None, None),
 		"cEigrpDestNetType": ("VARCHAR(100)", None, None),
 		"cEigrpDestNet": ("VARCHAR(100)", None, None),
 		"cEigrpDestNetPrefixLen": ("VARCHAR(100)", None, None),
@@ -286,13 +286,13 @@ fieldDict = {
 		
 	"ipCidrRoute": {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
-		"timestamp": ("VARCHAR(100)", None, None),
-		"ip_src": ("VARCHAR(100)", None, None),
-		"ip_dst": ("VARCHAR(100)", None, None),
-		"mask_dst": ("VARCHAR(100)", None, None),
-		"ip_gtw": ("VARCHAR(100)", None, None),
-		"low_ip": ("VARCHAR(100)", None, None),
-        "high_ip": ("VARCHAR(100)", None, None),
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"ip_src": ("INT UNSIGNED", None, None),
+		"ip_dst": ("INT UNSIGNED", None, None),
+		"mask_dst": ("TINYINT", None, None),
+		"ip_gtw": ("INT UNSIGNED", None, None),
+		"low_ip": ("INT UNSIGNED", None, None),
+        "high_ip": ("INT UNSIGNED", None, None),
 		"ipCidrRouteDest": ("VARCHAR(100)", None, None),
 		"ipCidrRouteMask": ("VARCHAR(100)", None, None),
 		"ipCidrRouteTos": ("VARCHAR(100)", None, None),
@@ -515,11 +515,14 @@ print "Doing precalculations"
 # calculate ip network ranges
 for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
 	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
-	collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
+	collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
 
 for row in collections["cEigrp"].find({"timestamp": timestamp}):
 	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
-	collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}})
+	collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
+
+for collection in collections.itervalues():
+	collection.flushCache()
 
 # do some statistics in the end
 #current = time.time()

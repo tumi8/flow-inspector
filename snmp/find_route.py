@@ -53,63 +53,82 @@ def findRouteIPTable(ip_src, ip_dst, useDefaultGatewayIncoming=None, useDefaultG
 		print >> sys.stderr, "Source IP: %s" % int2ip(ip_src)
 
 	# find possisble source networks
-	for route in ipCidrRoute.find({"$or": [{"ipCidrRouteProto": "2"}, {"ipCidrRouteProto": "3"}], "timestamp": timestamp, "low_ip": {"$lte": ip_src}, "high_ip": {"$gte": ip_src}}):
+	for route in ipCidrRoute.find({
+		"$or": [{"ipCidrRouteProto": "2"}, {"ipCidrRouteProto": "3"}],
+		"timestamp": timestamp, "low_ip": {"$lte": ip_src}, "high_ip": {"$gte": ip_src}}):
+
+		# do not use routes to 0.0.0.0 here
 		if route["ip_dst"] == 0:
 			continue
-		print >> sys.stderr, "Source network: %s/%s attached to %s (%s)" % (int2ip(route["ip_dst"]), route["mask_dst"], int2ip(route["ip_src"]), route["ipCidrRouteProto"])
+		print >> sys.stderr, ("Source network: %s/%s attached to %s (%s)" % 
+			(int2ip(route["ip_dst"]), route["mask_dst"],
+			int2ip(route["ip_src"]), route["ipCidrRouteProto"]))
 		router_to_process.append(route["ip_src"])
-
-
 	
+	# use last hop to default gateway as incoming router
 	if len(router_to_process) == 0 and useDefaultGatewayIncoming:
 		router_to_process.append(ip2int(useDefaultGatewayIncoming))
 		if verbose:
 			print >> sys.stderr, "No source network found, assuming incoming flow"
 		return_value |= 2
 
-	print >> sys.stderr, "Destination IP: %s" % int2ip(ip_dst)
+	if verbose:
+		print >> sys.stderr, "Destination IP: %s" % int2ip(ip_dst)
 	
+	# process all next hop router
 	while router_to_process:
+		# get next router
 		router = router_to_process.popleft()
+
+		# avoid endless loops while checking
 		if router in router_done:
 			continue
-
+		
+		# check whether flowsp passes observation point right now
 		if observationPoint and int2ip(router) in observationPoint:
 			return_value |= 8
 
+		# find next routes to desination network
 		for route in ipCidrRoute.find(
 			spec = {"ip_src": router, "timestamp": timestamp, "low_ip": {"$lte": ip_dst}, "high_ip": {"$gte": ip_dst}},
-			sort = "mask_dst"
-			#limit = 1
+			sort = {"mask_dst": 1},
+			limit = 1
 		):
-#			if route["ip_dst"] == 0:
-#				continue
-			result = interface_log.find({"ipAdEntAddr": route["ip_gtw"], "timestamp": timestamp}, {"router":1, "_id":0})
-			#if result.count() > 1:
-				#print "Suspicious IP " + route["ip_gtw"]
-			if result.count() == 0:
-				print >> sys.stderr, ("Next Hop: %s -> %s/%s via %s (unknown IP, %s, %s)" %
-					(int2ip(router),
-					 int2ip(route["ip_dst"]),
-					 route["mask_dst"],
-					 int2ip(route["ip_gtw"]),
-					 route["ipCidrRouteType"],
-					 route["ipCidrRouteProto"]))
+			# decide whether taking routes to 0.0.0.0 into account or not
+			if route["ip_dst"] == 0 and not useDefaultGatewayOutgoing:
+				continue
+			
+			# find router belonging to identified next hop
+			result = interface_log.find({"ipAdEntAddr": route["ip_gtw"], "timestamp": timestamp})
+			
+			# we're done
+			if len(result) == 0:
+				if verbose:
+					print >> sys.stderr, ("Next Hop: %s -> %s/%s via %s (unknown IP, %s, %s)" %
+						(int2ip(router),
+						 int2ip(route["ip_dst"]),
+						 route["mask_dst"],
+						 int2ip(route["ip_gtw"]),
+						 route["ipCidrRouteType"],
+						 route["ipCidrRouteProto"]))
 				if route["ip_dst"] == 0:
 					return return_value | 4
 				else:
 					return return_value | 1
+			# identify next target
 			else:
-				print >> sys.stderr, ("Next Hop: %s -> %s/%s via %s (belongs to %s)" %
-					(int2ip(router),
-					 int2ip(route["ip_dst"]),
-					 route["mask_dst"],
-					 int2ip(route["ip_gtw"]),
-					 result[0]["router"]))
+				if verbose:
+					print >> sys.stderr, ("Next Hop: %s -> %s/%s via %s (belongs to %s)" %
+						(int2ip(router),
+						 int2ip(route["ip_dst"]),
+						 route["mask_dst"],
+						 int2ip(route["ip_gtw"]),
+						 result[0]["router"]))
 				router_to_process.append(ip2int(result[0]["router"]))
 		router_done.add(router)
 
-	print >> sys.stderr, "No destination network found, assuming outgoing flow"
+	if verbose:
+		print >> sys.stderr, "No destination network found, assuming outgoing flow"
 	return return_value | 4
 
 
@@ -175,13 +194,13 @@ def main():
 	if args.timestamp:
 		timestamp = args.timestamp
 	else:
-		timestamp = sorted(collection.distinct("timestamp"), reverse=True)[0]
+		timestamp = sorted(ipCidrRoute.distinct("timestamp"), reverse=True)[0]
 	
 	print "Using IP route table information"
-	findRouteIPTable(ip2int(args.src_ip), ip2int(args.dst_ip), Verbose = True)
-	print ""
-	print "Using EIGRP route information"
-	findRouteEIGRP(ip2int(args.src_ip), ip2int(args.dst_ip))
+	findRouteIPTable(ip2int(args.src_ip), ip2int(args.dst_ip), verbose = True)
+#	print ""
+#	print "Using EIGRP route information"
+#	findRouteEIGRP(ip2int(args.src_ip), ip2int(args.dst_ip))
 
 if __name__ == "__main__":
 	main()
