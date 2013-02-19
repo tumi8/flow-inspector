@@ -84,15 +84,15 @@ def findRouteIPTable(ip_src, ip_dst, useDefaultGatewayIncoming=None, useDefaultG
 		if router in router_done:
 			continue
 		
-		# check whether flowsp passes observation point right now
+		# check whether flow passes observation point right now
 		if observationPoint and int2ip(router) in observationPoint:
 			return_value |= 8
 
 		# find next routes to desination network
 		for route in ipCidrRoute.find(
 			spec = {"ip_src": router, "timestamp": timestamp, "low_ip": {"$lte": ip_dst}, "high_ip": {"$gte": ip_dst}},
-			sort = {"mask_dst": 1},
-			limit = 1
+			sort = {"mask_dst": -1},
+			limit = 1 
 		):
 			# decide whether taking routes to 0.0.0.0 into account or not
 			if route["ip_dst"] == 0 and not useDefaultGatewayOutgoing:
@@ -125,6 +125,7 @@ def findRouteIPTable(ip_src, ip_dst, useDefaultGatewayIncoming=None, useDefaultG
 						 int2ip(route["ip_gtw"]),
 						 result[0]["router"]))
 				router_to_process.append(ip2int(result[0]["router"]))
+				break
 		router_done.add(router)
 
 	if verbose:
@@ -197,7 +198,7 @@ def main():
 		timestamp = sorted(ipCidrRoute.distinct("timestamp"), reverse=True)[0]
 	
 	print "Using IP route table information"
-	findRouteIPTable(ip2int(args.src_ip), ip2int(args.dst_ip), verbose = True)
+	findRouteIPTable(ip2int(args.src_ip), ip2int(args.dst_ip), verbose = True, useDefaultGatewayIncoming=("130.198.1.1"), useDefaultGatewayOutgoing=True)
 #	print ""
 #	print "Using EIGRP route information"
 #	findRouteEIGRP(ip2int(args.src_ip), ip2int(args.dst_ip))
