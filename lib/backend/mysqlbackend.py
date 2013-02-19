@@ -129,16 +129,27 @@ class MysqlBackend(SQLBaseBackend):
 		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
 		first = True
 		primary = ""
+		indexes = ""
+		table_options = ""
 		for field in fieldDict:
-			if not first:
-				createString += ","
-			createString += field + " " + fieldDict[field][0]
-			if fieldDict[field][1] == "PRIMARY":
-				primary = " PRIMARY KEY(" + field + ")"
-			if fieldDict[field][2] != None:
-				createString += " " + fieldDict[field][2]
-			first = False
+			if field == "table_options":
+				table_options = fieldDict[field]
+			elif fieldDict[field][0].endswith("INDEX"):
+				if indexes != "":
+					indexes += ","
+				indexes += fieldDict[field][0] + " " + field + " (" + fieldDict[field][1] + ")" 
+			else:
+				if not first:
+					createString += ","
+				createString += field + " " + fieldDict[field][0]
+				if fieldDict[field][1] == "PRIMARY":
+					primary = " PRIMARY KEY(" + field + ")"
+				if fieldDict[field][2] != None:
+					createString += " " + fieldDict[field][2]
+				first = False
 		if primary != "":
 			createString += "," + primary
-		createString += ")"
+		if indexes != "":
+			createString += "," + indexes
+			createString += ") " + table_options
 		self.execute(createString)
