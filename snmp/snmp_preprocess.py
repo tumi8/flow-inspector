@@ -223,7 +223,9 @@ fieldDict = {
 		"ifOutDiscards": ("BIGINT", None, None),
 		"ifOutErrors": ("INT", None, None),
 		"ifOutQLen": ("INT", None, None),
-		"ifSpecific": ("VARCHAR(100)", None, None)
+		"ifSpecific": ("VARCHAR(100)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
 	},
 
 	"interface_log": {
@@ -235,7 +237,10 @@ fieldDict = {
 		"ipAdEntIfIndex": ("INT", None, None),
 		"ipAdEntNetMask": ("TINYINT", None, None),
 		"ipAdEntBcastAddr": ("INT", None, None),
-		"ipAdEntReasmMaxSize": ("INT", None, None)
+		"ipAdEntReasmMaxSize": ("INT", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_ip ASC, timestamp ASC"),
+		"index_findRoute": ("INDEX", "timestamp, ipAdEntAddr"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
 	},
 		
 	"ipRoute": {
@@ -256,7 +261,9 @@ fieldDict = {
 		"ipRouteProto": ("VARCHAR(100)", None, None),
 		"ipRouteAge": ("VARCHAR(100)", None, None),
 		"ipRouteMask": ("VARCHAR(100)", None, None),
-		"ipRouteInfo": ("VARCHAR(100)", None, None)
+		"ipRouteInfo": ("VARCHAR(100)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, timestamp ASC"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
 	},
 		
 	"cEigrp": {
@@ -281,7 +288,9 @@ fieldDict = {
 		"cEigrpNextHopAddress": ("VARCHAR(100)", None, None),
 		"cEigrpNextHopInterface": ("VARCHAR(100)", None, None),
 		"cEigrpDistance": ("VARCHAR(100)", None, None),
-		"cEigrpReportDistance": ("VARCHAR(100)", None, None)
+		"cEigrpReportDistance": ("VARCHAR(100)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, mask_dst ASC, timestamp ASC"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
 	},
 		
 	"ipCidrRoute": {
@@ -308,7 +317,11 @@ fieldDict = {
 		"ipCidrRouteMetric3": ("VARCHAR(100)", None, None),
 		"ipCidrRouteMetric4": ("VARCHAR(100)", None, None),
 		"ipCidrRouteMetric5": ("VARCHAR(100)", None, None),
-		"ipCidrRouteStatus": ("VARCHAR(100)", None, None)
+		"ipCidrRouteStatus": ("VARCHAR(100)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, ip_gtw ASC, mask_dst ASC, timestamp ASC"),
+		"index_findRoute1": ("INDEX", "ipCidrRouteProto, timestamp, low_ip, high_ip"),
+		"index_findRoute2": ("INDEX", "timestamp, ip_src, low_ip, high_ip"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
 	}
 }
 
@@ -326,9 +339,6 @@ collections = dict()
 for name, fields in getFieldDict().items():
 	dst_db.prepareCollection(name, fields)
 	collections[name] = dst_db.getCollection(name)
-
-print collections
-
 
 # TODO: hacky ... make something more general ...
 if backend == "mongo":
@@ -359,14 +369,41 @@ def update_doc(table, table_key, db_key, db_values):
 	else:
 		doc[table][table_key] = (db_key, {"$set": db_values})
 
+def commit_doc():
+	global doc
+	
+	time_begin = time.time()
+	time_last = time_begin
+	time_current = 0
+	counter = 0
+	total = sum(len(doc[table]) for table in doc)
+
+	print "Commiting %s entries to databackend" % total
+	
+	for name, table in doc.items():
+		for value in table.itervalues():
+			collections[name].update(value[0], value[1], True)
+			counter = counter + 1
+		time_current = time.time()
+		if (time_current - time_last > 5):
+			print "Processed {0} entries in {1} seconds ({2} entries per second, {3}% done)".format(
+				counter, time_current - time_begin,
+				counter / (time_current - time_begin), 100.0 * counter / total)
+			time_last = time_current 
+	doc = {}
+
+# enviromental settings
+cache_treshold = 999999
+
 # statistical counters
-begin = time.time()
-last = begin
+time_begin = time.time()
+time_last = time_begin
 counter = 0
 
 # local document storage
 doc = {}
 lines_since_commit = 0
+timestamps = set()
 
 for file in args.file:
 	
@@ -375,8 +412,9 @@ for file in args.file:
 	source_type = params[0]
 	ip_src = params[1]
 	timestamp = params[2]
+	timestamps.add(timestamp)
 
-	print "file: %s" % file
+#	print "file: %s" % file
 
 	# read and process file contents
 	file = open(file, "r")
@@ -396,7 +434,7 @@ for file in args.file:
 			if oid in oidmap:
 				update_doc(
 					"interface_phy",
-					ip_src + interface,
+					ip_src + interface + timestamp,
 					{"router": ip_src, "if_number": interface,
 						"timestamp": timestamp},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -411,7 +449,7 @@ for file in args.file:
 			if oid in oidmap:
 				update_doc(
 					"interface_log",
-					ip_src + ip,
+					ip_src + ip + timestamp,
 					{"router": ip_src, "if_ip": ip2int(ip),
 						"timestamp": timestamp},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -426,7 +464,7 @@ for file in args.file:
 			if oid in oidmap:
 				update_doc(
 					"ipRoute",
-					ip_src + ip,
+					ip_src + ip + timestamp,
 					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
 						"ip_dst": ip2int(ip)},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -441,7 +479,7 @@ for file in args.file:
 			if oid in oidmap:
 				update_doc(
 					"cEigrp",
-					ip_src + ip + line[23],
+					ip_src + ip + line[23] + timestamp,
 					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
 						"ip_dst": ip2int(ip), "mask_dst": line[23]},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -458,76 +496,53 @@ for file in args.file:
 			if oid in oidmap:
 				update_doc(
 					"ipCidrRoute",
-					ip_src + ip_dst + mask_dst + ip_gtw,
+					ip_src + ip_dst + mask_dst + ip_gtw + timestamp,
 					{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
 						"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
 		# increment counter for processed lines
-		counter = counter + 1		
+		counter += 1
+		lines_since_commit += 1
 
 		# do statistical calculation
-		current = time.time()
-		if (current - last > 5):
-			print "Processed {0} lines in {1} seconds ({2} lines per second)".format(
-				str(counter),
-				(current - begin),
-				counter / (current - begin))
-			last = current
+		time_current = time.time()
+		if (time_current - time_last > 5):
+			print "Processed %s lines in %s seconds (%s lines per second)" % (
+				counter, time_current - time_begin, counter / (time_current - time_begin))
+			time_last = time_current
 
-	print "counter: %s" % counter
+		if lines_since_commit > cache_treshold:
+			commit_doc()
+			lines_since_commit = 0
 
-# commit local doc to mongo db in the end
-#print "Commiting " + str(len(doc)) + " entries to databackend"
-#begin_local = time.time()
-#last_local = begin_local
-#counter_local = 0
-#counter_total = len(doc)
-#current_local = 0
-for name, table in doc.items():
-	for value in table.itervalues():
-		collections[name].update(value[0], value[1], True)
-			
-	#counter_local = counter_local + 1
-	#current_local = time.time()
-	#if (current_local - last_local > 5):
-	#	print "Processed {0} entries in {1} seconds ({2} entries per second, {3}% done)".format(
-	#		str(counter_local),
-	#		(current_local - begin_local),
-	#		counter_local / (current_local - begin_local),
-	#		counter_local * 100.0 / counter_total)
-	#	last_local = current_local 
-	#	doc = {}
-	#	lines_since_commit = 0
-	#	current_local = time.time()
+#	print "counter: %s" % counter
+
+
+# commit local doc to databackend in the end
+
+commit_doc()
 
 for collection in collections.itervalues():
 	collection.flushCache()
 
-#print "Processed {0} entries in {1} seconds ({2} entries per second)".format(
-#	str(counter_local),
-#	(current_local - begin_local),
-#	counter_local / (current_local - begin_local))
-
-print "Doing precalculations"
+print "Calculating IP ranges"
 
 # calculate ip network ranges
-for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
-	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
-	collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
+for timestamp in timestamps:
+	for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
+		(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
+		collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
 
-for row in collections["cEigrp"].find({"timestamp": timestamp}):
-	(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
-	collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
+	for row in collections["cEigrp"].find({"timestamp": timestamp}):
+		(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
+		collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
 
 for collection in collections.itervalues():
 	collection.flushCache()
 
 # do some statistics in the end
-#current = time.time()
-#print "Processed {0} lines in {1} seconds ({2} lines per second)".format(
-#	str(counter),
-#	(current - begin),
-#	counter / (current - begin)
-#)
+time_current = time.time()
+print "Processed %s lines in %s seconds (%s lines per second)" % (
+		counter, time_current - time_begin, counter / (time_current - time_begin))
