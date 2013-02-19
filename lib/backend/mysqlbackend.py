@@ -151,5 +151,5 @@ class MysqlBackend(SQLBaseBackend):
 			createString += "," + primary
 		if indexes != "":
 			createString += "," + indexes
-			createString += ") " + table_options
+		createString += ") " + table_options
 		self.execute(createString)
