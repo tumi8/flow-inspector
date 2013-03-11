@@ -5,6 +5,7 @@ import sys
 import os.path
 import argparse
 import time
+import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
@@ -16,7 +17,7 @@ from common_functions import *
 
 parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 parser.add_argument(
-	"file", nargs="*", help="File to parse")
+	"file", help="Path to files to parse")
 parser.add_argument(
 	"--dst-host", nargs="?", default=config.data_backend_host,
 	help="Backend database host")
@@ -225,7 +226,7 @@ fieldDict = {
 		"ifOutQLen": ("INT", None, None),
 		"ifSpecific": ("VARCHAR(100)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
-		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	},
 
 	"interface_log": {
@@ -240,7 +241,7 @@ fieldDict = {
 		"ipAdEntReasmMaxSize": ("INT", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_ip ASC, timestamp ASC"),
 		"index_findRoute": ("INDEX", "timestamp, ipAdEntAddr"),
-		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	},
 		
 	"ipRoute": {
@@ -263,7 +264,7 @@ fieldDict = {
 		"ipRouteMask": ("VARCHAR(100)", None, None),
 		"ipRouteInfo": ("VARCHAR(100)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, timestamp ASC"),
-		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	},
 		
 	"cEigrp": {
@@ -290,7 +291,7 @@ fieldDict = {
 		"cEigrpDistance": ("VARCHAR(100)", None, None),
 		"cEigrpReportDistance": ("VARCHAR(100)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, mask_dst ASC, timestamp ASC"),
-		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	},
 		
 	"ipCidrRoute": {
@@ -321,7 +322,7 @@ fieldDict = {
 		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, ip_gtw ASC, mask_dst ASC, timestamp ASC"),
 		"index_findRoute1": ("INDEX", "ipCidrRouteProto, timestamp, low_ip, high_ip"),
 		"index_findRoute2": ("INDEX", "timestamp, ip_src, low_ip, high_ip"),
-		"table_options": "ENGINE=MyISAM ROW_FORMAT=FIXED"
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	}
 }
 
@@ -405,7 +406,7 @@ doc = {}
 lines_since_commit = 0
 timestamps = set()
 
-for file in args.file:
+for file in glob.glob(args.file + "/*/*.txt"):
 	
 	# parse file name
 	params = os.path.basename(file).rstrip(".txt").split("-")
