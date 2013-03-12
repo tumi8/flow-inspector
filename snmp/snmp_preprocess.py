@@ -194,7 +194,45 @@ oidmap = {
 	".1.3.6.1.2.1.4.24.4.1.15":
 	{"name": "ipCidrRouteMetric5", "fct": plain},
 	".1.3.6.1.2.1.4.24.4.1.16":
-	{"name": "ipCidrRouteStatus", "fct": plain}
+	{"name": "ipCidrRouteStatus", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.1":
+	{"name": "ifName", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.2":
+	{"name": "ifInMulticastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.3":
+	{"name": "ifInBroadcastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.4":
+	{"name": "ifOutMulticastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.5":
+	{"name": "ifOutBroadcastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.6":
+	{"name": "ifHCInOctets", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.7":
+	{"name": "ifHCInUcastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.8":
+	{"name": "ifHCInMulticastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.9":
+	{"name": "ifHCInBroadcastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.10":
+	{"name": "ifHCOutOctets", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.11":
+	{"name": "ifHCOutUcastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.12":
+	{"name": "ifHCOutMulticastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.13":
+	{"name": "ifHCOutBroadcastPkts", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.14":
+	{"name": "ifLinkUpDownTrapEnable", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.15":
+	{"name": "ifHighSpeed", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.16":
+	{"name": "ifPromiscuousMode", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.17":
+	{"name": "ifConnectorPresent", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.18":
+	{"name": "ifAlias", "fct": plain},
+	".1.3.6.1.2.1.31.1.1.1.19":
+	{"name": "ifCounterDiscontinuityTime", "fct": plain}
 }
 
 fieldDict = {
@@ -202,29 +240,29 @@ fieldDict = {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
 		"timestamp": ("BIGINT UNSIGNED", None, None),
 		"router": ("VARCHAR(15)", None, None),
-		"if_number": ("INT", None, None),
-		"ifIndex": ("INT", None, None),
-		"ifDescr": ("VARCHAR(100)", None, None),
-		"ifType": ("INT", None, None),
-		"ifMtu": ("INT", None, None),
+		"if_number": ("INT UNSIGNED", None, None),
+		"ifIndex": ("INT UNSIGNED", None, None),
+		"ifDescr": ("VARCHAR(50)", None, None),
+		"ifType": ("TINYINT UNSIGNED", None, None),
+		"ifMtu": ("SMALLINT UNSIGNED", None, None),
 		"ifSpeed": ("INT UNSIGNED", None, None),
-		"ifPhysAddress": ("VARCHAR(100)", None, None),
-		"ifAdminStatus": ("INT", None, None),
-		"ifOperStatus": ("INT", None, None),
-		"ifLastChange": ("VARCHAR(100)", None, None),
+		"ifPhysAddress": ("VARCHAR(17)", None, None),
+		"ifAdminStatus": ("TINYINT UNSIGNED", None, None),
+		"ifOperStatus": ("TINYINT UNSIGNED", None, None),
+		"ifLastChange": ("VARCHAR(50)", None, None),
 		"ifInOctets": ("INT UNSIGNED", None, None),
 		"ifInUcastPkts": ("INT UNSIGNED", None, None),
 		"ifInNUcastPkts": ("INT UNSIGNED", None, None),
-		"ifInDiscards": ("INT", None, None),
-		"ifInErrors": ("INT", None, None),
+		"ifInDiscards": ("INT UNSIGNED", None, None),
+		"ifInErrors": ("INT UNSIGNED", None, None),
 		"ifInUnknownProtos": ("INT UNSIGNED", None, None),
 		"ifOutOctets": ("INT UNSIGNED", None, None),
 		"ifOutUcastPkts": ("INT UNSIGNED", None, None),
 		"ifOutNUcastPkts": ("INT UNSIGNED", None, None),
-		"ifOutDiscards": ("BIGINT", None, None),
-		"ifOutErrors": ("INT", None, None),
-		"ifOutQLen": ("INT", None, None),
-		"ifSpecific": ("VARCHAR(100)", None, None),
+		"ifOutDiscards": ("INT UNSIGNED", None, None),
+		"ifOutErrors": ("INT UNSIGNED", None, None),
+		"ifOutQLen": ("INT UNSIGNED", None, None),
+		"ifSpecific": ("VARCHAR(50)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	},
@@ -235,10 +273,10 @@ fieldDict = {
 		"router": ("VARCHAR(15)", None, None),
 		"if_ip": ("INT UNSIGNED", None, None),
 		"ipAdEntAddr": ("INT UNSIGNED", None, None),
-		"ipAdEntIfIndex": ("INT", None, None),
-		"ipAdEntNetMask": ("TINYINT", None, None),
-		"ipAdEntBcastAddr": ("INT", None, None),
-		"ipAdEntReasmMaxSize": ("INT", None, None),
+		"ipAdEntIfIndex": ("INT UNSIGNED", None, None),
+		"ipAdEntNetMask": ("TINYINT UNSIGNED", None, None),
+		"ipAdEntBcastAddr": ("BIT(1)", None, None),
+		"ipAdEntReasmMaxSize": ("INT UNSIGNED", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_ip ASC, timestamp ASC"),
 		"index_findRoute": ("INDEX", "timestamp, ipAdEntAddr"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
@@ -246,23 +284,24 @@ fieldDict = {
 		
 	"ipRoute": {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
-		"timestamp": ("VARCHAR(100)", None, None),
-		"ip_src": ("VARCHAR(100)", None, None),
-		"ip_dst": ("VARCHAR(100)", None, None),
-		"low_ip": ("VARCHAR(100)", None, None),
-		"high_ip": ("VARCHAR(100)", None, None),
-		"ipRouteDest": ("VARCHAR(100)", None, None),
-		"ipRouteIfIndex": ("VARCHAR(100)", None, None),
-		"ipRouteMetric1": ("VARCHAR(100)", None, None),
-		"ipRouteMetric2": ("VARCHAR(100)", None, None),
-		"ipRouteMetric3": ("VARCHAR(100)", None, None),
-		"ipRouteMetric4": ("VARCHAR(100)", None, None),
-		"ipRouteMetric5": ("VARCHAR(100)", None, None),
-		"ipRouteNextHop": ("VARCHAR(100)", None, None),
-		"ipRouteProto": ("VARCHAR(100)", None, None),
-		"ipRouteAge": ("VARCHAR(100)", None, None),
-		"ipRouteMask": ("VARCHAR(100)", None, None),
-		"ipRouteInfo": ("VARCHAR(100)", None, None),
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"ip_src": ("INT UNSIGNED", None, None),
+		"ip_dst": ("INT UNSIGNED", None, None),
+		"low_ip": ("INT UNSIGNED", None, None),
+		"high_ip": ("INT UNSIGNED", None, None),
+		"ipRouteDest": ("INT UNSIGNED", None, None),
+		"ipRouteIfIndex": ("INT UNSIGNED", None, None),
+		"ipRouteMetric1": ("INT", None, None),
+		"ipRouteMetric2": ("INT", None, None),
+		"ipRouteMetric3": ("INT", None, None),
+		"ipRouteMetric4": ("INT", None, None),
+		"ipRouteMetric5": ("INT", None, None),
+		"ipRouteNextHop": ("INT UNSIGNED", None, None),
+		"ipRouteType": ("TINYINT UNSIGNED", None, None),
+		"ipRouteProto": ("TINYINT UNSIGNED", None, None),
+		"ipRouteAge": ("INT UNSIGNED", None, None),
+		"ipRouteMask": ("TINYINT UNSIGNED", None, None),
+		"ipRouteInfo": ("VARCHAR(50)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	},
@@ -274,22 +313,22 @@ fieldDict = {
 		"ip_dst": ("INT UNSIGNED", None, None),
 		"mask_dst": ("TINYINT", None, None),
 		"low_ip": ("INT UNSIGNED", None, None),
-        "high_ip": ("INT UNSIGNED", None, None),
-		"cEigrpDestNetType": ("VARCHAR(100)", None, None),
-		"cEigrpDestNet": ("VARCHAR(100)", None, None),
-		"cEigrpDestNetPrefixLen": ("VARCHAR(100)", None, None),
-		"cEigrpActive": ("VARCHAR(100)", None, None),
-		"cEigrpStuckInActive": ("VARCHAR(100)", None, None),
-		"cEigrpDestSuccessors": ("VARCHAR(100)", None, None),
-		"cEigrpFdistance": ("VARCHAR(100)", None, None),
-		"cEigrpRouteOriginType": ("VARCHAR(100)", None, None),
-		"cEigrpRouteOriginAddrType": ("VARCHAR(100)", None, None),
-		"cEigrpRouteOriginAddr": ("VARCHAR(100)", None, None),
-		"cEigrpNextHopAddressType": ("VARCHAR(100)", None, None),
-		"cEigrpNextHopAddress": ("VARCHAR(100)", None, None),
-		"cEigrpNextHopInterface": ("VARCHAR(100)", None, None),
-		"cEigrpDistance": ("VARCHAR(100)", None, None),
-		"cEigrpReportDistance": ("VARCHAR(100)", None, None),
+     	"high_ip": ("INT UNSIGNED", None, None),
+		"cEigrpDestNetType": ("TINYINT UNSIGNED", None, None),
+		"cEigrpDestNet": ("INT UNSIGNED", None, None),
+		"cEigrpDestNetPrefixLen": ("TINYINT UNSIGNED", None, None),
+		"cEigrpActive": ("TINYINT UNSIGNED", None, None),
+		"cEigrpStuckInActive": ("TINYINT UNSIGNED", None, None),
+		"cEigrpDestSuccessors": ("INT UNSIGNED", None, None),
+		"cEigrpFdistance": ("INT UNSIGNED", None, None),
+		"cEigrpRouteOriginType": ("VARCHAR(50)", None, None),
+		"cEigrpRouteOriginAddrType": ("TINYINT UNSIGNED", None, None),
+		"cEigrpRouteOriginAddr": ("INT UNSIGNED", None, None),
+		"cEigrpNextHopAddressType": ("TINYINT UNSIGNED", None, None),
+		"cEigrpNextHopAddress": ("INT UNSIGNED", None, None),
+		"cEigrpNextHopInterface": ("VARCHAR(50)", None, None),
+		"cEigrpDistance": ("INT UNSIGNED", None, None),
+		"cEigrpReportDistance": ("INT UNSIGNED", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, mask_dst ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	},
@@ -303,25 +342,53 @@ fieldDict = {
 		"ip_gtw": ("INT UNSIGNED", None, None),
 		"low_ip": ("INT UNSIGNED", None, None),
         "high_ip": ("INT UNSIGNED", None, None),
-		"ipCidrRouteDest": ("VARCHAR(100)", None, None),
-		"ipCidrRouteMask": ("VARCHAR(100)", None, None),
-		"ipCidrRouteTos": ("VARCHAR(100)", None, None),
-		"ipCidrRouteNextHop": ("VARCHAR(100)", None, None),
-		"ipCidrRouteIfIndex": ("VARCHAR(100)", None, None),
-		"ipCidrRouteType": ("VARCHAR(100)", None, None),
-		"ipCidrRouteProto": ("VARCHAR(100)", None, None),
-		"ipCidrRouteAge": ("VARCHAR(100)", None, None),
-		"ipCidrRouteInfo": ("VARCHAR(100)", None, None),
-		"ipCidrRouteNextHopAS": ("VARCHAR(100)", None, None),
-		"ipCidrRouteMetric1": ("VARCHAR(100)", None, None),
-		"ipCidrRouteMetric2": ("VARCHAR(100)", None, None),
-		"ipCidrRouteMetric3": ("VARCHAR(100)", None, None),
-		"ipCidrRouteMetric4": ("VARCHAR(100)", None, None),
-		"ipCidrRouteMetric5": ("VARCHAR(100)", None, None),
-		"ipCidrRouteStatus": ("VARCHAR(100)", None, None),
+		"ipCidrRouteDest": ("INT UNSIGNED", None, None),
+		"ipCidrRouteMask": ("TINYINT UNSIGNED", None, None),
+		"ipCidrRouteTos": ("INT UNSIGNED", None, None),
+		"ipCidrRouteNextHop": ("INT UNSIGNED", None, None),
+		"ipCidrRouteIfIndex": ("INT UNSIGNED", None, None),
+		"ipCidrRouteType": ("TINYINT UNSIGNED", None, None),
+		"ipCidrRouteProto": ("TINYINT UNSIGNED", None, None),
+		"ipCidrRouteAge": ("INT UNSIGNED", None, None),
+		"ipCidrRouteInfo": ("VARCHAR(50)", None, None),
+		"ipCidrRouteNextHopAS": ("INT UNSIGNED", None, None),
+		"ipCidrRouteMetric1": ("INT", None, None),
+		"ipCidrRouteMetric2": ("INT", None, None),
+		"ipCidrRouteMetric3": ("INT", None, None),
+		"ipCidrRouteMetric4": ("INT", None, None),
+		"ipCidrRouteMetric5": ("INT", None, None),
+		"ipCidrRouteStatus": ("TINYINT UNSIGNED", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, ip_gtw ASC, mask_dst ASC, timestamp ASC"),
 		"index_findRoute1": ("INDEX", "ipCidrRouteProto, timestamp, low_ip, high_ip"),
 		"index_findRoute2": ("INDEX", "timestamp, ip_src, low_ip, high_ip"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
+	},
+
+	"ifXTable": {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"if_number": ("INT UNSIGNED", None, None),
+		"ifName": ("VARCHAR(50)", None, None),
+		"ifInMulticastPkts": ("INT UNSIGNED", None, None),
+		"ifInBroadcastPkts": ("INT UNSIGNED", None, None),
+		"ifOutMulticastPkts": ("INT UNSIGNED", None, None),
+		"ifOutBroadcastPkts": ("INT UNSIGNED", None, None),
+		"ifHCInOctets": ("BIGINT UNSIGNED", None, None),
+		"ifHCInUcastPkts": ("BIGINT UNSIGNED", None, None),
+		"ifHCInMulticastPkts": ("BIGINT UNSIGNED", None, None),
+		"ifHCInBroadcastPkts": ("BIGINT UNSIGNED", None, None),
+		"ifHCOutOctets": ("BIGINT UNSIGNED", None, None),
+		"ifHCOutUcastPkts": ("BIGINT UNSIGNED", None, None),
+		"ifHCOutMulticastPkts": ("BIGINT UNSIGNED", None, None),
+		"ifHCOutBroadcastPkts": ("BIGINT UNSIGNED", None, None),
+		"ifLinkUpDownTrapEnable": ("TINYINT UNSIGNED", None, None),
+		"ifHighSpeed": ("INT UNSIGNED", None, None),
+		"ifPromiscuousMode": ("TINYINT UNSIGNED", None, None),
+		"ifConnectorPresent": ("TINYINT UNSIGNED", None, None),
+		"ifAlias": ("VARCHAR(50)", None, None),
+		"ifCounterDiscontinuityTime": ("VARCHAR(50)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
 	}
 }
@@ -500,6 +567,20 @@ for file in glob.glob(args.file + "/*/*.txt"):
 					ip_src + ip_dst + mask_dst + ip_gtw + timestamp,
 					{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
 						"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+		# parse ifxtable oid
+		elif line.startswith(".1.3.6.1.2.1.31.1.1.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:12])
+			if_index = line[12]
+
+			if oid in oidmap:
+				update_doc(
+					"ifXTable",
+					ip_src + if_index + timestamp,
+					{"ip_src": ip2int(ip_src), "timestamp": timestamp, "if_index": if_index},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
