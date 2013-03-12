@@ -246,7 +246,7 @@ fieldDict = {
 		"ifType": ("TINYINT UNSIGNED", None, None),
 		"ifMtu": ("SMALLINT UNSIGNED", None, None),
 		"ifSpeed": ("INT UNSIGNED", None, None),
-		"ifPhysAddress": ("VARCHAR(17)", None, None),
+		"ifPhysAddress": ("VARCHAR(20)", None, None),
 		"ifAdminStatus": ("TINYINT UNSIGNED", None, None),
 		"ifOperStatus": ("TINYINT UNSIGNED", None, None),
 		"ifLastChange": ("VARCHAR(50)", None, None),
@@ -473,6 +473,8 @@ doc = {}
 lines_since_commit = 0
 timestamps = set()
 
+
+# TODO: still leads to race conditions on multiple calls
 for file in glob.glob(args.file + "/*/*.txt"):
 	
 	# parse file name
@@ -574,13 +576,13 @@ for file in glob.glob(args.file + "/*/*.txt"):
 		elif line.startswith(".1.3.6.1.2.1.31.1.1.1"):
 			line = line.split(".")
 			oid = '.'.join(line[0:12])
-			if_index = line[12]
+			if_number = line[12]
 
 			if oid in oidmap:
 				update_doc(
 					"ifXTable",
-					ip_src + if_index + timestamp,
-					{"ip_src": ip2int(ip_src), "timestamp": timestamp, "if_index": if_index},
+					ip_src + if_number + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
