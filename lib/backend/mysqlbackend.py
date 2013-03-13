@@ -16,7 +16,7 @@ class MysqlBackend(SQLBaseBackend):
 	def connect(self):
 		import MySQLdb
 		import _mysql_exceptions
-		print "Connecting ..."
+		#print "Connecting ..."
 		try:
 			dns = dict(
 				db = self.databaseName,
@@ -89,7 +89,7 @@ class MysqlBackend(SQLBaseBackend):
 			self.execute(queryString)
 
 	def handle_exception(self, exception):
-		print "Received exception: ", exception
+		#print "Received exception: ", exception
 		try:
 			(error,message) = exception
 		except Exception as e:
