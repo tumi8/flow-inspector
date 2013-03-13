@@ -649,6 +649,8 @@ class SQLBaseBackend(Backend):
 		else: 
 			for f in fields:
 				if fields[f] == 1:
+					if fieldsString != "":
+						fieldsString += ","
 					fieldsString += f
 			if fieldsString == "":
 				fieldsString = "*"
