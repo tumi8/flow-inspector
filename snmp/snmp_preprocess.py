@@ -15,9 +15,11 @@ import config
 
 from common_functions import *
 
-parser = argparse.ArgumentParser(description="Preprocess SNMP data")
+parser = argparse.ArgumentParser(description="Parse SNMP data files and import data to database")
 parser.add_argument(
-	"file", help="Path to files to parse")
+	"directory", help="Directory containing files to parse")
+parser.add_argument(
+		"-r", "--recursive", action="store_true", help="Recurse direcory, i.e. expecting files in <directory>/*/*.txt")
 parser.add_argument(
 	"--dst-host", nargs="?", default=config.data_backend_host,
 	help="Backend database host")
@@ -475,7 +477,12 @@ timestamps = set()
 
 
 # TODO: still leads to race conditions on multiple calls
-for file in glob.glob(args.file + "/*/*.txt"):
+if args.recursive:
+	files = glob.glob(args.directory + "/*/*.txt")
+else:
+	files = glob.glob(args.directory + "/*.txt")
+
+for file in files:
 	
 	# parse file name
 	params = os.path.basename(file).rstrip(".txt").split("-")
