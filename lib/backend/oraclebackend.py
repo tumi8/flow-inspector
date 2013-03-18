@@ -11,6 +11,7 @@ class OracleBackend(SQLBaseBackend):
 		SQLBaseBackend.__init__(self, host, port, user, password, databaseName)
 		self.column_map = common.ORACLE_COLUMNMAP
 		self.type_map = common.ORACLE_TYPE_MAPPER
+		self.dynamic_type_wrapper = dict()
 		self.type = "oracle"
 
 	def connect(self):
@@ -26,6 +27,7 @@ class OracleBackend(SQLBaseBackend):
 			self.conn = cx_Oracle.Connection(connection_string)
 
 			self.cursor = cx_Oracle.Cursor(self.conn)
+			self.dictCursor = cx_Oracle.Cursor(self.conn)
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to Oracle database: ", inst 
 			sys.exit(1)
@@ -53,7 +55,7 @@ class OracleBackend(SQLBaseBackend):
 					matchedString += ","
 				if fieldDict[field][1] == None or fieldDict[field][1] == "ADD":
 						matchedString += field + "=" + "SOURCE." + field + "+" + "target." + field
-				elif fieldDict[field][1] == "UPDATE":
+				elif fieldDict[field][1] == "UPDATE" or fieldDict[field][1] == "SET":
 						matchedString += field + "=" + "target." + field
 				elif fieldDict[field][1] == "KEEP":
 						matchedString += field + "=" + "SOURCE." + field
@@ -66,7 +68,7 @@ class OracleBackend(SQLBaseBackend):
 				primary += "target." + field + "=SOURCE." + field
 		
 		queryString += selectString + " FROM dual) SOURCE ON (" + primary + ")"
-		queryString += "WHEN MATCHED THEN UPDATE SET " + matchedString
+		queryString += " WHEN MATCHED THEN UPDATE SET " + matchedString
 		queryString += " WHEN NOT MATCHED THEN INSERT (" + notMatchedInsert + ") VALUES (" + notMatchedValues + ")" 
 		if self.doCache:
 			numElem = 1
@@ -133,6 +135,8 @@ class OracleBackend(SQLBaseBackend):
 		return "SELECT * FROM (" + string + ") WHERE ROWNUM <= " + str(limit)
 
 	def prepareCollection(self, name, fieldDict):
+		oracleNameTypeWrapper = dict()
+
 		createString = "CREATE TABLE  " + name + " ("
 		primary = ""
 		indexes = ""
@@ -160,6 +164,10 @@ class OracleBackend(SQLBaseBackend):
 				index_create_string += ")"
 				indexes.append(index_create_string) 
 			else:
+				if field == "_id": 
+					oracleNameTypeWrapper["ID"] = '_id'
+				else:
+					oracleNameTypeWrapper[fieldMod.upper()] = fieldMod
 				if not first:
 					createString += ","
 				createString += fieldMod + " " + fieldDict[field][0]
@@ -173,6 +181,9 @@ class OracleBackend(SQLBaseBackend):
 					createString += " " + fieldDict[field][2]
 				
 				first = False
+
+		self.dynamic_type_wrapper[name] = oracleNameTypeWrapper
+
 		if primary != "":
 			createString += "," + primary
 		createString += ") " 

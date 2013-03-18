@@ -13,7 +13,7 @@ class SQLBaseBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName):
 		Backend.__init__(self, host, port, user, password, databaseName)
 		self.tableInsertCache = dict()
-		self.cachingThreshold = 1000
+		self.cachingThreshold = 100000
 		self.counter = 0
 
 		self.column_map = None
@@ -144,7 +144,10 @@ class SQLBaseBackend(Backend):
 						document["$set"] = {}
 					document["$set"][common.COL_BUCKET] = statement[s]
 			elif not collectionName.startswith("flows"):
-				fieldDict[s] = (statement[s], "SET")
+				if s == "_id":
+					fieldDict["id"] = (statement[s], "PRIMARY")
+				else:
+					fieldDict[s] = (statement[s], "PRIMARY")
 
 			
 
@@ -154,7 +157,7 @@ class SQLBaseBackend(Backend):
 			for v in document[part]:
 				newV = v.replace('.', '_')
 				if part == "$set":
-					fieldDict[newV] = (document[part][v], "PRIMARY")
+					fieldDict[newV] = (document[part][v], "SET")
 				else:
 					fieldDict[newV] = (document[part][v], None)
 		self.insert(collectionName, fieldDict)
@@ -173,7 +176,6 @@ class SQLBaseBackend(Backend):
 			# flush all collections
 			while len( self.tableInsertCache) > 0:
 				collection = self.tableInsertCache.keys()[0]
-				print "flushing collection ", collection
 				self.flushCache(collection)
 
 	def getMinBucket(self, bucketSize = None):
@@ -669,7 +671,7 @@ class SQLBaseBackend(Backend):
 						for key in cond:
 							if second_level_clause != "":
 								second_level_clause += " OR "
-							second_level_clause += key + '=' + '\"' + cond[key] + '\"'
+							second_level_clause += key + '=' + "'" + cond[key] + "'"
 					where_clause += " (" + second_level_clause + ") "
 				else:
 					raise Exception("Mongo operator " + field + " is not yet implemented!")
@@ -690,7 +692,7 @@ class SQLBaseBackend(Backend):
 				else:
 					operator = "="
 					operand = str(spec[field])
-				where_clause += field + operator +"\"" + operand + "\""
+				where_clause += field + operator +"'" + operand + "'"
 
 		if sort != None:
 			if len(sort) > 1:
@@ -709,9 +711,18 @@ class SQLBaseBackend(Backend):
 		if limit:
 			query = self.add_limit_to_string(query, limit)
 
-
 		self.execute(query, None, self.dictCursor)
-		ret = self.dictCursor.fetchall()
+		if self.type == "oracle":
+			# As alway: Things do not work with oracle ...
+			typeWrapper = self.dynamic_type_wrapper[collectionName]
+			rows = self.dictCursor.fetchall()
+			if typeWrapper == None:
+				print "ERROR: Unknown collection. Cannot create dictionary ..."
+				return dict()
+			columns = [typeWrapper[i[0]] for i in self.dictCursor.description]
+			return [dict(zip(columns, row)) for row in rows]
+		else:
+			ret = self.dictCursor.fetchall()
 		return ret
 	
 	def distinct(self, collectionName, field):
