@@ -9,9 +9,11 @@ import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+
+import config
 import common
 import backend
-import config
 
 from common_functions import *
 
@@ -393,11 +395,169 @@ fieldDict = {
 	}
 }
 
+fieldDictOracle = {
+	"interface_phy": {
+		"_id": ("NUMBER(19)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(19)", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"if_number": ("NUMBER(10)", None, None),
+		"ifIndex": ("NUMBER(10)", None, None),
+		"ifDescr": ("VARCHAR(50)", None, None),
+		"ifType": ("NUMBER(3)", None, None),
+		"ifMtu": ("NUMBER(10)", None, None),
+		"ifSpeed": ("NUMBER(10)", None, None),
+		"ifPhysAddress": ("VARCHAR(20)", None, None),
+		"ifAdminStatus": ("NUMBER(3)", None, None),
+		"ifOperStatus": ("NUMBER(3)", None, None),
+		"ifLastChange": ("VARCHAR(50)", None, None),
+		"ifInOctets": ("NUMBER(10)", None, None),
+		"ifInUcastPkts": ("NUMBER(10)", None, None),
+		"ifInNUcastPkts": ("NUMBER(10)", None, None),
+		"ifInDiscards": ("NUMBER(10)", None, None),
+		"ifInErrors": ("NUMBER(10)", None, None),
+		"ifInUnknownProtos": ("NUMBER(10)", None, None),
+		"ifOutOctets": ("NUMBER(10)", None, None),
+		"ifOutUcastPkts": ("NUMBER(10)", None, None),
+		"ifOutNUcastPkts": ("NUMBER(10)", None, None),
+		"ifOutDiscards": ("NUMBER(10)", None, None),
+		"ifOutErrors": ("NUMBER(10)", None, None),
+		"ifOutQLen": ("NUMBER(10)", None, None),
+		"ifSpecific": ("VARCHAR(50)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
+	},
+
+	"interface_log": {
+		"_id": ("NUMBER(19)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(19)", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"if_ip": ("NUMBER(10)", None, None),
+		"ipAdEntAddr": ("NUMBER(10)", None, None),
+		"ipAdEntIfIndex": ("NUMBER(10)", None, None),
+		"ipAdEntNetMask": ("NUMBER(3)", None, None),
+		"ipAdEntBcastAddr": ("RAW(1)", None, None),
+		"ipAdEntReasmMaxSize": ("NUMBER(10)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_ip ASC, timestamp ASC"),
+		"index_findRoute": ("INDEX", "timestamp, ipAdEntAddr"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
+	},
+		
+	"ipRoute": {
+		"_id": ("NUMBER(19)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(19)", None, None),
+		"ip_src": ("NUMBER(10)", None, None),
+		"ip_dst": ("NUMBER(10)", None, None),
+		"low_ip": ("NUMBER(10)", None, None),
+		"high_ip": ("NUMBER(10)", None, None),
+		"ipRouteDest": ("NUMBER(10)", None, None),
+		"ipRouteIfIndex": ("NUMBER(10)", None, None),
+		"ipRouteMetric1": ("NUMBER(10)", None, None),
+		"ipRouteMetric2": ("NUMBER(10)", None, None),
+		"ipRouteMetric3": ("NUMBER(10)", None, None),
+		"ipRouteMetric4": ("NUMBER(10)", None, None),
+		"ipRouteMetric5": ("NUMBER(10)", None, None),
+		"ipRouteNextHop": ("NUMBER(10)", None, None),
+		"ipRouteType": ("NUMBER(3)", None, None),
+		"ipRouteProto": ("NUMBER(3)", None, None),
+		"ipRouteAge": ("NUMBER(10)", None, None),
+		"ipRouteMask": ("NUMBER(3)", None, None),
+		"ipRouteInfo": ("VARCHAR(50)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, timestamp ASC"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
+	},
+		
+	"cEigrp": {
+		"_id": ("NUMBER(19)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(19)", None, None),
+		"ip_src": ("NUMBER(10)", None, None),
+		"ip_dst": ("NUMBER(10)", None, None),
+		"mask_dst": ("NUMBER(3)", None, None),
+		"low_ip": ("NUMBER(10)", None, None),
+     	"high_ip": ("NUMBER(10)", None, None),
+		"cEigrpDestNetType": ("NUMBER(3)", None, None),
+		"cEigrpDestNet": ("NUMBER(10)", None, None),
+		"cEigrpDestNetPrefixLen": ("NUMBER(3)", None, None),
+		"cEigrpActive": ("NUMBER(3)", None, None),
+		"cEigrpStuckInActive": ("NUMBER(3)", None, None),
+		"cEigrpDestSuccessors": ("NUMBER(10)", None, None),
+		"cEigrpFdistance": ("NUMBER(10)", None, None),
+		"cEigrpRouteOriginType": ("VARCHAR(50)", None, None),
+		"cEigrpRouteOriginAddrType": ("NUMBER(3)", None, None),
+		"cEigrpRouteOriginAddr": ("NUMBER(10)", None, None),
+		"cEigrpNextHopAddressType": ("NUMBER(3)", None, None),
+		"cEigrpNextHopAddress": ("NUMBER(10)", None, None),
+		"cEigrpNextHopInterface": ("VARCHAR(50)", None, None),
+		"cEigrpDistance": ("NUMBER(10)", None, None),
+		"cEigrpReportDistance": ("NUMBER(10)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, mask_dst ASC, timestamp ASC"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
+	},
+		
+	"ipCidrRoute": {
+		"_id": ("NUMBER(19)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(19)", None, None),
+		"ip_src": ("NUMBER(10)", None, None),
+		"ip_dst": ("NUMBER(10)", None, None),
+		"mask_dst": ("NUMBER(3)", None, None),
+		"ip_gtw": ("NUMBER(10)", None, None),
+		"low_ip": ("NUMBER(10)", None, None),
+        "high_ip": ("NUMBER(10)", None, None),
+		"ipCidrRouteDest": ("NUMBER(10)", None, None),
+		"ipCidrRouteMask": ("NUMBER(3)", None, None),
+		"ipCidrRouteTos": ("NUMBER(10)", None, None),
+		"ipCidrRouteNextHop": ("NUMBER(10)", None, None),
+		"ipCidrRouteIfIndex": ("NUMBER(10)", None, None),
+		"ipCidrRouteType": ("NUMBER(3)", None, None),
+		"ipCidrRouteProto": ("NUMBER(3)", None, None),
+		"ipCidrRouteAge": ("NUMBER(10)", None, None),
+		"ipCidrRouteInfo": ("VARCHAR(50)", None, None),
+		"ipCidrRouteNextHopAS": ("NUMBER(10)", None, None),
+		"ipCidrRouteMetric1": ("NUMBER(10)", None, None),
+		"ipCidrRouteMetric2": ("NUMBER(10)", None, None),
+		"ipCidrRouteMetric3": ("NUMBER(10)", None, None),
+		"ipCidrRouteMetric4": ("NUMBER(10)", None, None),
+		"ipCidrRouteMetric5": ("NUMBER(10)", None, None),
+		"ipCidrRouteStatus": ("NUMBER(3)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "ip_src ASC, ip_dst ASC, ip_gtw ASC, mask_dst ASC, timestamp ASC"),
+		"index_findRoute1": ("INDEX", "ipCidrRouteProto, timestamp, low_ip, high_ip"),
+		"index_findRoute2": ("INDEX", "timestamp, ip_src, low_ip, high_ip"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
+	},
+
+	"ifXTable": {
+		"_id": ("NUMBER(19)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(19)", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"if_number": ("NUMBER(10)", None, None),
+		"ifName": ("VARCHAR(50)", None, None),
+		"ifInMulticastPkts": ("NUMBER(10)", None, None),
+		"ifInBroadcastPkts": ("NUMBER(10)", None, None),
+		"ifOutMulticastPkts": ("NUMBER(10)", None, None),
+		"ifOutBroadcastPkts": ("NUMBER(10)", None, None),
+		"ifHCInOctets": ("NUMBER(19)", None, None),
+		"ifHCInUcastPkts": ("NUMBER(19)", None, None),
+		"ifHCInMulticastPkts": ("NUMBER(19)", None, None),
+		"ifHCInBroadcastPkts": ("NUMBER(19)", None, None),
+		"ifHCOutOctets": ("NUMBER(19)", None, None),
+		"ifHCOutUcastPkts": ("NUMBER(19)", None, None),
+		"ifHCOutMulticastPkts": ("NUMBER(19)", None, None),
+		"ifHCOutBroadcastPkts": ("NUMBER(19)", None, None),
+		"ifLinkUpDownTrapEnable": ("NUMBER(3)", None, None),
+		"ifHighSpeed": ("NUMBER(10)", None, None),
+		"ifPromiscuousMode": ("NUMBER(3)", None, None),
+		"ifConnectorPresent": ("NUMBER(3)", None, None),
+		"ifAlias": ("VARCHAR(50)", None, None),
+		"ifCounterDiscontinuityTime": ("VARCHAR(50)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
+		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
+	}
+}
+
 def getFieldDict():
 	if args.backend == "mysql":
 		return fieldDict
 	elif args.backend == "oracle":
-		raise Exception("Not yet implemeneted!")
+		return fieldDictOracle
 	elif args.backend == "mongo":
 		return None
 	else:
