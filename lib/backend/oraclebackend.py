@@ -120,7 +120,7 @@ class OracleBackend(SQLBaseBackend):
 			# unknown error!
 			print >> sys.stderr, "Received unknown exception in oracle backend that could not be unpacked: ", e
 			sys.exit(-1)
-		if error.code == 955:
+		if error.code == 955 or error.code == 1408:
 			# index alreday exists. that's good. don't do anything
 			print "Index already exists!"
 			return False
@@ -134,18 +134,58 @@ class OracleBackend(SQLBaseBackend):
 
 	def prepareCollection(self, name, fieldDict):
 		createString = "CREATE TABLE  " + name + " ("
-		first = True
 		primary = ""
+		indexes = ""
+		first = True
+		sequences = []
+		triggers = []
+		indexes = []
 		for field in fieldDict:
-			if not first:
-				createString += ","
-			createString += field + " " + fieldDict[field][0]
-			if fieldDict[field][1] != None:
-				primary = " PRIMARY KEY(" + field + ")"
-			first = False
+			if field == "_id":
+				fieldMod = "id"
+			else:
+				fieldMod = field
+
+			if field == "table_options":
+				pass
+			elif fieldDict[field][0].endswith("INDEX"):
+				index_create_string = "" 
+				for f in fieldDict[field]:
+					if not f.endswith("INDEX"):
+						if index_create_string == "":
+							index_create_string = "CREATE INDEX " + name + "_" + fieldMod + " ON " + name + " ("
+						else:
+							index_create_string += ","
+						index_create_string += f
+				index_create_string += ")"
+				print index_create_string
+				indexes.append(index_create_string) 
+			else:
+				if not first:
+					createString += ","
+				createString += fieldMod + " " + fieldDict[field][0]
+				if fieldDict[field][1] == "PRIMARY":
+					primary = " PRIMARY KEY(" + fieldMod + ")"
+				if fieldDict[field][2] == "AUTO_INCREMENT":
+					# Oracle does not know AUTO_INCREME?NTS. we need a trigger and sequence
+					sequences.append("CREATE SEQUENCE " + name + "_" + fieldMod + '_seq START WITH 1 INCREMENT BY 1 NOMAXVALUE')
+					triggers.append("CREATE OR REPLACE TRIGGER " + name + "_" + fieldMod + "_trigger BEFORE INSERT ON " + name + " REFERENCING NEW AS new FOR EACH ROW Begin SELECT " + name + "_" + fieldMod + "_seq.NEXTVAL INTO :new." + fieldMod + " FROM DUAL; END;")
+				elif fieldDict[field][2] != None:
+					createString += " " + fieldDict[field][2]
+				
+				first = False
 		if primary != "":
 			createString += "," + primary
-		createString += ")"
+		createString += ") " 
+		print createString
 		self.execute(createString)
-
+		for seq in sequences:
+			print seq
+			self.execute(seq)
+		for trigger in triggers:
+			print trigger
+			self.execute(trigger)
+		for index in indexes:
+			print index
+			self.execute(index)
 
