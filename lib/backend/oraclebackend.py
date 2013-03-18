@@ -158,7 +158,6 @@ class OracleBackend(SQLBaseBackend):
 							index_create_string += ","
 						index_create_string += f
 				index_create_string += ")"
-				print index_create_string
 				indexes.append(index_create_string) 
 			else:
 				if not first:
@@ -177,15 +176,11 @@ class OracleBackend(SQLBaseBackend):
 		if primary != "":
 			createString += "," + primary
 		createString += ") " 
-		print createString
 		self.execute(createString)
 		for seq in sequences:
-			print seq
 			self.execute(seq)
 		for trigger in triggers:
-			print trigger
 			self.execute(trigger)
 		for index in indexes:
-			print index
 			self.execute(index)
 
