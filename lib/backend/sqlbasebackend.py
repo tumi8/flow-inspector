@@ -76,7 +76,7 @@ class SQLBaseBackend(Backend):
 	def executemany(self, string, objects, table = None):
 		self.executeManyTimes += 1
 		self.executeManyObjects += len(objects)
-		print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
+		#print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
 		maxtime = 5 
 
 		try:

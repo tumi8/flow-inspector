@@ -16,10 +16,8 @@ class OracleBackend(SQLBaseBackend):
 
 	def connect(self):
 		import cx_Oracle
-		print "Oracle: Attempting new connect:" 
 		try:
 			connection_string = self.user + "/" + self.password + "@" + self.host + ":" + str(self.port) + "/" + self.databaseName
-			print connection_string
 			if self.cursor:
 				self.cursor.close()
 			if self.conn:
@@ -104,17 +102,16 @@ class OracleBackend(SQLBaseBackend):
 			except cx_Oracle.DatabaseError as e:
 				error, = e.args
 				if error.code == 942:
-					print "Table " + table + " does not exist"
+					print >> sys.stderr, "Table " + table + " does not exist"
 			except Exception as e:
-				print "Have seen unknown error:", e
-				print "Terminating!"
+				print >> sys.stderr, "Have seen unknown error:", e
+				print >> sys.stderr, "Terminating!"
 				sys.exit(-1)
 
 
 	def handle_exception(self, exception):
 		# try simply to reconnect and go again
 		# TODO: improve handling
-		print "Received exception: ", exception
 		try:
 			error, = exception.args
 			#message = exception.args.message
@@ -124,9 +121,9 @@ class OracleBackend(SQLBaseBackend):
 			sys.exit(-1)
 		if error.code == 955 or error.code == 1408:
 			# index alreday exists. that's good. don't do anything
-			print "Index already exists!"
 			return False
-		sys.exit(-1)
+		print >> sys.stderr, "Received exception: ", exception
+		sys.exit(1)
 		self.connect()
 		print "Trying to reconnet ..."
 		return True
