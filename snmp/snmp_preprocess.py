@@ -635,8 +635,16 @@ timestamps = set()
 
 
 # TODO: still leads to race conditions on multiple calls
-for file in glob.glob(args.file + "/*/*.txt"):
-	
+
+if os.path.isfile(args.file):
+	files = [ args.file ] 
+elif os.path.isdir(args.file):
+	files = glob.glob(args.file + "/*/*.txt")
+else:
+	print "ERROR: Unkown file type for " + args.file
+	sys.exit(1)
+
+for file in files:
 	# parse file name
 	params = os.path.basename(file).rstrip(".txt").split("-")
 	source_type = params[0]
