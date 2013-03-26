@@ -92,24 +92,6 @@ for entry in collection.find( { "type": "interface_log", "timestamp": timestamp 
 graph_copy = deepcopy(graph)
 
 
-#print "Creating route.connected"
-
-#for entry in collection.find( { "type": "route", "ipRouteType" : "3" } ):
-#	""" add direct routes """
-
-#	graph.addConnectedSubnetByNumber(
-#		entry["ip_src"],
-#		entry["ipRouteIfIndex"],
-#		entry["ipRouteDest"],
-#		entry["ipRouteMask"],
-#		str(entry)
-#	)
-
-#graph_to_graphmlfile(graph, "ba.route.connected.graphml")
-
-#graph = deepcopy(graph_copy)
-
-
 print "Creating route.local"
 
 # parse local / direct routes
