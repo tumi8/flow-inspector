@@ -40,8 +40,9 @@ interface_phy = db.getCollection("interface_phy")
 
 
 # request data from database
+# TODO: sqlbackend does not support AND-clauses... 'Solve' this by using case-sensitivity of the dictionary used (timestamp vs. TiMeStAmP)
 data_set = interface_phy.find({ "router": args.router, "ifIndex": args.interface,
-	"timestamp": {"$gt": args.timestamp_begin}, "tIMestamp": {"$lt": args.timestamp_end}},
+	"timestamp": {"$gt": args.timestamp_begin}, "TiMeStAmP": {"$lt": args.timestamp_end}},
 	sort={"timestamp": 1})
 
 

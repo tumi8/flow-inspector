@@ -16,31 +16,16 @@ import config
 from common_functions import *
 
 parser = argparse.ArgumentParser(description="Parse SNMP data files and import data to database")
-parser.add_argument(
-	"directory", help="Directory containing files to parse")
-parser.add_argument(
-		"-r", "--recursive", action="store_true", help="Recurse direcory, i.e. expecting files in <directory>/*/*.txt")
-parser.add_argument(
-	"--dst-host", nargs="?", default=config.data_backend_host,
-	help="Backend database host")
-parser.add_argument(
-	"--dst-port", nargs="?", default=config.data_backend_port,
-	type=int, help="Backend database port")
-parser.add_argument(
-	"--dst-user", nargs="?", default=config.data_backend_user,
-	help="Backend database user")
-parser.add_argument(
-	"--dst-password", nargs="?",
-	default=config.data_backend_password, help="Backend database password")
-parser.add_argument(
-	"--dst-database", nargs="?",
-	default=config.data_backend_snmp_name, help="Backend database name")
-parser.add_argument(
-	"--clear-database", nargs="?", type=bool, default=False, const=True,
-	help="Whether to clear the whole databse before importing any flows.")
-parser.add_argument(
-	"--backend", nargs="?", default=config.data_backend, const=True,
-	help="Selects the backend type that is used to store the data")
+parser.add_argument("file", help="File to parse")
+parser.add_argument("-d", "--directory", action="store_true", help="Parse directory instead of a single file")
+parser.add_argument("-r", "--recursive", action="store_true", help="Recurse direcory, i.e. expecting files in <directory>/*/*.txt")
+parser.add_argument("--dst-host", nargs="?", default=config.data_backend_host, help="Backend database host")
+parser.add_argument("--dst-port", nargs="?", default=config.data_backend_port, type=int, help="Backend database port")
+parser.add_argument("--dst-user", nargs="?", default=config.data_backend_user, help="Backend database user")
+parser.add_argument("--dst-password", nargs="?", default=config.data_backend_password, help="Backend database password")
+parser.add_argument("--dst-database", nargs="?", default=config.data_backend_snmp_name, help="Backend database name")
+parser.add_argument("--clear-database", nargs="?", type=bool, default=False, const=True, help="Whether to clear the whole databse before importing any flows.")
+parser.add_argument( "--backend", nargs="?", default=config.data_backend, const=True, help="Selects the backend type that is used to store the data")
 
 args = parser.parse_args()
 
@@ -237,6 +222,7 @@ oidmap = {
 	{"name": "ifCounterDiscontinuityTime", "fct": plain}
 }
 
+# dictionary containing table descriptions
 fieldDict = {
 	"interface_phy": {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
@@ -476,11 +462,13 @@ lines_since_commit = 0
 timestamps = set()
 
 
-# TODO: still leads to race conditions on multiple calls
-if args.recursive:
-	files = glob.glob(args.directory + "/*/*.txt")
+# TODO: implies precedence of operators, maybe something better can be done here
+if args.directory:
+	files = glob.glob(args.file + "/*.txt")
+elif args.recursive:
+	files = glob.glob(args.file + "/*/*.txt")
 else:
-	files = glob.glob(args.directory + "/*.txt")
+	files = [ args.file ]
 
 for file in files:
 	
