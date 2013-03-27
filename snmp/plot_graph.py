@@ -94,8 +94,15 @@ ewmv = 0
 L = 3 
 m0 = 0
 
+# used to ensure significance between two turning points
+average_height = 0
+previous_height = 0
+p_height = 0.125
+
 # temporary file to be passed to gnuplot
-tmpfile = open("data.tmp", "w")
+# TODO: maybe use /tmp directory here
+tmp_filename = "data.tmp." + str(os.getpid())
+tmpfile = open(tmp_filename, "w")
 firstline = True
 
 # iterate over all lines in our data_set
@@ -124,10 +131,16 @@ for (descr, actual_value) in data_set[1:]:
 	low_value = "NoV"
 	high_value = "NoV"
 
-	# detect change of sign in dsx
-	# TODO: write better code here
-	if (dsx * previous_dsx < 0):
-		low_value = previous_sx
+	# detect change of sign in dsx, detects minimal and maximum turning points
+	# use copysign as python seems not to provide a sign function
+	if (math.copysign(1, dsx) != math.copysign(1, previous_dsx)):
+		# filter the turning points, display only those which are not too small compared to the average height between two turning points
+		if (abs(previous_sx - previous_height) > 0.666 * average_height):
+			low_value = previous_sx
+		# update average height for every turning point, not only for those displayed
+		# (otherwise detecting small series after a series of big changes doesn't work)
+		average_height = p_height * abs(previous_sx - previous_height)  + (1 - p_height) * average_height
+		previous_height = previous_sx
 
 	# check whether sdsx is in bounds or not
 	if (sdsx < low_bound) or (sdsx > high_bound):
@@ -157,9 +170,17 @@ print >> gnuplot.stdin, 'set xtics 5 rotate'
 print >> gnuplot.stdin, 'set grid'
 print >> gnuplot.stdin, 'set datafile missing "NoV"'
 # print >> gnuplot.stdin, 'plot "data.tmp" using 0:3:xtic((int(column(0)) % 15 == 0) ? stringcolumn(1) : "") title "data" with lines linewidth 2, \\'
-print >> gnuplot.stdin, 'plot "data.tmp" using 0:3 title "data" with lines linewidth 2, \\'
+print >> gnuplot.stdin, 'plot "%s" using 0:3 title "data" with lines linewidth 2, \\' % tmp_filename
 print >> gnuplot.stdin, '             "" using 3 title "sx" with lines linecolor rgb "green" linewidth 2, \\'
+print >> gnuplot.stdin, '             "" using 4 title "dsx" with lines linecolor rgb "blue" linewidth 2, \\'
 print >> gnuplot.stdin, '             "" using 5 title "ddsx" with lines linecolor rgb "orange" linewidth 2, \\'
 print >> gnuplot.stdin, '             "" using 10 title "marker" linecolor rgb "red", \\'
 print >> gnuplot.stdin, '             "" using 11 title "marker" linecolor rgb "red"'
+print >> gnuplot.stdin, 'quit'
+
+# wait for gnuplot to quit
+gnuplot.wait()
+
+# remove temporary file
+os.remove(tmp_filename)
 
