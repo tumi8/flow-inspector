@@ -131,8 +131,23 @@ class OracleBackend(SQLBaseBackend):
 	def add_limit_to_string(self, string, limit):
 		return "SELECT * FROM (" + string + ") WHERE ROWNUM <= " + str(limit)
 
-	def prepareCollection(self, name, fieldDict):
+	def fillDynamicTypeWrapper(self, name, fieldDict):
 		oracleNameTypeWrapper = dict()
+		for field in fieldDict:
+			if field == "_id":
+				fieldMod = "id"
+			else:
+				fieldMod = field
+			if field != "table_options" and not fieldDict[field][0].endswith("INDEX"):
+				if field == "_id": 
+					oracleNameTypeWrapper["ID"] = '_id'
+				else:
+					oracleNameTypeWrapper[fieldMod.upper()] = fieldMod
+		self.dynamic_type_wrapper[name] = oracleNameTypeWrapper
+
+
+	def prepareCollection(self, name, fieldDict):
+		self.fillDynamicTypeWrapper(name, fieldDict)
 
 		createString = "CREATE TABLE  " + name + " ("
 		primary = ""
@@ -161,10 +176,6 @@ class OracleBackend(SQLBaseBackend):
 				index_create_string += ")"
 				indexes.append(index_create_string) 
 			else:
-				if field == "_id": 
-					oracleNameTypeWrapper["ID"] = '_id'
-				else:
-					oracleNameTypeWrapper[fieldMod.upper()] = fieldMod
 				if not first:
 					createString += ","
 				createString += fieldMod + " " + fieldDict[field][0]
@@ -178,8 +189,6 @@ class OracleBackend(SQLBaseBackend):
 					createString += " " + fieldDict[field][2]
 				
 				first = False
-
-		self.dynamic_type_wrapper[name] = oracleNameTypeWrapper
 
 		if primary != "":
 			createString += "," + primary

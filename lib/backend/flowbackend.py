@@ -117,7 +117,7 @@ class Collection:
 		"""
 		Queries the database for the desired fields in the spec dictionary. 
 		"""
-		return self.backendObject.find(self.collectionName, spec=spec, fields=fields, sort=sort)
+		return self.backendObject.find(self.collectionName, spec=spec, fields=fields, sort=sort, limit=limit)
  
 
 	def find_one(self, spec, fields=None, sort=None):
@@ -286,6 +286,10 @@ class Backend:
 				doc = self.index_cache[collectionName][statement]
 				collection.update(dict(statement), doc, True, True)
 			del self.index_cache[collectionName]
+
+	def fillDynamicTypeWrapper(self, name, fieldDict):
+		pass
+
 
 
 def getBackendObject(backend, host, port, user, password, databaseName):

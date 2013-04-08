@@ -659,51 +659,52 @@ class SQLBaseBackend(Backend):
 		query = "SELECT " + fieldsString + " FROM " + collectionName + " "
 		where_clause = ""
 		order_clause = ""
-		for field in spec:
-			if where_clause != "":
-				where_clause += " AND "
-			else:
-				where_clause = "WHERE "
-			if field.startswith("$"):
-				if field == "$or": 
-					second_level_clause = ""
-					for cond in spec[field]:
-						for key in cond:
-							if second_level_clause != "":
-								second_level_clause += " OR "
-							second_level_clause += key + '=' + "'" + cond[key] + "'"
-					where_clause += " (" + second_level_clause + ") "
+		if spec != None:
+			for field in spec:
+				if where_clause != "":
+					where_clause += " AND "
 				else:
-					raise Exception("Mongo operator " + field + " is not yet implemented!")
-			else:
-				if type(spec[field]) == type(dict()):
-					for i in spec[field]:
-						if i == "$lt":
-							operator = "<"
-						elif i == "$lte":
-							operator = "<="
-						elif i == "$gt":
-							operator = ">"
-						elif i == "$gte":
-							operator = ">="
-						else:
-							raise Exception("Operator not implemented")
-						operand = str(spec[field][i])
-				else:
-					operator = "="
-					operand = str(spec[field])
-				where_clause += field + operator +"'" + operand + "'"
-
-		if sort != None:
-			if len(sort) > 1:
-				raise Exception("Can only sort for a single field!")
-			elif len(sort) == 1:
-				for field in sort:
-					order_clause = " ORDER BY " + field + " "
-					if sort[field] == 1:
-						order_clause += "ASC"
+					where_clause = "WHERE "
+				if field.startswith("$"):
+					if field == "$or": 
+						second_level_clause = ""
+						for cond in spec[field]:
+							for key in cond:
+								if second_level_clause != "":
+									second_level_clause += " OR "
+								second_level_clause += key + '=' + "'" + cond[key] + "'"
+						where_clause += " (" + second_level_clause + ") "
 					else:
-						order_clause += "DESC"
+						raise Exception("Mongo operator " + field + " is not yet implemented!")
+				else:
+					if type(spec[field]) == type(dict()):
+						for i in spec[field]:
+							if i == "$lt":
+								operator = "<"
+							elif i == "$lte":
+								operator = "<="
+							elif i == "$gt":
+								operator = ">"
+							elif i == "$gte":
+								operator = ">="
+							else:
+								raise Exception("Operator not implemented")
+							operand = str(spec[field][i])
+					else:
+						operator = "="
+						operand = str(spec[field])
+					where_clause += field + operator +"'" + operand + "'"
+	
+		if sort != None:
+			for field in sort:
+				if order_clause == "":
+					order_clause = " ORDER BY " + field + " "
+				else:
+					order_clause += "," + field + " "
+				if sort[field] == 1:
+					order_clause += "ASC"
+				else:
+					order_clause += "DESC"
 		if where_clause != "":
 			query += where_clause
 		if order_clause != "":
@@ -714,11 +715,24 @@ class SQLBaseBackend(Backend):
 		self.execute(query, None, self.dictCursor)
 		if self.type == "oracle":
 			# As alway: Things do not work with oracle ...
+			if not collectionName in self.dynamic_type_wrapper:
+				# if we did not have the desired column names configured into 
+				# our dynamic_type_wrapper sruct (e.g. if no call to createTable was issued)
+				# then just return the dictionary with the column names from the 
+				# cursor. Note that oracle converts all column names to upper cases, which
+				# can be a problem for case sensitive appliations (like ours ...)
+				rows = self.dictCursor.fetchall()
+				columns = [i[0] for i in self.dictCursor.description]
+				return [dict(zip(columns, row)) for row in rows]
+				
+			# this code branch is there in case one configured the dyanmic_type_wrapper
+			# structure. In this case, the oracle DB names (whcih are in upper case) will
+			# be translated into the proper case as defined in teh dynamic_type_wrapper struct
 			typeWrapper = self.dynamic_type_wrapper[collectionName]
-			rows = self.dictCursor.fetchall()
 			if typeWrapper == None:
 				print "ERROR: Unknown collection. Cannot create dictionary ..."
 				return dict()
+			rows = self.dictCursor.fetchall()
 			columns = [typeWrapper[i[0]] for i in self.dictCursor.description]
 			return [dict(zip(columns, row)) for row in rows]
 		else:
@@ -732,3 +746,4 @@ class SQLBaseBackend(Backend):
 			ret.append(entry[field])
 
 		return ret
+
