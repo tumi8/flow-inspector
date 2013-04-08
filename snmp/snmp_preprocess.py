@@ -17,40 +17,6 @@ import backend
 
 from common_functions import *
 
-parser = argparse.ArgumentParser(description="Preprocess SNMP data")
-parser.add_argument(
-	"file", help="Path to files to parse")
-parser.add_argument(
-	"--dst-host", nargs="?", default=config.data_backend_host,
-	help="Backend database host")
-parser.add_argument(
-	"--dst-port", nargs="?", default=config.data_backend_port,
-	type=int, help="Backend database port")
-parser.add_argument(
-	"--dst-user", nargs="?", default=config.data_backend_user,
-	help="Backend database user")
-parser.add_argument(
-	"--dst-password", nargs="?",
-	default=config.data_backend_password, help="Backend database password")
-parser.add_argument(
-	"--dst-database", nargs="?",
-	default=config.data_backend_snmp_name, help="Backend database name")
-parser.add_argument(
-	"--clear-database", nargs="?", type=bool, default=False, const=True,
-	help="Whether to clear the whole databse before importing any flows.")
-parser.add_argument(
-	"--backend", nargs="?", default=config.data_backend, const=True,
-	help="Selects the backend type that is used to store the data")
-
-args = parser.parse_args()
-
-dst_db = backend.databackend.getBackendObject(
-	args.backend, args.dst_host, args.dst_port,
-	args.dst_user, args.dst_password, args.dst_database)
-
-if args.clear_database:
-	dst_db.clearDatabase()
-
 # dictionary which maps oid -> name and fct to parse oid value
 oidmap = {
 	".1.3.6.1.2.1.2.2.1.1":
@@ -553,7 +519,7 @@ fieldDictOracle = {
 	}
 }
 
-def getFieldDict():
+def getFieldDict(args):
 	if args.backend == "mysql":
 		return fieldDict
 	elif args.backend == "oracle":
@@ -563,32 +529,7 @@ def getFieldDict():
 	else:
 		raise Exception("Unknown data backend: " + args.backend);
 
-collections = dict()
-for name, fields in getFieldDict().items():
-	dst_db.prepareCollection(name, fields)
-	collections[name] = dst_db.getCollection(name)
-
-# TODO: hacky ... make something more general ...
-if backend == "mongo":
-	db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
-	collection = db["snmp_raw"]
-	collection.ensure_index([("router", pymongo.ASCENDING), ("if_number", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
-	collection.ensure_index([("router", pymongo.ASCENDING), ("if_ip", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
-	collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
-	collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("mask_dst", pymongo.ASCENDING), ("ip_gtw", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
-
-	# restore generic backend collection
-	collection = dst_db.getCollection("snmp_raw")
-else: 
-#	collection.createIndex("router")
-#	collection.createIndex("if_number")
-#	collection.createIndex("timestamp")
-#	collection.createIndex("type")
-#	collection.createIndex("ip_src")
-#	collection.createIndex("ip_dst")
-	pass
-
-def update_doc(table, table_key, db_key, db_values):
+def update_doc(doc, table, table_key, db_key, db_values):
 	""" update local document before comitting to databackend """
 	if not table in doc:
 		doc[table] = dict()
@@ -597,8 +538,7 @@ def update_doc(table, table_key, db_key, db_values):
 	else:
 		doc[table][table_key] = (db_key, {"$set": db_values})
 
-def commit_doc():
-	global doc
+def commit_doc(doc, collections):
 	
 	time_begin = time.time()
 	time_last = time_begin
@@ -620,181 +560,251 @@ def commit_doc():
 			time_last = time_current 
 	doc = {}
 
-# enviromental settings
-cache_treshold = 999999
+def main():
+	doc = {}
+	collections = dict()
 
-# statistical counters
-time_begin = time.time()
-time_last = time_begin
-counter = 0
+	parser = argparse.ArgumentParser(description="Preprocess SNMP data")
+	parser.add_argument(
+		"file", help="Path to files to parse")
+	parser.add_argument(
+		"--dst-host", nargs="?", default=config.data_backend_host,
+		help="Backend database host")
+	parser.add_argument(
+		"--dst-port", nargs="?", default=config.data_backend_port,
+		type=int, help="Backend database port")
+	parser.add_argument(
+		"--dst-user", nargs="?", default=config.data_backend_user,
+		help="Backend database user")
+	parser.add_argument(
+		"--dst-password", nargs="?",
+		default=config.data_backend_password, help="Backend database password")
+	parser.add_argument(
+		"--dst-database", nargs="?",
+		default=config.data_backend_snmp_name, help="Backend database name")
+	parser.add_argument(
+		"--clear-database", nargs="?", type=bool, default=False, const=True,
+		help="Whether to clear the whole databse before importing any flows.")
+	parser.add_argument(
+		"--backend", nargs="?", default=config.data_backend, const=True,
+		help="Selects the backend type that is used to store the data")
 
-# local document storage
-doc = {}
-lines_since_commit = 0
-timestamps = set()
+	args = parser.parse_args()
+
+	dst_db = backend.databackend.getBackendObject(
+		args.backend, args.dst_host, args.dst_port,
+		args.dst_user, args.dst_password, args.dst_database)
+
+	if args.clear_database:
+		dst_db.clearDatabase()
+
+	for name, fields in getFieldDict(args).items():
+		dst_db.prepareCollection(name, fields)
+		collections[name] = dst_db.getCollection(name)
+	
+	# TODO: hacky ... make something more general ...
+	if backend == "mongo":
+		db = pymongo.Connection(args.dst_host, args.dst_port)[args.dst_database]
+		collection = db["snmp_raw"]
+		collection.ensure_index([("router", pymongo.ASCENDING), ("if_number", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+		collection.ensure_index([("router", pymongo.ASCENDING), ("if_ip", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+		collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+		collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("mask_dst", pymongo.ASCENDING), ("ip_gtw", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
+
+		# restore generic backend collection
+		collection = dst_db.getCollection("snmp_raw")
+	else: 
+	#	collection.createIndex("router")
+	#	collection.createIndex("if_number")
+	#	collection.createIndex("timestamp")
+	#	collection.createIndex("type")
+	#	collection.createIndex("ip_src")
+	#	collection.createIndex("ip_dst")
+		pass
+
+	# enviromental settings
+	cache_treshold = 999999
+
+	# statistical counters
+	time_begin = time.time()
+	time_last = time_begin
+	counter = 0
+
+	# local document storage
+	lines_since_commit = 0
+	timestamps = set()
 
 
-# TODO: still leads to race conditions on multiple calls
+	# TODO: still leads to race conditions on multiple calls
 
-if os.path.isfile(args.file):
-	files = [ args.file ] 
-elif os.path.isdir(args.file):
-	files = glob.glob(args.file + "/*/*.txt")
-else:
-	print "ERROR: Unkown file type for " + args.file
-	sys.exit(1)
+	if os.path.isfile(args.file):
+		files = [ args.file ] 
+	elif os.path.isdir(args.file):
+		files = glob.glob(args.file + "/*.txt")
+	else:
+		print "ERROR: Unkown file type for " + args.file
+		sys.exit(1)
 
-for file in files:
-	# parse file name
-	params = os.path.basename(file).rstrip(".txt").split("-")
-	source_type = params[0]
-	ip_src = params[1]
-	timestamp = params[2]
-	timestamps.add(timestamp)
+	for file in files:
+		# parse file name
+		params = os.path.basename(file).rstrip(".txt").split("-")
+		source_type = params[0]
+		ip_src = params[1]
+		timestamp = params[2]
+		timestamps.add(timestamp)
 
-#	print "file: %s" % file
+	#	print "file: %s" % file
 
-	# read and process file contents
-	file = open(file, "r")
-	for line in file:
-		index = line.find(" ")
-		value = line[index + 1:]
-		value = value.strip("\n")
-		value = value.strip('"')
-		line = line[0:index]
-
-		# parse interface_phy oid
-		if line.startswith(".1.3.6.1.2.1.2.2.1"):
-			line = line.split(".")
-			oid = '.'.join(line[0:11])
-			interface = line[11]
-
-			if oid in oidmap:
-				update_doc(
-					"interface_phy",
-					ip_src + interface + timestamp,
-					{"router": ip_src, "if_number": interface,
-						"timestamp": timestamp},
-					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-				)
-
-		# parse interface_log oid
-		elif line.startswith(".1.3.6.1.2.1.4.20.1"):
-			line = line.split(".")
-			oid = '.'.join(line[0:11])
-			ip = '.'.join(line[11:15])
-
-			if oid in oidmap:
-				update_doc(
-					"interface_log",
-					ip_src + ip + timestamp,
-					{"router": ip_src, "if_ip": ip2int(ip),
-						"timestamp": timestamp},
-					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-				)
-
-		# parse ip route oid
-		elif line.startswith(".1.3.6.1.2.1.4.21.1"):
-			line = line.split(".")
-			oid = '.'.join(line[0:11])
-			ip = '.'.join(line[11:15])
-
-			if oid in oidmap:
-				update_doc(
-					"ipRoute",
-					ip_src + ip + timestamp,
-					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
-						"ip_dst": ip2int(ip)},
-					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-				)
-
-		# parse eigrp oid
-		elif line.startswith(".1.3.6.1.4.1.9.9.449.1.3.1.1"):
-			line = line.split(".")
-			oid = '.'.join(line[0:15])
-			ip = '.'.join(line[19:23])
-
-			if oid in oidmap:
-				update_doc(
-					"cEigrp",
-					ip_src + ip + line[23] + timestamp,
-					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
+		# read and process file contents
+		file = open(file, "r")
+		for line in file:
+			index = line.find(" ")
+			value = line[index + 1:]
+			value = value.strip("\n")
+			value = value.strip('"')
+			line = line[0:index]
+	
+			# parse interface_phy oid
+			if line.startswith(".1.3.6.1.2.1.2.2.1"):
+				line = line.split(".")
+				oid = '.'.join(line[0:11])
+				interface = line[11]
+	
+				if oid in oidmap:
+					update_doc(
+						doc,
+						"interface_phy",
+						ip_src + interface + timestamp,
+						{"router": ip_src, "if_number": interface,
+							"timestamp": timestamp},
+						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+					)
+	
+			# parse interface_log oid
+			elif line.startswith(".1.3.6.1.2.1.4.20.1"):
+				line = line.split(".")
+				oid = '.'.join(line[0:11])
+				ip = '.'.join(line[11:15])
+	
+				if oid in oidmap:
+					update_doc(
+						doc,
+						"interface_log",
+						ip_src + ip + timestamp,
+						{"router": ip_src, "if_ip": ip2int(ip),
+							"timestamp": timestamp},
+						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+					)
+	
+			# parse ip route oid
+			elif line.startswith(".1.3.6.1.2.1.4.21.1"):
+				line = line.split(".")
+				oid = '.'.join(line[0:11])
+				ip = '.'.join(line[11:15])
+	
+				if oid in oidmap:
+					update_doc(
+						doc,
+						"ipRoute",
+						ip_src + ip + timestamp,
+						{"ip_src": ip2int(ip_src), "timestamp": timestamp,
+							"ip_dst": ip2int(ip)},
+						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+					)
+	
+			# parse eigrp oid
+			elif line.startswith(".1.3.6.1.4.1.9.9.449.1.3.1.1"):
+				line = line.split(".")
+				oid = '.'.join(line[0:15])
+				ip = '.'.join(line[19:23])
+	
+				if oid in oidmap:
+					update_doc(
+						doc,
+						"cEigrp",
+						ip_src + ip + line[23] + timestamp,
+						{"ip_src": ip2int(ip_src), "timestamp": timestamp,
 						"ip_dst": ip2int(ip), "mask_dst": line[23]},
-					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-				)
+						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+					)
+	
+			# parse ipcidrroute oid
+			elif line.startswith(".1.3.6.1.2.1.4.24.4.1"):
+				line = line.split(".")
+				oid = '.'.join(line[0:12])
+				ip_dst = '.'.join(line[12:16])
+				mask_dst = '.'.join(line[16:20])
+				ip_gtw = '.'.join(line[21:25])
 
-		# parse ipcidrroute oid
-		elif line.startswith(".1.3.6.1.2.1.4.24.4.1"):
-			line = line.split(".")
-			oid = '.'.join(line[0:12])
-			ip_dst = '.'.join(line[12:16])
-			mask_dst = '.'.join(line[16:20])
-			ip_gtw = '.'.join(line[21:25])
-
-			if oid in oidmap:
-				update_doc(
-					"ipCidrRoute",
-					ip_src + ip_dst + mask_dst + ip_gtw + timestamp,
-					{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
-						"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
-					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-				)
-
-		# parse ifxtable oid
-		elif line.startswith(".1.3.6.1.2.1.31.1.1.1"):
-			line = line.split(".")
-			oid = '.'.join(line[0:12])
-			if_number = line[12]
-
-			if oid in oidmap:
-				update_doc(
-					"ifXTable",
-					ip_src + if_number + timestamp,
-					{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
-					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-				)
-
-		# increment counter for processed lines
-		counter += 1
-		lines_since_commit += 1
-
-		# do statistical calculation
-		time_current = time.time()
-		if (time_current - time_last > 5):
-			print "Processed %s lines in %s seconds (%s lines per second)" % (
-				counter, time_current - time_begin, counter / (time_current - time_begin))
-			time_last = time_current
-
-		if lines_since_commit > cache_treshold:
-			commit_doc()
+				if oid in oidmap:
+					update_doc(
+						doc,
+						"ipCidrRoute",
+						ip_src + ip_dst + mask_dst + ip_gtw + timestamp,
+						{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
+							"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
+						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+					)
+	
+			# parse ifxtable oid
+			elif line.startswith(".1.3.6.1.2.1.31.1.1.1"):
+				line = line.split(".")
+				oid = '.'.join(line[0:12])
+				if_number = line[12]
+	
+				if oid in oidmap:
+					update_doc(
+						doc,
+						"ifXTable",
+						ip_src + if_number + timestamp,
+						{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
+						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+					)
+	
+			# increment counter for processed lines
+			counter += 1
+			lines_since_commit += 1
+	
+			# do statistical calculation
+			time_current = time.time()
+			if (time_current - time_last > 5):
+				print "Processed %s lines in %s seconds (%s lines per second)" % (
+					counter, time_current - time_begin, counter / (time_current - time_begin))
+				time_last = time_current
+	
+			if lines_since_commit > cache_treshold:
+				commit_doc(doc, collections)
 			lines_since_commit = 0
+	
+	#	print "counter: %s" % counter
 
-#	print "counter: %s" % counter
 
+	# commit local doc to databackend in the end
+	
+	commit_doc(doc, collections)
 
-# commit local doc to databackend in the end
+	for collection in collections.itervalues():
+		collection.flushCache()
 
-commit_doc()
+	print "Calculating IP ranges"
 
-for collection in collections.itervalues():
-	collection.flushCache()
+	# calculate ip network ranges
+	for timestamp in timestamps:
+		for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
+			(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
+			collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
+	
+		for row in collections["cEigrp"].find({"timestamp": timestamp}):
+			(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
+			collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
 
-print "Calculating IP ranges"
+	for collection in collections.itervalues():
+		collection.flushCache()
 
-# calculate ip network ranges
-for timestamp in timestamps:
-	for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
-		(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
-		collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
+	# do some statistics in the end
+	time_current = time.time()
+	print "Processed %s lines in %s seconds (%s lines per second)" % (
+			counter, time_current - time_begin, counter / (time_current - time_begin))
 
-	for row in collections["cEigrp"].find({"timestamp": timestamp}):
-		(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
-		collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
-
-for collection in collections.itervalues():
-	collection.flushCache()
-
-# do some statistics in the end
-time_current = time.time()
-print "Processed %s lines in %s seconds (%s lines per second)" % (
-		counter, time_current - time_begin, counter / (time_current - time_begin))
+if __name__ == "__main__":
+	main()
