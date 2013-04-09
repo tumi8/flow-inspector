@@ -79,8 +79,8 @@ class SQLBaseBackend(Backend):
 		self.last_query = string
 		self.executeManyTimes += 1
 		self.executeManyObjects += len(objects)
-		print string
-		print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
+		#print string
+		#print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
 		maxtime = 5 
 
 		try:
