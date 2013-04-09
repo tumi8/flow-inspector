@@ -123,7 +123,7 @@ class Collection:
 	def find_one(self, spec, fields=None, sort=None):
 		return self.backendObject.find_one(self.collectionName, spec, fields, sort)
 
-	def flushCache(self, collectionName = None):
+	def flushCache(self, collectionName=None):
 		return self.backendObject.flushCache(collectionName)
 
 	def distinct(self, field):

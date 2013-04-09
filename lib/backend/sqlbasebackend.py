@@ -30,7 +30,7 @@ class SQLBaseBackend(Backend):
 		self.executeTimes = 0
 		self.executeManyTimes = 0
 		self.executeManyObjects = 0
-
+		self.last_query = ""
 		self.tableNames = [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]
 		for s in config.flow_bucket_sizes:
 			self.tableNames.append(common.DB_FLOW_PREFIX + str(s))
@@ -48,6 +48,8 @@ class SQLBaseBackend(Backend):
 		self.executeTimes += 1
 		#print "Execute: ", self.executeTimes
 		maxtime = 10
+
+		self.last_query = string
 
 		if cursor == None:
 			cursor = self.cursor
@@ -74,9 +76,11 @@ class SQLBaseBackend(Backend):
 
 
 	def executemany(self, string, objects, table = None):
+		self.last_query = string
 		self.executeManyTimes += 1
 		self.executeManyObjects += len(objects)
-		#print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
+		print string
+		print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
 		maxtime = 5 
 
 		try:
@@ -148,8 +152,6 @@ class SQLBaseBackend(Backend):
 					fieldDict["id"] = (statement[s], "PRIMARY")
 				else:
 					fieldDict[s] = (statement[s], "PRIMARY")
-
-			
 
 		for part in [ "$set", "$inc" ]:
 			if not part in document:

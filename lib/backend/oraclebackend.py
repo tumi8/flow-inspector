@@ -27,8 +27,7 @@ class OracleBackend(SQLBaseBackend):
 			self.cursor = cx_Oracle.Cursor(self.conn)
 			self.dictCursor = cx_Oracle.Cursor(self.conn)
 		except Exception as inst:
-			print >> sys.stderr, "Cannot connect to Oracle database: ", inst 
-			sys.exit(1)
+			print >> sys.stderr, "Cannot connect to Oracle database: ", inst,
 
 
 	def insert(self, collectionName, fieldDict):
@@ -54,9 +53,9 @@ class OracleBackend(SQLBaseBackend):
 				if fieldDict[field][1] == None or fieldDict[field][1] == "ADD":
 						matchedString += field + "=" + "SOURCE." + field + "+" + "target." + field
 				elif fieldDict[field][1] == "UPDATE" or fieldDict[field][1] == "SET":
-						matchedString += field + "=" + "target." + field
+						matchedString += "target." + field + "=" + "SOURCE." + field
 				elif fieldDict[field][1] == "KEEP":
-						matchedString += field + "=" + "SOURCE." + field
+						matchedString += "target." + field + "=" + "target." + field
 
 			notMatchedInsert += "target." + field
 			notMatchedValues += "SOURCE." + field
@@ -122,7 +121,8 @@ class OracleBackend(SQLBaseBackend):
 		if error.code == 955 or error.code == 1408:
 			# index alreday exists. that's good. don't do anything
 			return False
-		print >> sys.stderr, "Received exception: ", exception
+		print >> sys.stderr, "Exception on query:", self.last_query
+		print >> sys.stderr, "Received exception: ", exception,
 		sys.exit(1)
 		self.connect()
 		print "Trying to reconnet ..."
