@@ -674,7 +674,7 @@ def main():
 					update_doc(
 						doc,
 						"interface_phy",
-						ip_src + interface + timestamp,
+						ip_src + '-' + interface + '-' + timestamp,
 						{"router": ip_src, "if_number": interface,
 							"timestamp": timestamp},
 						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -690,7 +690,7 @@ def main():
 					update_doc(
 						doc,
 						"interface_log",
-						ip_src + ip + timestamp,
+						ip_src + '-' + ip + '-' + timestamp,
 						{"router": ip_src, "if_ip": ip2int(ip),
 							"timestamp": timestamp},
 						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -706,7 +706,7 @@ def main():
 					update_doc(
 						doc,
 						"ipRoute",
-						ip_src + ip + timestamp,
+						ip_src + '-' + ip + '-' + timestamp,
 						{"ip_src": ip2int(ip_src), "timestamp": timestamp,
 							"ip_dst": ip2int(ip)},
 						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -722,7 +722,7 @@ def main():
 					update_doc(
 						doc,
 						"cEigrp",
-						ip_src + ip + line[23] + timestamp,
+						ip_src + '-' + ip + '-' + line[23] + '-' + timestamp,
 						{"ip_src": ip2int(ip_src), "timestamp": timestamp,
 						"ip_dst": ip2int(ip), "mask_dst": line[23]},
 						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -740,7 +740,7 @@ def main():
 					update_doc(
 						doc,
 						"ipCidrRoute",
-						ip_src + ip_dst + mask_dst + ip_gtw + timestamp,
+						ip_src + '-' + ip_dst + '-' + mask_dst + '-' + ip_gtw + '-' + timestamp,
 						{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
 							"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
 						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
@@ -756,7 +756,7 @@ def main():
 					update_doc(
 						doc,
 						"ifXTable",
-						ip_src + if_number + timestamp,
+						ip_src + '-' + if_number + '-' + timestamp,
 						{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
 						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 					)
