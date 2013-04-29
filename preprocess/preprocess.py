@@ -12,10 +12,6 @@ Author: Mario Volke, Lothar Braun
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'redis-py'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'pytz-2012h'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor', 'bson-0.3.2'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 import math
@@ -340,7 +336,7 @@ while True:
 		# Terminate if this object is the END flag
 		if obj == "END":
 			print "%s: Reached END. Terminating..." % (datetime.datetime.now())
-			print "%s: Flusing caches. Do not terminate this process or you will have data loss!"
+			print "%s: Flushing caches. Do not terminate this process or you will have data loss!" % (datetime.datetime.now())
 			break
 			
 		try:
