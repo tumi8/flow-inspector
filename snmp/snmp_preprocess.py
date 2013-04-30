@@ -354,7 +354,7 @@ fieldDict = {
 		"ifHighSpeed": ("INT UNSIGNED", None, None),
 		"ifPromiscuousMode": ("TINYINT UNSIGNED", None, None),
 		"ifConnectorPresent": ("TINYINT UNSIGNED", None, None),
-		"ifAlias": ("VARCHAR(50)", None, None),
+		"ifAlias": ("VARCHAR(70)", None, None),
 		"ifCounterDiscontinuityTime": ("VARCHAR(50)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
@@ -512,7 +512,7 @@ fieldDictOracle = {
 		"ifHighSpeed": ("NUMBER(11)", None, None),
 		"ifPromiscuousMode": ("NUMBER(3)", None, None),
 		"ifConnectorPresent": ("NUMBER(3)", None, None),
-		"ifAlias": ("VARCHAR(50)", None, None),
+		"ifAlias": ("VARCHAR(70)", None, None),
 		"ifCounterDiscontinuityTime": ("VARCHAR(50)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
