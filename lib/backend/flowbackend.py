@@ -290,6 +290,18 @@ class Backend:
 	def fillDynamicTypeWrapper(self, name, fieldDict):
 		pass
 
+	def execute(self, string, params = None, cursor=None):
+		"""
+		ATTENTION: Do not use this method! This is for internal hacks only
+		and must NEVER be used throughout this code base. Using this method
+		WILL break your code. And this method will disappear as soon as 
+		possible.
+		DO _NOT_ USE THIS METHOD!!!!
+		DO _NOT_ USE THIS METHOD!!!!
+		DO _NOT_ USE THIS METHOD!!!!
+		"""
+		raise Exception("I told you not to use this method!!!!! Why didn't you read the developer documentation?")
+
 
 
 def getBackendObject(backend, host, port, user, password, databaseName):
