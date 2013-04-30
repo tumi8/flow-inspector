@@ -203,6 +203,7 @@ oidmap = {
 	{"name": "ifCounterDiscontinuityTime", "fct": plain}
 }
 
+# dictionary containing table descriptions
 fieldDict = {
 	"interface_phy": {
 		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
@@ -564,30 +565,19 @@ def main():
 	doc = {}
 	collections = dict()
 
-	parser = argparse.ArgumentParser(description="Preprocess SNMP data")
-	parser.add_argument(
-		"file", help="Path to files to parse")
-	parser.add_argument(
-		"--dst-host", nargs="?", default=config.data_backend_host,
-		help="Backend database host")
-	parser.add_argument(
-		"--dst-port", nargs="?", default=config.data_backend_port,
-		type=int, help="Backend database port")
-	parser.add_argument(
-		"--dst-user", nargs="?", default=config.data_backend_user,
-		help="Backend database user")
-	parser.add_argument(
-		"--dst-password", nargs="?",
-		default=config.data_backend_password, help="Backend database password")
-	parser.add_argument(
-		"--dst-database", nargs="?",
-		default=config.data_backend_snmp_name, help="Backend database name")
-	parser.add_argument(
-		"--clear-database", nargs="?", type=bool, default=False, const=True,
-		help="Whether to clear the whole databse before importing any flows.")
-	parser.add_argument(
-		"--backend", nargs="?", default=config.data_backend, const=True,
-		help="Selects the backend type that is used to store the data")
+
+	parser = argparse.ArgumentParser(description="Parse SNMP data files and import data to database")
+	parser.add_argument("data_path", help="Path to the data that should be inserted. This must be a file if neither -d or -r are given.")
+	parser.add_argument("-d", "--directory", action="store_true", help="Parse directory instead of a single file. The directory will be scanned for <directory>/*.txt:")
+	parser.add_argument("-r", "--recursive", action="store_true", help="Recurse direcory, i.e. expecting files in <directory>/*/*.txt")
+	parser.add_argument("--dst-host", nargs="?", default=config.data_backend_host, help="Backend database host")
+	parser.add_argument("--dst-port", nargs="?", default=config.data_backend_port, type=int, help="Backend database port")
+	parser.add_argument("--dst-user", nargs="?", default=config.data_backend_user, help="Backend database user")
+	parser.add_argument("--dst-password", nargs="?", default=config.data_backend_password, help="Backend database password")
+	parser.add_argument("--dst-database", nargs="?", default=config.data_backend_snmp_name, help="Backend database name")
+	parser.add_argument("--clear-database", nargs="?", type=bool, default=False, const=True, help="Whether to clear the whole databse before importing any flows.")
+	parser.add_argument( "--backend", nargs="?", default=config.data_backend, const=True, help="Selects the backend type that is used to store the data")
+
 
 	args = parser.parse_args()
 
@@ -634,17 +624,15 @@ def main():
 	lines_since_commit = 0
 	timestamps = set()
 
-
-	# TODO: still leads to race conditions on multiple calls
-
-	if os.path.isfile(args.file):
-		files = [ args.file ] 
-	elif os.path.isdir(args.file):
-		files = glob.glob(args.file + "/*.txt")
+	
+	# TODO: implies precedence of operators, maybe something better can be done here
+	if args.directory:
+		files = glob.glob(args.data_path + "/*.txt")
+	elif args.recursive:
+		files = glob.glob(args.data_path + "/*/*.txt")
 	else:
-		print "ERROR: Unkown file type for " + args.file
-		sys.exit(1)
-
+		files = [ args.data_path ]
+	
 	for file in files:
 		# parse file name
 		params = os.path.basename(file).rstrip(".txt").split("-")
@@ -679,7 +667,7 @@ def main():
 							"timestamp": timestamp},
 						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 					)
-	
+
 			# parse interface_log oid
 			elif line.startswith(".1.3.6.1.2.1.4.20.1"):
 				line = line.split(".")

@@ -133,6 +133,8 @@ def findRouteIPTable(ip_src, ip_dst, useDefaultGatewayIncoming=None, useDefaultG
 	return return_value | 4
 
 
+# TODO: won't work right now
+# TODO: copy functionality from findRouteIPTable() and adopt to eigrp
 def findRouteEIGRP(ip_src, ip_dst):
 	
 	router_to_process = deque()
@@ -172,6 +174,7 @@ def findRouteEIGRP(ip_src, ip_dst):
 
 	return False
 
+# allow this to be used as a single programs or within another program
 def main():
 	parser = argparse.ArgumentParser(description="Preprocess SNMP data")
 	parser.add_argument("src_ip")
