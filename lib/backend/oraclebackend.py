@@ -118,6 +118,7 @@ class OracleBackend(SQLBaseBackend):
 			# unknown error!
 			print >> sys.stderr, "Received unknown exception in oracle backend that could not be unpacked: ", e
 			sys.exit(-1)
+		#print error
 		if error.code == 955 or error.code == 1408:
 			# index alreday exists. that's good. don't do anything
 			return False
@@ -129,7 +130,10 @@ class OracleBackend(SQLBaseBackend):
 		return True
 
 	def add_limit_to_string(self, string, limit):
-		return "SELECT * FROM (" + string + ") WHERE ROWNUM <= " + str(limit)
+		if type(limit) is int: 
+			return "SELECT * FROM (" + string + ") WHERE ROWNUM <= " + str(limit)
+		if type(limit) is tuple:
+			return "SELECT * FROM (" + string + ") WHERE ROWNUM >= " + str(limit[0]) + " AND ROWNUM <= " + str(limit[1])
 
 	def fillDynamicTypeWrapper(self, name, fieldDict):
 		oracleNameTypeWrapper = dict()
