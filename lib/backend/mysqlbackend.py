@@ -112,6 +112,11 @@ class MysqlBackend(SQLBaseBackend):
 			# caller ...
 			raise 
 
+		if error == 1146:
+			# table does not exist. Probably means that no data was imported yet.
+			return False
+
+		print "ERROR: Received exception (" + str(error) + "):", message
 		# try to reconnect
 		# TODO: Implement better handling
 
