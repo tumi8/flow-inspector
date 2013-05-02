@@ -58,6 +58,11 @@ flow_filter_unknown_ports = False
 pre_cache_size = 10000
 # cache size for aggregated collections per bucket size
 pre_cache_size_aggr = 5
+# Defines whether this is a live or offline data import.
+# The preprocessor will periodically try to flush its 
+# cache in case of a live import. 
+live_import=True
+
 
 
 # Cleanup process settings

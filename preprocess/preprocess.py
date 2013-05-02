@@ -326,6 +326,8 @@ print "%s: Use Ctrl-C to quit." % (datetime.datetime.now())
 timer = threading.Timer(common.OUTPUT_INTERVAL, print_output)
 timer.start()
 
+time_since_last_flush = None
+
 # Daemon loop
 while True:
 	try:
@@ -345,6 +347,9 @@ while True:
 			obj[common.COL_LAST_SWITCHED] = int(obj[common.COL_LAST_SWITCHED])
 			for s in config.flow_aggr_sums:
 				obj[s] = int(obj[s])
+			if time_since_last_flush == None:
+				# store the current flow time stamp as beginning time
+				time_since_last_flush = obj[common.COL_LAST_SWITCHED]
 		except ValueError, e:
 			print >> sys.stderr, "Could not decode JSON object in queue: ", e
 			continue
@@ -362,6 +367,17 @@ while True:
 		common.update_port_index(obj, port_index_collection, config.flow_aggr_sums, known_ports)
 			
 		output_flows += 1
+
+		if config.live_import:
+			# try to periodically flush the caches.
+			# do this every 100,000 flows or every five minutes based 
+			# on the timestamps we get in the flow data 
+			if output_flows % 100000 == 0 or obj[common.COL_LAST_SWITCHED] > (time_since_last_flush + 300):
+				time_since_last_flush = obj[common.COL_LAST_SWITCHED]
+				print "Live import. Flushing caches ..."
+				for handler in handlers:
+					handler.flushCache()
+
 		
 	except KeyboardInterrupt:
 		print "%s: Keyboard interrupt. Terminating..." % (datetime.datetime.now())
