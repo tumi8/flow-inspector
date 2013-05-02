@@ -13,7 +13,7 @@ class SQLBaseBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName):
 		Backend.__init__(self, host, port, user, password, databaseName)
 		self.tableInsertCache = dict()
-		self.cachingThreshold = 10000
+		self.cachingThreshold = 100000
 		self.counter = 0
 
 		self.column_map = None
@@ -22,6 +22,7 @@ class SQLBaseBackend(Backend):
 
 		self.conn = None
 		self.cursor = None
+		self.dictCursor = None
 		self.connect()
 
 		self.dbType = None
@@ -29,7 +30,7 @@ class SQLBaseBackend(Backend):
 		self.executeTimes = 0
 		self.executeManyTimes = 0
 		self.executeManyObjects = 0
-
+		self.last_query = ""
 		self.tableNames = [ common.DB_INDEX_NODES, common.DB_INDEX_PORTS ]
 		for s in config.flow_bucket_sizes:
 			self.tableNames.append(common.DB_FLOW_PREFIX + str(s))
@@ -43,17 +44,22 @@ class SQLBaseBackend(Backend):
 	def insert(self, collectionName, fieldDict):
 		pass
 
-	def execute(self, string, params = None):
+	def execute(self, string, params = None, cursor=None):
 		self.executeTimes += 1
 		#print "Execute: ", self.executeTimes
 		maxtime = 10
 
+		self.last_query = string
+
+		if cursor == None:
+			cursor = self.cursor
+
 		try: 
 			start_time = time.time()
 			if params == None:
-				self.cursor.execute(string)
+				cursor.execute(string)
 			else:
-				self.cursor.execute(string, params)
+				cursor.execute(string, params)
 			end_time = time.time()
 			if end_time - start_time > maxtime:
 				print "Execute: execute time was ", end_time - start_time
@@ -70,23 +76,25 @@ class SQLBaseBackend(Backend):
 
 
 	def executemany(self, string, objects, table = None):
+		self.last_query = string
 		self.executeManyTimes += 1
 		self.executeManyObjects += len(objects)
-		print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
+		#print string
+		#print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
 		maxtime = 5 
 
 		try:
-			print "starting execute ..."
+			#print "starting execute ..."
 			start_time = time.time()
 			self.cursor.executemany(string, objects)
 			end_time = time.time()
 			if end_time - start_time > maxtime:
 				print "ExecuteMany: executemany time was ", end_time - start_time
-			print "ending execute ..."
+			#print "ending execute ..."
 			start_time = time.time()
-			print "starting commit ..."
+			#print "starting commit ..."
 			self.conn.commit()
-			print "ending commit ..."
+			#print "ending commit ..."
 			end_time = time.time()
 			if end_time - start_time > maxtime:
 				print "ExecuteMany: commit time was ", end_time - start_time
@@ -123,6 +131,11 @@ class SQLBaseBackend(Backend):
 
 		fieldDict = {}
 		for s in statement:
+			# TODO: this will break if we have a non-flow collection name that 
+			#       has a name starting with index ... 
+			#       This is a new problem that occurred when we decided to use 
+			#       the flowbackend classes for storing other kinds of data ...
+			#       Think about how to solve this issue
 			if collectionName.startswith("index"):
 				if s == common.COL_ID:
 					# special handling for total field
@@ -134,7 +147,11 @@ class SQLBaseBackend(Backend):
 					if not "$set" in document:
 						document["$set"] = {}
 					document["$set"][common.COL_BUCKET] = statement[s]
-			
+			elif not collectionName.startswith("flows"):
+				if s == "_id":
+					fieldDict["id"] = (statement[s], "PRIMARY")
+				else:
+					fieldDict[s] = (statement[s], "PRIMARY")
 
 		for part in [ "$set", "$inc" ]:
 			if not part in document:
@@ -142,7 +159,7 @@ class SQLBaseBackend(Backend):
 			for v in document[part]:
 				newV = v.replace('.', '_')
 				if part == "$set":
-					fieldDict[newV] = (document[part][v], "PRIMARY")
+					fieldDict[newV] = (document[part][v], "SET")
 				else:
 					fieldDict[newV] = (document[part][v], None)
 		self.insert(collectionName, fieldDict)
@@ -161,7 +178,6 @@ class SQLBaseBackend(Backend):
 			# flush all collections
 			while len( self.tableInsertCache) > 0:
 				collection = self.tableInsertCache.keys()[0]
-				print "flusing collection ", collection
 				self.flushCache(collection)
 
 	def getMinBucket(self, bucketSize = None):
@@ -496,7 +512,7 @@ class SQLBaseBackend(Backend):
 			queryString = self.add_limit_to_string(queryString, limit)
 
 		print "SQL: Running Query ..."
-		print queryString
+		#print queryString
 		self.execute(queryString)
 		queryResult =  self.cursor.fetchall()
 		print "SQL: Encoding Query ..."
@@ -628,4 +644,108 @@ class SQLBaseBackend(Backend):
 	
 				createString += ", PRIMARY KEY(" + common.COL_ID + "," + common.COL_BUCKET + "))"
 				self.execute(createString)
+
+
+	def find(self, collectionName,  spec, fields=None, sort=None, limit=None):
+		fieldsString = ""
+		if fields == None:
+			fieldsString = "*"
+		else: 
+			for f in fields:
+				if fields[f] == 1:
+					if fieldsString != "":
+						fieldsString += ","
+					fieldsString += f
+			if fieldsString == "":
+				fieldsString = "*"
+		query = "SELECT " + fieldsString + " FROM " + collectionName + " "
+		where_clause = ""
+		order_clause = ""
+		if spec != None:
+			for field in spec:
+				if where_clause != "":
+					where_clause += " AND "
+				else:
+					where_clause = "WHERE "
+				if field.startswith("$"):
+					if field == "$or": 
+						second_level_clause = ""
+						for cond in spec[field]:
+							for key in cond:
+								if second_level_clause != "":
+									second_level_clause += " OR "
+								second_level_clause += key + '=' + "'" + cond[key] + "'"
+						where_clause += " (" + second_level_clause + ") "
+					else:
+						raise Exception("Mongo operator " + field + " is not yet implemented!")
+				else:
+					if type(spec[field]) == type(dict()):
+						for i in spec[field]:
+							if i == "$lt":
+								operator = "<"
+							elif i == "$lte":
+								operator = "<="
+							elif i == "$gt":
+								operator = ">"
+							elif i == "$gte":
+								operator = ">="
+							else:
+								raise Exception("Operator not implemented")
+							operand = str(spec[field][i])
+					else:
+						operator = "="
+						operand = str(spec[field])
+					where_clause += field + operator +"'" + operand + "'"
+	
+		if sort != None:
+			for field in sort:
+				if order_clause == "":
+					order_clause = " ORDER BY " + field + " "
+				else:
+					order_clause += "," + field + " "
+				if sort[field] == 1:
+					order_clause += "ASC"
+				else:
+					order_clause += "DESC"
+		if where_clause != "":
+			query += where_clause
+		if order_clause != "":
+			query += order_clause
+		if limit:
+			query = self.add_limit_to_string(query, limit)
+
+		self.execute(query, None, self.dictCursor)
+		if self.type == "oracle":
+			# As alway: Things do not work with oracle ...
+			if not collectionName in self.dynamic_type_wrapper:
+				# if we did not have the desired column names configured into 
+				# our dynamic_type_wrapper sruct (e.g. if no call to createTable was issued)
+				# then just return the dictionary with the column names from the 
+				# cursor. Note that oracle converts all column names to upper cases, which
+				# can be a problem for case sensitive appliations (like ours ...)
+				rows = self.dictCursor.fetchall()
+				columns = [i[0] for i in self.dictCursor.description]
+				return [dict(zip(columns, row)) for row in rows]
+				
+			# this code branch is there in case one configured the dyanmic_type_wrapper
+			# structure. In this case, the oracle DB names (whcih are in upper case) will
+			# be translated into the proper case as defined in teh dynamic_type_wrapper struct
+			typeWrapper = self.dynamic_type_wrapper[collectionName]
+			if typeWrapper == None:
+				print "ERROR: Unknown collection. Cannot create dictionary ..."
+				return dict()
+			rows = self.dictCursor.fetchall()
+			columns = [typeWrapper[i[0]] for i in self.dictCursor.description]
+			return [dict(zip(columns, row)) for row in rows]
+		else:
+			ret = self.dictCursor.fetchall()
+		return ret
+	
+	def distinct(self, collectionName, field):
+		d =  self.find(collectionName, [], {"DISTINCT " + field: 1})
+		ret = []
+		for entry in d:
+			ret.append(entry[field])
+
+		return ret
 

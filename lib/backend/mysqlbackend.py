@@ -16,7 +16,7 @@ class MysqlBackend(SQLBaseBackend):
 	def connect(self):
 		import MySQLdb
 		import _mysql_exceptions
-		print "Connecting ..."
+		#print "Connecting ..."
 		try:
 			dns = dict(
 				db = self.databaseName,
@@ -27,6 +27,7 @@ class MysqlBackend(SQLBaseBackend):
 			)         
 			self.conn = MySQLdb.connect(**dns)
 			self.cursor = self.conn.cursor()
+			self.dictCursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to MySQL database: ", inst 
 			sys.exit(1)
@@ -50,10 +51,16 @@ class MysqlBackend(SQLBaseBackend):
 				if updateString != "":
 					updateString += ","
 				updateString += field + "=" + field + " + VALUES(" + field + ")"
+			elif actionType == "SET" or actionType == "PRIMARY":
+				if updateString != "":
+					updateString += ","
+				updateString += field + "=VALUES(" + field + ")"
 			cacheLine = cacheLine + (fieldValue,)
 			valueString += "%s"
 	
-		queryString = "INSERT INTO " + collectionName + " (" + typeString + ") VALUES (" + valueString + ") ON DUPLICATE KEY UPDATE " + updateString
+		queryString = "INSERT INTO " + collectionName + " (" + typeString + ") VALUES (" + valueString + ") "
+		if updateString != "":
+			queryString += " ON DUPLICATE KEY UPDATE " + updateString
 
 		if self.doCache:
 			numElem = 1
@@ -82,7 +89,7 @@ class MysqlBackend(SQLBaseBackend):
 			self.execute(queryString)
 
 	def handle_exception(self, exception):
-		print "Received exception: ", exception
+		#print "Received exception: ", exception
 		try:
 			(error,message) = exception
 		except Exception as e:
@@ -99,10 +106,50 @@ class MysqlBackend(SQLBaseBackend):
 			# index already exists. that is ok
 			return False
 
+		if error == 1054:
+			# unknown column in string. This is likely to be a programming error, but we
+			# need more context to understand what it is. Handle this condition in the
+			# caller ...
+			raise 
+
 		# try to reconnect
 		# TODO: Implement better handling
+
+		if error == 1064:
+			# error in SQL syntax! This is a programming error and should result in the termination of 
+			# the process or should be handled by another instance ...
+			raise 
 		self.connect()
 		return True
 	
 	def add_limit_to_string(self, string, limit):
 		return string + " LIMIT " + str(limit)
+
+	def prepareCollection(self, name, fieldDict):
+		createString = "CREATE TABLE IF NOT EXISTS " + name + " ("
+		first = True
+		primary = ""
+		indexes = ""
+		table_options = ""
+		for field in fieldDict:
+			if field == "table_options":
+				table_options = fieldDict[field]
+			elif fieldDict[field][0].endswith("INDEX"):
+				if indexes != "":
+					indexes += ","
+				indexes += fieldDict[field][0] + " " + field + " (" + fieldDict[field][1] + ")" 
+			else:
+				if not first:
+					createString += ","
+				createString += field + " " + fieldDict[field][0]
+				if fieldDict[field][1] == "PRIMARY":
+					primary = " PRIMARY KEY(" + field + ")"
+				if fieldDict[field][2] != None:
+					createString += " " + fieldDict[field][2]
+				first = False
+		if primary != "":
+			createString += "," + primary
+		if indexes != "":
+			createString += "," + indexes
+		createString += ") " + table_options
+		self.execute(createString)

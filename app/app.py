@@ -31,7 +31,7 @@ TEMPLATE_PATH.insert(0, os.path.join(os.path.dirname(__file__), "views"))
 
 # get database backend (currently: MongoDB)
 db = backend.flowbackend.getBackendObject(config.db_backend, config.db_host, config.db_port, config.db_user, config.db_password, config.db_name)
-dataBackend = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_name)
+#dataBackend = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_name)
 
 def extract_mongo_query_params():
 	# construct query
@@ -179,6 +179,7 @@ def extract_mongo_query_params():
 
 	result = {}
 	result["fields"] = fields
+	print "Fields: " + str(fields)
 	result["sort"] = sort
 	result["limit"] = limit
 	result["count"] = count

@@ -33,6 +33,7 @@ data_backend_port = 3306
 data_backend_user = "username"
 data_backend_password = "password"
 data_backend_name = "flows"
+data_backend_snmp_name = "snmp"
 
 
 # Flow settings

@@ -39,7 +39,7 @@ class Collection:
 		"""
 		self.backendObject.createIndex(self.collectionName, fieldName)
 
-	def update(self, statement, document, insertIfNotExist, comes_from_cache = False):
+	def update(self, statement, document, insertIfNotExist=False, comes_from_cache = False):
 		"""
 		Updates or creates a flow in the database. 
 		- statement - contains the id of the flow in the database (_id for mongo, primary key for sql)
@@ -112,13 +112,23 @@ class Collection:
 		- batch_size: database should select the flows in batch sizes of batchSize (ignored for most backends)
 		"""
 		return self.backendObject.index_query(self.collectionName, query_params)
+
+	def find(self, spec, fields=None, sort=None, limit=None):
+		"""
+		Queries the database for the desired fields in the spec dictionary. 
+		"""
+		return self.backendObject.find(self.collectionName, spec=spec, fields=fields, sort=sort, limit=limit)
  
 
 	def find_one(self, spec, fields=None, sort=None):
 		return self.backendObject.find_one(self.collectionName, spec, fields, sort)
 
-	def flushCache(self, collectionName = None):
+	def flushCache(self, collectionName=None):
 		return self.backendObject.flushCache(collectionName)
+
+	def distinct(self, field):
+		return self.backendObject.distinct(self.collectionName, field)
+
 
 class Backend:
 	def __init__(self, host, port, user, password, databaseName):
@@ -169,6 +179,17 @@ class Backend:
 		a collection/table in the database. 
 		"""
 		return Collection(self, name)
+
+	def prepareCollection(self, name, fieldDict):
+		"""
+		Prepare a specific data collection based on teh values of fieldDict
+		fieldDict should specify datatypes if they are required (e.g. mongo
+		backends do not specify any datatypes as they are automatically 
+		inferred by the database)
+		fieldDict should contain
+		"""
+		pass
+
 	
 	def prepareCollections(self):
 		"""
@@ -226,7 +247,13 @@ class Backend:
 	def find_one(self, collectionName, spec, fields, sort):
 		pass
 
+	def find(self, spec, fields=None, sort=None, limit=None):
+		pass
+
 	def run_query(self, collectionName, query):
+		pass
+
+	def distinct(self, collectionName, field):
 		pass
 
 	def handle_index_update(self, collectionName, statement, document, insertIfnotExists):
@@ -259,6 +286,22 @@ class Backend:
 				doc = self.index_cache[collectionName][statement]
 				collection.update(dict(statement), doc, True, True)
 			del self.index_cache[collectionName]
+
+	def fillDynamicTypeWrapper(self, name, fieldDict):
+		pass
+
+	def execute(self, string, params = None, cursor=None):
+		"""
+		ATTENTION: Do not use this method! This is for internal hacks only
+		and must NEVER be used throughout this code base. Using this method
+		WILL break your code. And this method will disappear as soon as 
+		possible.
+		DO _NOT_ USE THIS METHOD!!!!
+		DO _NOT_ USE THIS METHOD!!!!
+		DO _NOT_ USE THIS METHOD!!!!
+		"""
+		raise Exception("I told you not to use this method!!!!! Why didn't you read the developer documentation?")
+
 
 
 def getBackendObject(backend, host, port, user, password, databaseName):
