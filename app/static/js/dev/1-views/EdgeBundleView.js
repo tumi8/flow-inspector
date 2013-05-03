@@ -37,6 +37,7 @@ var EdgeBundleView = Backbone.View.extend({
 				.attr("height", 2*r)
 			.append("svg:g")
 				.attr("transform", "translate(" + r + "," + r + ")");	
+
 			
 		// Defs
 		var svg_defs = this.svg.append("defs");
@@ -75,15 +76,15 @@ var EdgeBundleView = Backbone.View.extend({
 					}
 					return null;
 				});
-    		}	)
- 		.on("mouseout", function(d) {
-			d3.select(this).selectAll("text")
-				.style("fill", null);
-			d3.select(this).selectAll(".arc")
-				.attr("fill", function(d) { return arc_color(d[FlowInspector.COL_PKTS] / arc_max_value); })
-				.style("opacity", function(d) { return arc_opacity(d[FlowInspector.COL_PKTS]); });
-			svg_links.style("display", null);
-		});
+    			})
+	 		.on("mouseout", function(d) {
+				d3.select(this).selectAll("text")
+					.style("fill", null);
+				d3.select(this).selectAll(".arc")
+					.attr("fill", function(d) { return arc_color(d[FlowInspector.COL_PKTS] / arc_max_value); })
+					.style("opacity", function(d) { return arc_opacity(d[FlowInspector.COL_PKTS]); });
+				svg_links.style("display", null);
+			});
 			
 		var arc_color = d3.interpolateRgb("#0064cd", "#c43c35");
 		var arc_max_value = d3.max(nodes, function(d) { return d[FlowInspector.COL_PKTS]; });
@@ -159,6 +160,7 @@ var EdgeBundleView = Backbone.View.extend({
 
 		var links = [];
 		var bundle_links = bundle(this.data_links);
+		
 		for(var i = 0; i < this.data_links.length; i++) {
 			links.push({
 				link: this.data_links[i],
@@ -184,7 +186,8 @@ var EdgeBundleView = Backbone.View.extend({
 		.enter().append("path")
 			.attr("class", "link")
 			.attr("d", function(d) { return line(d.bundle); })
-			.attr("stroke", function(d) { return color(d.link.t); });
+			.attr("stroke", function(d) { return color(d.link.t); })
+			.style("stroke-width", "2px");
 
 		var svg_legend = this.svg.append("svg:g")
 			.attr("class", "legend")
@@ -302,19 +305,10 @@ var EdgeBundleView = Backbone.View.extend({
 		if(node_limit) {
 			this.data_nodes.children.push(other_nodes);
 		}
-		this.updateFlows();
 	},
 	updateFlows: function() {
 		if(!this.data_nodes) {
 			this.updateNodes();
-			// if we don't have data_nodes know, the node data 
-			// has not yet been received. this can happen when 
-			// fetching nodes takes longer than fetching the flows
-			//  We'll have updateFlows called  after running updateFlows updateNodes(). 
-			return;
-		}
-		if (this.flows.length <= 0) {
-			return;
 		}
     	
 		var that = this;
@@ -322,7 +316,7 @@ var EdgeBundleView = Backbone.View.extend({
 		
 		var min_bucket = d3.min(this.flows.models, function(d) { return d.get(FlowInspector.COL_BUCKET); });
 		var max_bucket = d3.max(this.flows.models, function(d) { return d.get(FlowInspector.COL_BUCKET); });
-
+		
 		this.flows.each(function(m) {
 			var source = that.node_map[m.get(FlowInspector.COL_SRC_IP)];
 			var target = that.node_map[m.get(FlowInspector.COL_DST_IP)];
