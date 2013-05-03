@@ -140,7 +140,7 @@ class SQLBaseBackend(Backend):
 				if s == common.COL_ID:
 					# special handling for total field
 					if statement[s] == "total":
-						fieldDict[common.COL_ID] = (0, "PRIMARY")
+						fieldDict[common.COL_ID] = (-1, "PRIMARY")
 					else:
 						fieldDict[common.COL_ID] = (statement[s], "PRIMARY")
 				if s == common.COL_BUCKET:
@@ -530,7 +530,7 @@ class SQLBaseBackend(Backend):
 					field = self.column_map[field]
 				fieldValue = row[idx]
 				if field == common.COL_ID:
-					if fieldValue == 0:
+					if fieldValue == -1:
 						isTotal = True
 					fieldParts = []
 				else: 
