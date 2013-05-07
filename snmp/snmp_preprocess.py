@@ -520,6 +520,125 @@ fieldDictOracle = {
 	}
 }
 
+def parse_snmp_file(file, doc):
+	# parse file name
+	params = os.path.basename(file).rstrip(".txt").split("-")
+	source_type = params[0]
+	ip_src = params[1]
+	timestamp = params[2]
+	lines = 0
+
+	# read and process file contents
+	file = open(file, "r")
+	for line in file:
+		index = line.find(" ")
+		value = line[index + 1:]
+		value = value.strip("\n")
+		value = value.strip('"')
+		line = line[0:index]
+
+		# parse interface_phy oid
+		if line.startswith(".1.3.6.1.2.1.2.2.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:11])
+			interface = line[11]
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"interface_phy",
+					ip_src + '-' + interface + '-' + timestamp,
+					{"router": ip_src, "if_number": interface,
+						"timestamp": timestamp},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+		# parse interface_log oid
+		elif line.startswith(".1.3.6.1.2.1.4.20.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:11])
+			ip = '.'.join(line[11:15])
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"interface_log",
+					ip_src + '-' + ip + '-' + timestamp,
+					{"router": ip_src, "if_ip": ip2int(ip),
+						"timestamp": timestamp},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+		# parse ip route oid
+		elif line.startswith(".1.3.6.1.2.1.4.21.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:11])
+			ip = '.'.join(line[11:15])
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"ipRoute",
+					ip_src + '-' + ip + '-' + timestamp,
+					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
+						"ip_dst": ip2int(ip)},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+		# parse eigrp oid
+		elif line.startswith(".1.3.6.1.4.1.9.9.449.1.3.1.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:15])
+			ip = '.'.join(line[19:23])
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"cEigrp",
+					ip_src + '-' + ip + '-' + line[23] + '-' + timestamp,
+					{"ip_src": ip2int(ip_src), "timestamp": timestamp,
+					"ip_dst": ip2int(ip), "mask_dst": line[23]},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+		# parse ipcidrroute oid
+		elif line.startswith(".1.3.6.1.2.1.4.24.4.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:12])
+			ip_dst = '.'.join(line[12:16])
+			mask_dst = '.'.join(line[16:20])
+			ip_gtw = '.'.join(line[21:25])
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"ipCidrRoute",
+					ip_src + '-' + ip_dst + '-' + mask_dst + '-' + ip_gtw + '-' + timestamp,
+					{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
+						"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+		# parse ifxtable oid
+		elif line.startswith(".1.3.6.1.2.1.31.1.1.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:12])
+			if_number = line[12]
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"ifXTable",
+					ip_src + '-' + if_number + '-' + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+		# increment counter for processed lines
+		lines += 1
+
+	return (lines, timestamp, doc)
+
 def getFieldDict(args):
 	if args.backend == "mysql":
 		return fieldDict
@@ -539,8 +658,8 @@ def update_doc(doc, table, table_key, db_key, db_values):
 	else:
 		doc[table][table_key] = (db_key, {"$set": db_values})
 
+
 def commit_doc(doc, collections):
-	
 	time_begin = time.time()
 	time_last = time_begin
 	time_current = 0
@@ -550,6 +669,7 @@ def commit_doc(doc, collections):
 	print "Commiting %s entries to databackend" % total
 	
 	for name, table in doc.items():
+		# push into the database
 		for value in table.itervalues():
 			collections[name].update(value[0], value[1], True)
 			counter = counter + 1
@@ -613,7 +733,7 @@ def main():
 		pass
 
 	# enviromental settings
-	cache_treshold = 999999
+	cache_treshold = 10000000
 
 	# statistical counters
 	time_begin = time.time()
@@ -634,135 +754,21 @@ def main():
 		files = [ args.data_path ]
 	
 	for file in files:
-		# parse file name
-		params = os.path.basename(file).rstrip(".txt").split("-")
-		source_type = params[0]
-		ip_src = params[1]
-		timestamp = params[2]
-		timestamps.add(timestamp)
+			(read_lines, timestamp, doc) = parse_snmp_file(file, doc)
+			lines_since_commit += read_lines
+			counter += read_lines
+			timestamps.add(timestamp)
+			if lines_since_commit > cache_treshold:
+				commit_doc(doc, collections)
+				lines_since_commit = 0
 
-	#	print "file: %s" % file
-
-		# read and process file contents
-		file = open(file, "r")
-		for line in file:
-			index = line.find(" ")
-			value = line[index + 1:]
-			value = value.strip("\n")
-			value = value.strip('"')
-			line = line[0:index]
-	
-			# parse interface_phy oid
-			if line.startswith(".1.3.6.1.2.1.2.2.1"):
-				line = line.split(".")
-				oid = '.'.join(line[0:11])
-				interface = line[11]
-	
-				if oid in oidmap:
-					update_doc(
-						doc,
-						"interface_phy",
-						ip_src + '-' + interface + '-' + timestamp,
-						{"router": ip_src, "if_number": interface,
-							"timestamp": timestamp},
-						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-					)
-
-			# parse interface_log oid
-			elif line.startswith(".1.3.6.1.2.1.4.20.1"):
-				line = line.split(".")
-				oid = '.'.join(line[0:11])
-				ip = '.'.join(line[11:15])
-	
-				if oid in oidmap:
-					update_doc(
-						doc,
-						"interface_log",
-						ip_src + '-' + ip + '-' + timestamp,
-						{"router": ip_src, "if_ip": ip2int(ip),
-							"timestamp": timestamp},
-						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-					)
-	
-			# parse ip route oid
-			elif line.startswith(".1.3.6.1.2.1.4.21.1"):
-				line = line.split(".")
-				oid = '.'.join(line[0:11])
-				ip = '.'.join(line[11:15])
-	
-				if oid in oidmap:
-					update_doc(
-						doc,
-						"ipRoute",
-						ip_src + '-' + ip + '-' + timestamp,
-						{"ip_src": ip2int(ip_src), "timestamp": timestamp,
-							"ip_dst": ip2int(ip)},
-						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-					)
-	
-			# parse eigrp oid
-			elif line.startswith(".1.3.6.1.4.1.9.9.449.1.3.1.1"):
-				line = line.split(".")
-				oid = '.'.join(line[0:15])
-				ip = '.'.join(line[19:23])
-	
-				if oid in oidmap:
-					update_doc(
-						doc,
-						"cEigrp",
-						ip_src + '-' + ip + '-' + line[23] + '-' + timestamp,
-						{"ip_src": ip2int(ip_src), "timestamp": timestamp,
-						"ip_dst": ip2int(ip), "mask_dst": line[23]},
-						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-					)
-	
-			# parse ipcidrroute oid
-			elif line.startswith(".1.3.6.1.2.1.4.24.4.1"):
-				line = line.split(".")
-				oid = '.'.join(line[0:12])
-				ip_dst = '.'.join(line[12:16])
-				mask_dst = '.'.join(line[16:20])
-				ip_gtw = '.'.join(line[21:25])
-
-				if oid in oidmap:
-					update_doc(
-						doc,
-						"ipCidrRoute",
-						ip_src + '-' + ip_dst + '-' + mask_dst + '-' + ip_gtw + '-' + timestamp,
-						{"ip_src": ip2int(ip_src), "timestamp": timestamp, "ip_dst": ip2int(ip_dst),
-							"mask_dst": netmask2int(mask_dst), "ip_gtw": ip2int(ip_gtw)},
-						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-					)
-	
-			# parse ifxtable oid
-			elif line.startswith(".1.3.6.1.2.1.31.1.1.1"):
-				line = line.split(".")
-				oid = '.'.join(line[0:12])
-				if_number = line[12]
-	
-				if oid in oidmap:
-					update_doc(
-						doc,
-						"ifXTable",
-						ip_src + '-' + if_number + '-' + timestamp,
-						{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
-						{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-					)
-	
-			# increment counter for processed lines
-			counter += 1
-			lines_since_commit += 1
-	
 			# do statistical calculation
 			time_current = time.time()
 			if (time_current - time_last > 5):
 				print "Processed %s lines in %s seconds (%s lines per second)" % (
 					counter, time_current - time_begin, counter / (time_current - time_begin))
 				time_last = time_current
-	
-			if lines_since_commit > cache_treshold:
-				commit_doc(doc, collections)
-			lines_since_commit = 0
+
 	
 	#	print "counter: %s" % counter
 
