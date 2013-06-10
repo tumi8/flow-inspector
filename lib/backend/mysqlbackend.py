@@ -11,7 +11,7 @@ class MysqlBackend(SQLBaseBackend):
 		SQLBaseBackend.__init__(self, host, port, user, password, databaseName)
 		self.column_map = None
 		self.type_map = common.MYSQL_TYPE_MAPPER
-
+		self.type = "mysql";
 
 	def connect(self):
 		import MySQLdb
