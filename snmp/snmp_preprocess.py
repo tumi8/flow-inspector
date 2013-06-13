@@ -201,13 +201,13 @@ oidmap = {
 	{"name": "ifAlias", "fct": plain},
 	".1.3.6.1.2.1.31.1.1.1.19":
 	{"name": "ifCounterDiscontinuityTime", "fct": plain},
-	"1.3.6.1.4.1.9.9.368.1.15.2.1.1":
+	".1.3.6.1.4.1.9.9.368.1.15.2.1.1":
 	{"name": "cssLoadBalancerSessionName", "fct": plain},
-	"1.3.6.1.4.1.9.9.368.1.15.2.1.20":
+	".1.3.6.1.4.1.9.9.368.1.15.2.1.20":
 	{"name": "cssLoadBalancerSessionCount", "fct": plain},
-	"1.3.6.1.4.1.6213.2.4.2.5.1.2":
+	".1.3.6.1.4.1.6213.2.4.2.5.1.2":
 	{"name": "juniperClusterName", "fct": plain},
-	"1.3.6.1.4.1.6213.2.4.2.1.1.2":
+	".1.3.6.1.4.1.6213.2.4.2.1.1.2":
 	{"name": "juniperClusterSessionCount", "fct": plain}
 }
 
@@ -367,7 +367,26 @@ fieldDict = {
 		"ifCounterDiscontinuityTime": ("VARCHAR(50)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
-	}
+	},
+
+	"juniperLoadbalancer" : {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"session_number": ("INT UNSIGNED", None, None),
+		"juniperClusterName": ("VARCHAR(150)", None, None),
+		"juniperClusterSessionCount": ("BIGINT UNSIGNED", None, None),
+	},
+	"cssLoadbalancer" : {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("BIGINT UNSIGNED", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"scm_number": ("INT UNSIGNED", None, None),
+		"ident" : ("VARCHAR(50)", None, None),
+		"cssLoadBalancerSessionName": ("VARCHAR(50)", None, None),
+		"cssLoadBalancerSessionCount": ("INT UNSIGNED", None, None)
+	},
+
 }
 
 fieldDictOracle = {
@@ -525,7 +544,24 @@ fieldDictOracle = {
 		"ifCounterDiscontinuityTime": ("VARCHAR(50)", None, None),
 		"index_preprocess": ("UNIQUE INDEX", "router ASC, if_number ASC, timestamp ASC"),
 		"table_options": "ENGINE=MyISAM ROW_FORMAT=DYNAMIC"
-	}
+	},
+	"juniperLoadbalancer" : {
+		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(21)", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"session_number": ("NUMBER(11)", None, None),
+		"juniperClusterName": ("VARCHAR(150)", None, None),
+		"juniperClusterSessionCount": ("NUMBER(21)", None, None),
+	},
+	"cssLoadbalancer" : {
+		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(21)", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"scm_number": ("NUMBER(11)", None, None),
+		"ident" : ("VARCHAR(50)", None, None),
+		"cssLoadBalancerSessionName": ("VARCHAR(50)", None, None),
+		"cssLoadBalancerSessionCount": ("NUMBER(11)", None, None)
+	},
 }
 
 def parse_snmp_file(file, doc):
@@ -644,32 +680,65 @@ def parse_snmp_file(file, doc):
 
 		# parse juniperLoadbalancer session name
 		elif line.startswith(".1.3.6.1.4.1.6213.2.4.2.5.1.2"):
-			pass
+			line = line.split(".")
+			oid = '.'.join(line[0:14])
+			session_number = line[14]
 
-			#line = line.split(".")
-			#oid = '.'.join(line[0:12])
-			#if_number = line[12]
-
-			#if oid in oidmap:
-			#	update_doc(
-			#		doc,
-			#		"juniperLoadbalancer",
-			#		ip_src + '-' + if_number + '-' + timestamp,
-			#		{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
-			#		{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
-			#	)
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"juniperLoadbalancer",
+					ip_src + '-' + session_number + '-' + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "session_number": session_number},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
 
 		# parse juniperLoadbalancer session counter
 		elif line.startswith(".1.3.6.1.4.1.6213.2.4.2.1.1.2"):
-			pass
+			line = line.split(".")
+			oid = '.'.join(line[0:14])
+			session_number = line[14]
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"juniperLoadbalancer",
+					ip_src + '-' + session_number + '-' + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "session_number": session_number},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
 
 		# parse cisco cluster name
 		elif line.startswith(".1.3.6.1.4.1.9.9.368.1.15.2.1.1"):
-			pass
+			line = line.split(".")
+			oid = '.'.join(line[0:15])
+			scm_number = line[15]
+			ident = '.'.join(line[16:])
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"cssLoadbalancer",
+					ip_src + '-' + scm_number + '-' + ident + '-' + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "scm_number": scm_number, "ident": ident},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
 
 		# aprse cisco cluster session count
 		elif line.startswith(".1.3.6.1.4.1.9.9.368.1.15.2.1.20"):
-			pass
+			line = line.split(".")
+			oid = '.'.join(line[0:15])
+			scm_number = line[15]
+			ident = '.'.join(line[16:])
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"cssLoadbalancer",
+					ip_src + '-' + scm_number + '-' + ident + '-' + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "scm_number": scm_number, "ident": ident},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
 
 		# increment counter for processed lines
 		lines += 1
