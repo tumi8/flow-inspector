@@ -200,7 +200,15 @@ oidmap = {
 	".1.3.6.1.2.1.31.1.1.1.18":
 	{"name": "ifAlias", "fct": plain},
 	".1.3.6.1.2.1.31.1.1.1.19":
-	{"name": "ifCounterDiscontinuityTime", "fct": plain}
+	{"name": "ifCounterDiscontinuityTime", "fct": plain},
+	"1.3.6.1.4.1.9.9.368.1.15.2.1.1":
+	{"name": "cssLoadBalancerSessionName", "fct": plain},
+	"1.3.6.1.4.1.9.9.368.1.15.2.1.20":
+	{"name": "cssLoadBalancerSessionCount", "fct": plain},
+	"1.3.6.1.4.1.6213.2.4.2.5.1.2":
+	{"name": "juniperClusterName", "fct": plain},
+	"1.3.6.1.4.1.6213.2.4.2.1.1.2":
+	{"name": "juniperClusterSessionCount", "fct": plain}
 }
 
 # dictionary containing table descriptions
@@ -633,6 +641,35 @@ def parse_snmp_file(file, doc):
 					{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
+
+		# parse juniperLoadbalancer session name
+		elif line.startswith(".1.3.6.1.4.1.6213.2.4.2.5.1.2"):
+			pass
+
+			#line = line.split(".")
+			#oid = '.'.join(line[0:12])
+			#if_number = line[12]
+
+			#if oid in oidmap:
+			#	update_doc(
+			#		doc,
+			#		"juniperLoadbalancer",
+			#		ip_src + '-' + if_number + '-' + timestamp,
+			#		{"router": ip_src, "timestamp": timestamp, "if_number": if_number},
+			#		{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+			#	)
+
+		# parse juniperLoadbalancer session counter
+		elif line.startswith(".1.3.6.1.4.1.6213.2.4.2.1.1.2"):
+			pass
+
+		# parse cisco cluster name
+		elif line.startswith(".1.3.6.1.4.1.9.9.368.1.15.2.1.1"):
+			pass
+
+		# aprse cisco cluster session count
+		elif line.startswith(".1.3.6.1.4.1.9.9.368.1.15.2.1.20"):
+			pass
 
 		# increment counter for processed lines
 		lines += 1
