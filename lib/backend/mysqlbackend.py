@@ -13,7 +13,6 @@ class MysqlBackend(SQLBaseBackend):
 		self.type_map = common.MYSQL_TYPE_MAPPER
 		self.type = "mysql"
 
-
 	def connect(self):
 		import MySQLdb
 		import _mysql_exceptions
