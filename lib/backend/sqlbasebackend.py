@@ -3,6 +3,7 @@ Base class for all sql-based flow backends
 """
 
 from flowbackend import Backend
+from ordered_dict import OrderedDict
 import sys
 import config
 import common
@@ -645,7 +646,44 @@ class SQLBaseBackend(Backend):
 				createString += ", PRIMARY KEY(" + common.COL_ID + "," + common.COL_BUCKET + "))"
 				self.execute(createString)
 
-
+	def parse_field(self, field, value,  parseOperand=False, operandField=""):
+		where_clause = ""
+		if type(value) == type(dict()):
+			# we have an operand
+			if len(value) > 1:
+				print "ERROR: this is not going well!"
+			for i in value:
+				if i == "$lt":
+					operator = "<"
+				elif i == "$lte":
+					operator = "<="
+				elif i == "$gt":
+					operator = ">"
+				elif i == "$gte":
+					operator = ">="
+				elif i == "$not":
+					operator = "!="
+				elif i == "$ne":
+					operator = "!="
+				else:
+					raise Exception("Operator %s not implemented" % (i))
+				operand = str(value[i])
+		else:
+			operator = "="
+			operand = str(value)
+			
+		where_clause += field
+		if type(operand) == type("") and '*' in operand:
+			# this is a wild card request
+			if operator == "=":
+				where_clause += " LIKE '" + operand.replace('*', '%') + "'"
+			else:
+				where_clause += " NOT LIKE '" + operand.replace('*', '%') + "'"
+				
+		else:
+			where_clause += operator + "'" + operand + "'"
+		return where_clause
+			
 	def find(self, collectionName,  spec, fields=None, sort=None, limit=None):
 		fieldsString = ""
 		if fields == None:
@@ -661,42 +699,16 @@ class SQLBaseBackend(Backend):
 		query = "SELECT " + fieldsString + " FROM " + collectionName + " "
 		where_clause = ""
 		order_clause = ""
-		if spec != None:
+
+		if spec != None and len(spec) > 0:
+			where_clause = "" 
 			for field in spec:
-				if where_clause != "":
-					where_clause += " AND "
-				else:
+				if where_clause == "":
 					where_clause = "WHERE "
-				if field.startswith("$"):
-					if field == "$or": 
-						second_level_clause = ""
-						for cond in spec[field]:
-							for key in cond:
-								if second_level_clause != "":
-									second_level_clause += " OR "
-								second_level_clause += key + '=' + "'" + cond[key] + "'"
-						where_clause += " (" + second_level_clause + ") "
-					else:
-						raise Exception("Mongo operator " + field + " is not yet implemented!")
-				else:
-					if type(spec[field]) == type(dict()):
-						for i in spec[field]:
-							if i == "$lt":
-								operator = "<"
-							elif i == "$lte":
-								operator = "<="
-							elif i == "$gt":
-								operator = ">"
-							elif i == "$gte":
-								operator = ">="
-							else:
-								raise Exception("Operator not implemented")
-							operand = str(spec[field][i])
-					else:
-						operator = "="
-						operand = str(spec[field])
-					where_clause += field + operator +"'" + operand + "'"
-	
+				else: 
+					where_clause += " AND "
+				where_clause += self.parse_field(field, spec[field])
+
 		if sort != None:
 			for field in sort:
 				if order_clause == "":
@@ -725,7 +737,7 @@ class SQLBaseBackend(Backend):
 				# can be a problem for case sensitive appliations (like ours ...)
 				rows = self.dictCursor.fetchall()
 				columns = [i[0] for i in self.dictCursor.description]
-				return [dict(zip(columns, row)) for row in rows]
+				return [OrderedDict(zip(columns, row)) for row in rows]
 				
 			# this code branch is there in case one configured the dyanmic_type_wrapper
 			# structure. In this case, the oracle DB names (whcih are in upper case) will
