@@ -554,12 +554,12 @@ fieldDictOracle = {
 		"juniperClusterSessionCount": ("NUMBER(21)", None, None),
 	},
 	"cssLoadbalancer" : {
-		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
 		"timestamp": ("NUMBER(21)", None, None),
 		"router": ("VARCHAR(15)", None, None),
 		"scm_number": ("NUMBER(11)", None, None),
-		"ident" : ("VARCHAR(50)", None, None),
-		"cssLoadBalancerSessionName": ("VARCHAR(50)", None, None),
+		"ident" : ("VARCHAR(100)", None, None),
+		"cssLoadBalancerSessionName": ("VARCHAR(100)", None, None),
 		"cssLoadBalancerSessionCount": ("NUMBER(11)", None, None)
 	},
 }
