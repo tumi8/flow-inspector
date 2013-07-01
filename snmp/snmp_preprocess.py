@@ -766,9 +766,7 @@ def parse_snmp_file(file, doc):
 			oid = '.'.join(line[0:15])
 			cpu_number = line[15]
 
-			print line, oid
 			if oid in oidmap:
-				print "in map"
 				update_doc(
 					doc,
 					"ciscoCpu",
