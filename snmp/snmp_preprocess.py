@@ -208,7 +208,17 @@ oidmap = {
 	".1.3.6.1.4.1.6213.2.4.2.5.1.2":
 	{"name": "juniperClusterName", "fct": plain},
 	".1.3.6.1.4.1.6213.2.4.2.1.1.2":
-	{"name": "juniperClusterSessionCount", "fct": plain}
+	{"name": "juniperClusterSessionCount", "fct": plain},
+	".1.3.6.1.4.1.9.9.109.1.1.1.1.8" :
+	{"name": "cpmCPUTotal5minRev", "fct": plain},
+	".1.3.6.1.4.1.9.9.109.1.1.1.1.7":
+	{"name": "cpmCPUTotal1minRev", "fct": plain},
+	".1.3.6.1.4.1.9.9.109.1.1.1.1.6" :
+	{"name": "cpmCPUTotal5secRev", "fct": plain},
+	".1.3.6.1.4.1.9.9.109.1.1.1.1.5":
+	{"name": "cpmCPUTotal5min", "fct": plain},
+	".1.3.6.1.4.1.9.9.109.1.1.1.1.4":
+	{"name": "cpmCPUTotal1min", "fct": plain},
 }
 
 # dictionary containing table descriptions
@@ -386,7 +396,6 @@ fieldDict = {
 		"cssLoadBalancerSessionName": ("VARCHAR(50)", None, None),
 		"cssLoadBalancerSessionCount": ("INT UNSIGNED", None, None)
 	},
-
 }
 
 fieldDictOracle = {
@@ -554,13 +563,24 @@ fieldDictOracle = {
 		"juniperClusterSessionCount": ("NUMBER(21)", None, None),
 	},
 	"cssLoadbalancer" : {
-		"_id": ("BIGINT", "PRIMARY", "AUTO_INCREMENT"),
+		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
 		"timestamp": ("NUMBER(21)", None, None),
 		"router": ("VARCHAR(15)", None, None),
 		"scm_number": ("NUMBER(11)", None, None),
-		"ident" : ("VARCHAR(50)", None, None),
-		"cssLoadBalancerSessionName": ("VARCHAR(50)", None, None),
+		"ident" : ("VARCHAR(100)", None, None),
+		"cssLoadBalancerSessionName": ("VARCHAR(100)", None, None),
 		"cssLoadBalancerSessionCount": ("NUMBER(11)", None, None)
+	},
+	"ciscoCpu": {
+		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(21)", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"cpu_number": ("NUMBER(11)", None, None),
+		"cpmCPUTotal5minRev" : ("NUMBER(4)", None, None),
+		"cpmCPUTotal1minRev" : ("NUMBER(4)", None, None),
+		"cpmCPUTotal5secRev" : ("NUMBER(4)", None, None),
+		"cpmCPUTotal5min"    : ("NUMBER(4)", None, None),
+		"cpmCPUTotal1min"    : ("NUMBER(4)", None, None),
 	},
 }
 
@@ -740,6 +760,22 @@ def parse_snmp_file(file, doc):
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
+		# parse cisco cpu
+		elif line.startswith(".1.3.6.1.4.1.9.9.109.1.1.1.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:15])
+			cpu_number = line[15]
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"ciscoCpu",
+					ip_src + '-' + cpu_number + '-' + '-' + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "cpu_number": cpu_number},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
+
 		# increment counter for processed lines
 		lines += 1
 
@@ -776,6 +812,7 @@ def commit_doc(doc, collections):
 	
 	for name, table in doc.items():
 		# push into the database
+		print name
 		for value in table.itervalues():
 			collections[name].update(value[0], value[1], True)
 			counter = counter + 1
