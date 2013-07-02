@@ -1,0 +1,151 @@
+cEigrp||cEigrpRouteOriginAddrType||tsTINYINT UNSIGNED|n|n
+cEigrp||ip_dst||tsINT UNSIGNED|n|n
+cEigrp||cEigrpDestNet||tsINT UNSIGNED|n|n
+cEigrp||cEigrpNextHopAddressType||tsTINYINT UNSIGNED|n|n
+cEigrp||cEigrpNextHopInterface||tsVARCHAR(50)|n|n
+cEigrp||ip_src||tsINT UNSIGNED|n|n
+cEigrp||cEigrpFdistance||tsINT UNSIGNED|n|n
+cEigrp||table_options||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
+cEigrp||cEigrpActive||tsTINYINT UNSIGNED|n|n
+cEigrp||timestamp||tsBIGINT UNSIGNED|n|n
+cEigrp||index_preprocess||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, mask_dst ASC, timestamp ASC
+cEigrp||cEigrpNextHopAddress||tsINT UNSIGNED|n|n
+cEigrp||cEigrpDestSuccessors||tsINT UNSIGNED|n|n
+cEigrp||cEigrpDistance||tsINT UNSIGNED|n|n
+cEigrp||cEigrpRouteOriginType||tsVARCHAR(50)|n|n
+cEigrp||cEigrpStuckInActive||tsTINYINT UNSIGNED|n|n
+cEigrp||cEigrpRouteOriginAddr||tsINT UNSIGNED|n|n
+cEigrp||low_ip||tsINT UNSIGNED|n|n
+cEigrp||cEigrpDestNetType||tsTINYINT UNSIGNED|n|n
+cEigrp||cEigrpReportDistance||tsINT UNSIGNED|n|n
+cEigrp||cEigrpDestNetPrefixLen||tsTINYINT UNSIGNED|n|n
+cEigrp||high_ip||tsINT UNSIGNED|n|n
+cEigrp||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+cEigrp||mask_dst||tsTINYINT|n|n
+ipRoute||ipRouteInfo||tsVARCHAR(50)|n|n
+ipRoute||ipRouteMetric3||tsINT|n|n
+ipRoute||ipRouteAge||tsINT UNSIGNED|n|n
+ipRoute||ipRouteIfIndex||tsINT UNSIGNED|n|n
+ipRoute||timestamp||tsBIGINT UNSIGNED|n|n
+ipRoute||high_ip||tsINT UNSIGNED|n|n
+ipRoute||low_ip||tsINT UNSIGNED|n|n
+ipRoute||ipRouteType||tsTINYINT UNSIGNED|n|n
+ipRoute||ipRouteMetric5||tsINT|n|n
+ipRoute||ipRouteNextHop||tsINT UNSIGNED|n|n
+ipRoute||ipRouteProto||tsTINYINT UNSIGNED|n|n
+ipRoute||table_options||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
+ipRoute||index_preprocess||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, timestamp ASC
+ipRoute||ip_dst||tsINT UNSIGNED|n|n
+ipRoute||ipRouteMetric1||tsINT|n|n
+ipRoute||ipRouteMetric2||tsINT|n|n
+ipRoute||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+ipRoute||ipRouteMetric4||tsINT|n|n
+ipRoute||ipRouteDest||tsINT UNSIGNED|n|n
+ipRoute||ip_src||tsINT UNSIGNED|n|n
+ipRoute||ipRouteMask||tsTINYINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteNextHopAS||tsINT UNSIGNED|n|n
+ipCidrRoute||ip_dst||tsINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteAge||tsINT UNSIGNED|n|n
+ipCidrRoute||ip_src||tsINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteType||tsTINYINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteIfIndex||tsINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteNextHop||tsINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteMetric4||tsINT|n|n
+ipCidrRoute||ipCidrRouteMetric5||tsINT|n|n
+ipCidrRoute||ipCidrRouteMetric2||tsINT|n|n
+ipCidrRoute||ipCidrRouteMetric3||tsINT|n|n
+ipCidrRoute||table_options||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
+ipCidrRoute||ipCidrRouteMetric1||tsINT|n|n
+ipCidrRoute||timestamp||tsBIGINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteProto||tsTINYINT UNSIGNED|n|n
+ipCidrRoute||index_preprocess||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, ip_gtw ASC, mask_dst ASC, timestamp ASC
+ipCidrRoute||index_findRoute1||tsINDEX|sipCidrRouteProto, timestamp, low_ip, high_ip
+ipCidrRoute||index_findRoute2||tsINDEX|stimestamp, ip_src, low_ip, high_ip
+ipCidrRoute||ipCidrRouteInfo||tsVARCHAR(50)|n|n
+ipCidrRoute||ipCidrRouteMask||tsTINYINT UNSIGNED|n|n
+ipCidrRoute||ip_gtw||tsINT UNSIGNED|n|n
+ipCidrRoute||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+ipCidrRoute||ipCidrRouteTos||tsINT UNSIGNED|n|n
+ipCidrRoute||low_ip||tsINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteStatus||tsTINYINT UNSIGNED|n|n
+ipCidrRoute||high_ip||tsINT UNSIGNED|n|n
+ipCidrRoute||ipCidrRouteDest||tsINT UNSIGNED|n|n
+ipCidrRoute||mask_dst||tsTINYINT|n|n
+ifXTable||ifInMulticastPkts||tsINT UNSIGNED|n|n
+ifXTable||ifOutBroadcastPkts||tsINT UNSIGNED|n|n
+ifXTable||ifOutMulticastPkts||tsINT UNSIGNED|n|n
+ifXTable||ifConnectorPresent||tsTINYINT UNSIGNED|n|n
+ifXTable||ifName||tsVARCHAR(50)|n|n
+ifXTable||ifHighSpeed||tsINT UNSIGNED|n|n
+ifXTable||ifAlias||tsVARCHAR(70)|n|n
+ifXTable||ifHCInOctets||tsBIGINT UNSIGNED|n|n
+ifXTable||ifHCOutOctets||tsBIGINT UNSIGNED|n|n
+ifXTable||ifHCInMulticastPkts||tsBIGINT UNSIGNED|n|n
+ifXTable||ifPromiscuousMode||tsTINYINT UNSIGNED|n|n
+ifXTable||ifHCInUcastPkts||tsBIGINT UNSIGNED|n|n
+ifXTable||ifHCOutMulticastPkts||tsBIGINT UNSIGNED|n|n
+ifXTable||timestamp||tsBIGINT UNSIGNED|n|n
+ifXTable||index_preprocess||tsUNIQUE INDEX|srouter ASC, if_number ASC, timestamp ASC
+ifXTable||if_number||tsINT UNSIGNED|n|n
+ifXTable||ifHCOutBroadcastPkts||tsBIGINT UNSIGNED|n|n
+ifXTable||ifInBroadcastPkts||tsINT UNSIGNED|n|n
+ifXTable||table_options||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
+ifXTable||ifLinkUpDownTrapEnable||tsTINYINT UNSIGNED|n|n
+ifXTable||ifHCInBroadcastPkts||tsBIGINT UNSIGNED|n|n
+ifXTable||ifCounterDiscontinuityTime||tsVARCHAR(50)|n|n
+ifXTable||router||tsVARCHAR(15)|n|n
+ifXTable||ifHCOutUcastPkts||tsBIGINT UNSIGNED|n|n
+ifXTable||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+interface_phy||ifType||tsTINYINT UNSIGNED|n|n
+interface_phy||ifOutDiscards||tsINT UNSIGNED|n|n
+interface_phy||ifAdminStatus||tsTINYINT UNSIGNED|n|n
+interface_phy||ifMtu||tsSMALLINT UNSIGNED|n|n
+interface_phy||ifInDiscards||tsINT UNSIGNED|n|n
+interface_phy||ifInErrors||tsINT UNSIGNED|n|n
+interface_phy||index_preprocess||tsUNIQUE INDEX|srouter ASC, if_number ASC, timestamp ASC
+interface_phy||ifDescr||tsVARCHAR(50)|n|n
+interface_phy||if_number||tsINT UNSIGNED|n|n
+interface_phy||table_options||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
+interface_phy||ifOperStatus||tsTINYINT UNSIGNED|n|n
+interface_phy||ifOutUcastPkts||tsINT UNSIGNED|n|n
+interface_phy||ifInOctets||tsINT UNSIGNED|n|n
+interface_phy||timestamp||tsBIGINT UNSIGNED|n|n
+interface_phy||ifLastChange||tsVARCHAR(50)|n|n
+interface_phy||ifPhysAddress||tsVARCHAR(20)|n|n
+interface_phy||ifInUcastPkts||tsINT UNSIGNED|n|n
+interface_phy||ifSpecific||tsVARCHAR(50)|n|n
+interface_phy||ifOutNUcastPkts||tsINT UNSIGNED|n|n
+interface_phy||ifIndex||tsINT UNSIGNED|n|n
+interface_phy||ifOutQLen||tsINT UNSIGNED|n|n
+interface_phy||ifSpeed||tsINT UNSIGNED|n|n
+interface_phy||ifOutOctets||tsINT UNSIGNED|n|n
+interface_phy||ifInUnknownProtos||tsINT UNSIGNED|n|n
+interface_phy||router||tsVARCHAR(15)|n|n
+interface_phy||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+interface_phy||ifInNUcastPkts||tsINT UNSIGNED|n|n
+interface_phy||ifOutErrors||tsINT UNSIGNED|n|n
+juniperLoadbalancer||session_number||tsINT UNSIGNED|n|n
+juniperLoadbalancer||juniperClusterSessionCount||tsBIGINT UNSIGNED|n|n
+juniperLoadbalancer||timestamp||tsBIGINT UNSIGNED|n|n
+juniperLoadbalancer||juniperClusterName||tsVARCHAR(150)|n|n
+juniperLoadbalancer||router||tsVARCHAR(15)|n|n
+juniperLoadbalancer||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+cssLoadbalancer||ident||tsVARCHAR(50)|n|n
+cssLoadbalancer||timestamp||tsBIGINT UNSIGNED|n|n
+cssLoadbalancer||cssLoadBalancerSessionCount||tsINT UNSIGNED|n|n
+cssLoadbalancer||router||tsVARCHAR(15)|n|n
+cssLoadbalancer||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+cssLoadbalancer||cssLoadBalancerSessionName||tsVARCHAR(50)|n|n
+cssLoadbalancer||scm_number||tsINT UNSIGNED|n|n
+interface_log||ipAdEntIfIndex||tsINT UNSIGNED|n|n
+interface_log||timestamp||tsBIGINT UNSIGNED|n|n
+interface_log||index_preprocess||tsUNIQUE INDEX|srouter ASC, if_ip ASC, timestamp ASC
+interface_log||ipAdEntAddr||tsINT UNSIGNED|n|n
+interface_log||if_ip||tsINT UNSIGNED|n|n
+interface_log||index_findRoute||tsINDEX|stimestamp, ipAdEntAddr
+interface_log||ipAdEntNetMask||tsTINYINT UNSIGNED|n|n
+interface_log||ipAdEntBcastAddr||tsBIT(1)|n|n
+interface_log||ipAdEntReasmMaxSize||tsINT UNSIGNED|n|n
+interface_log||router||tsVARCHAR(15)|n|n
+interface_log||_id||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+interface_log||table_options||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
