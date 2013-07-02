@@ -1,5 +1,6 @@
-# parsing function for oid values
+from ordered_dict import OrderedDict
 
+# parsing function for oid values
 def plain(value):
 	""" do nothing function """
 	return value
@@ -108,7 +109,7 @@ def readDictionary(file):
 		return left
 
 	# create dictionary for output
-	out_dict = {}
+	out_dict = OrderedDict()
 
 	# open file and iterate over all lines expects empty ones
 	f = open(file, 'r')
