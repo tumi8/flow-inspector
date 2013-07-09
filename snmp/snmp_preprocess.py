@@ -219,6 +219,14 @@ oidmap = {
 	{"name": "cpmCPUTotal5min", "fct": plain},
 	".1.3.6.1.4.1.9.9.109.1.1.1.1.4":
 	{"name": "cpmCPUTotal1min", "fct": plain},
+	".1.3.6.1.4.1.9.9.109.1.1.1.1.3":
+	{"name": "cpmCPUTotal5Sec", "fct": plain},
+	".1.3.6.1.4.1.9.9.48.1.1.1.2":
+	{"name": "ciscoMemoryPoolName", "fct": plain},
+	".1.3.6.1.4.1.9.9.48.1.1.1.5":
+	{"name": "ciscoMemoryPoolUsed", "fct": plain},
+	".1.3.6.1.4.1.9.9.48.1.1.1.6":
+	{"name": "ciscoMemoryPoolFree", "fct": plain},
 }
 
 # dictionary containing table descriptions
@@ -561,6 +569,7 @@ fieldDictOracle = {
 		"session_number": ("NUMBER(11)", None, None),
 		"juniperClusterName": ("VARCHAR(150)", None, None),
 		"juniperClusterSessionCount": ("NUMBER(21)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, session_number ASC, timestamp ASC"),
 	},
 	"cssLoadbalancer" : {
 		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
@@ -570,6 +579,7 @@ fieldDictOracle = {
 		"ident" : ("VARCHAR(100)", None, None),
 		"cssLoadBalancerSessionName": ("VARCHAR(100)", None, None),
 		"cssLoadBalancerSessionCount": ("NUMBER(11)", None, None)
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, scm_number ASC, timestamp ASC"),
 	},
 	"ciscoCpu": {
 		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
@@ -581,6 +591,18 @@ fieldDictOracle = {
 		"cpmCPUTotal5secRev" : ("NUMBER(4)", None, None),
 		"cpmCPUTotal5min"    : ("NUMBER(4)", None, None),
 		"cpmCPUTotal1min"    : ("NUMBER(4)", None, None),
+		"cpmCPUTotal5sec"    : ("NUMBER(4)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, cpu_number ASC, timestamp ASC"),
+	},
+	"ciscoMemory": {
+		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
+		"timestamp": ("NUMBER(21)", None, None),
+		"router": ("VARCHAR(15)", None, None),
+		"pool_number": ("NUMBER(11)", None, None),
+		"ciscoMemoryPoolName" : ("VARCHAR(100)", None, None),
+		"ciscoMemoryPoolUsed" : ("NUMBER(11)", None, None),
+		"ciscoMemoryPoolFree" : ("NUMBER(11)", None, None),
+		"index_preprocess": ("UNIQUE INDEX", "router ASC, pool_number ASC, timestamp ASC"),
 	},
 }
 
@@ -775,6 +797,21 @@ def parse_snmp_file(file, doc):
 					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
 				)
 
+		# parse cisco mem
+		elif line.startswith(".1.3.6.1.4.1.9.9.48.1.1.1"):
+			line = line.split(".")
+			oid = '.'.join(line[0:14])
+			pool_number = line[14]
+
+			if oid in oidmap:
+				update_doc(
+					doc,
+					"ciscoMemory",
+					ip_src + '-' + pool_number + '-' + '-' + timestamp,
+					{"router": ip_src, "timestamp": timestamp, "pool_number": pool_number},
+					{oidmap[oid]["name"]: oidmap[oid]["fct"](value)}
+				)
+
 
 		# increment counter for processed lines
 		lines += 1
@@ -812,7 +849,6 @@ def commit_doc(doc, collections):
 	
 	for name, table in doc.items():
 		# push into the database
-		print name
 		for value in table.itervalues():
 			collections[name].update(value[0], value[1], True)
 			counter = counter + 1
