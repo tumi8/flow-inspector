@@ -14,7 +14,7 @@ class SQLBaseBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName):
 		Backend.__init__(self, host, port, user, password, databaseName)
 		self.tableInsertCache = dict()
-		self.cachingThreshold = 100000
+		self.cachingThreshold = 1000000
 		self.counter = 0
 
 		self.column_map = None
@@ -82,15 +82,18 @@ class SQLBaseBackend(Backend):
 		self.executeManyObjects += len(objects)
 		#print string
 		#print "Table: ", table, " ExecuteMany: ", self.executeManyTimes, " Current Objects: ", len(objects), "Total Objects: ", self.executeManyObjects
-		maxtime = 5 
+		maxtime = 1 
 
 		try:
 			#print "starting execute ..."
 			start_time = time.time()
+			#print "Committing ", len(objects), "elements to table ", table
+			#print "Starting execute to table " + str(table) + " at " + str(start_time)
 			self.cursor.executemany(string, objects)
 			end_time = time.time()
+			#print "Finished execute to table " + str(table) + " at " + str(end_time)
 			if end_time - start_time > maxtime:
-				print "ExecuteMany: executemany time was ", end_time - start_time
+				print "ExecuteMany: executemany time was ", end_time - start_time, "on table", table, "for", len(objects), "elements"
 			#print "ending execute ..."
 			start_time = time.time()
 			#print "starting commit ..."
@@ -98,7 +101,7 @@ class SQLBaseBackend(Backend):
 			#print "ending commit ..."
 			end_time = time.time()
 			if end_time - start_time > maxtime:
-				print "ExecuteMany: commit time was ", end_time - start_time
+				print "ExecuteMany: commit time on table " + table + " was ", end_time - start_time, "seconds"
 		except Exception as e:
 			if self.handle_exception(e):
 				self.executemany(string, objects, table)

@@ -118,7 +118,9 @@ class OracleBackend(SQLBaseBackend):
 			# unknown error!
 			print >> sys.stderr, "Received unknown exception in oracle backend that could not be unpacked: ", e
 			sys.exit(-1)
-		#print error
+		if type(error) == type(str()):
+			# this is not a DB exception. reraise
+			raise exception
 		if error.code == 955 or error.code == 1408:
 			# index alreday exists. that's good. don't do anything
 			return False
