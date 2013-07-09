@@ -569,7 +569,7 @@ fieldDictOracle = {
 		"session_number": ("NUMBER(11)", None, None),
 		"juniperClusterName": ("VARCHAR(150)", None, None),
 		"juniperClusterSessionCount": ("NUMBER(21)", None, None),
-		"index_preprocess": ("UNIQUE INDEX", "router ASC, session_number ASC, timestamp ASC"),
+		"idx_pre": ("UNIQUE INDEX", "router ASC, session_number ASC, timestamp ASC"),
 	},
 	"cssLoadbalancer" : {
 		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
@@ -578,8 +578,8 @@ fieldDictOracle = {
 		"scm_number": ("NUMBER(11)", None, None),
 		"ident" : ("VARCHAR(100)", None, None),
 		"cssLoadBalancerSessionName": ("VARCHAR(100)", None, None),
-		"cssLoadBalancerSessionCount": ("NUMBER(11)", None, None)
-		"index_preprocess": ("UNIQUE INDEX", "router ASC, scm_number ASC, timestamp ASC"),
+		"cssLoadBalancerSessionCount": ("NUMBER(11)", None, None),
+		"idx_pre": ("UNIQUE INDEX", "router ASC, scm_number ASC, timestamp ASC"),
 	},
 	"ciscoCpu": {
 		"_id": ("NUMBER(20)", "PRIMARY", "AUTO_INCREMENT"),
