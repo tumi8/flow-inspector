@@ -83,6 +83,7 @@ def calc_ip_range(ip, mask):
 				- for each items the same rules as for <token> apply
 				- tsstring1|string2|ffunc gets ("string1", "string2", func)
 			- 'n' encodes NoneType
+		- commentary lines begin with #
 	"""
 
 def readDictionary(file):
@@ -102,7 +103,7 @@ def readDictionary(file):
 	def __recursiveUpdate(left, right):
 		for key, value in right.iteritems():
 			if isinstance(value, dict):
-				tmp = __recursiveUpdate(left.get(key, {}), value)
+				tmp = __recursiveUpdate(left.get(key, OrderedDict()), value)
 				left[key] = tmp
 			else:
 				left[key] = right[key]
@@ -114,7 +115,7 @@ def readDictionary(file):
 	# open file and iterate over all lines expects empty ones
 	f = open(file, 'r')
 	for line in f:
-		if line != "\n":
+		if (line != "\n") and (not line.startswith("#")):
 
 			# split line into segments
 			items = line.strip().split("||")
