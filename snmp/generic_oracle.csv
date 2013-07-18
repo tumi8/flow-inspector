@@ -1,22 +1,22 @@
-primary_key||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
-timestamp||tsBIGINT UNSIGNED|n|n
+primary_key||tsNUMBER(20)|sPRIMARY|sAUTO_INCREMENT
+timestamp||tsNUMBER(20)|n|n
 string15||tsVARCHAR(15)|n|n
 string20||tsVARCHAR(20)|n|n
 string50||tsVARCHAR(50)|n|n
 string100||tsVARCHAR(100)|n|n
 string150||tsVARCHAR(150)|n|n
-uint4294967295||tsINT UNSIGNED|n|n
-uint234||tsTINYINT UNSIGNED|n|n
-uint1||tsTINYINT UNSIGNED|n|n
-uint2||tsTINYINT UNSIGNED|n|n
-uint3||tsTINYINT UNSIGNED|n|n
-uint4||tsTINYINT UNSIGNED|n|n
-uint6||tsTINYINT UNSIGNED|n|n
-uint14||tsTINYINT UNSIGNED|n|n
-uint16||tsTINYINT UNSIGNED|n|n
-uint32||tsTINYINT UNSIGNED|n|n
-uint100||tsTINYINT UNSIGNED|n|n
-uint65535||tsSMALLINT UNSIGNED|n|n
-uint2147483647||tsINT UNSIGNED|n|n
-uint18446744073709551615||tsBIGINT UNSIGNED|n|n
-uint64bit||tsBIGINT UNSIGNED|n|n
+uint4294967295||tsNUMBER(11)|n|n
+uint234||tsNUMBER(3)|n|n
+uint1||tsNUMBER(3)|n|n
+uint2||tsNUMBER(3)|n|n
+uint3||tsNUMBER(3)|n|n
+uint4||tsNUMBER(3)|n|n
+uint6||tsNUMBER(3)|n|n
+uint14||tsNUMBER(3)|n|n
+uint16||tsNUMBER(3)|n|n
+uint32||tsNUMBER(3)|n|n
+uint100||tsNUMBER(3)|n|n
+uint65535||tsNUMBER(5)|n|n
+uint2147483647||tsNUMBER(11)|n|n
+uint18446744073709551615||tsNUMBER(20)|n|n
+uint64bit||tsNUMBER(20)|n|n
