@@ -17,12 +17,29 @@ import backend
 
 from common_functions import *
 
+def create_fieldDict(backend, convert_generic, convert_snmp):
+	global oidmap
+	fieldDict = OrderedDict() 
+
+	for key, dictionary in oidmap.iteritems():
+		name = dictionary['name']
+		table = dictionary['table']
+		if (not 'only' in dictionary) or (dictionary['only'] == backend):
+			if not table in fieldDict:
+				fieldDict[table] = OrderedDict()
+	
+			if 'use_type' in dictionary:
+				if dictionary['use_type'] == 'predef_value':
+					fieldDict[table][name] = dictionary['value']
+				else:
+					fieldDict[table][name] = convert_generic(dictionary['use_type'])
+			else:
+				fieldDict[table][name] = convert_snmp(dictionary['snmp_type'])
+	return fieldDict
+
+
 # dictionary which maps oid -> name and fct to parse oid value
 oidmap = readDictionary("oidmap.csv")
-
-# dictionary containing table descriptions
-fieldDict = readDictionary("fieldDict.csv")
-fieldDictOracle = readDictionary("fieldDictOracle.csv")
 
 def parse_snmp_file(file, doc):
 	# parse file name
@@ -223,9 +240,27 @@ def parse_snmp_file(file, doc):
 
 def getFieldDict(args):
 	if args.backend == "mysql":
-		return fieldDict
+		type_snmp_generic = readDictionary("snmp_generic.csv")
+		type_generic_mysql = readDictionary("generic_mysql.csv")
+		
+		def __convert_generic(generic_type):
+			return type_generic_mysql[generic_type]
+		
+		def __convert_snmp(snmp_type):
+			return type_generic_mysql[type_snmp_generic[snmp_type]]
+		
+		return create_fieldDict('mysql', __convert_generic, __convert_snmp)
 	elif args.backend == "oracle":
-		return fieldDictOracle
+		type_snmp_generic = readDictionary("snmp_generic.csv")
+		type_generic_oracle = readDictionary("generic_oracle.csv")
+		
+		def __convert_generic(generic_type):
+			return type_generic_mysql[generic_type]
+		
+		def __convert_snmp(snmp_type):
+			return type_generic_oracle[type_snmp_generic[snmp_type]]
+		
+		return create_fieldDict('oracle', __convert_generic, __convert_snmp)
 	elif args.backend == "mongo":
 		return None
 	else:

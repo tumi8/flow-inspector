@@ -120,7 +120,7 @@ def readDictionary(file):
 			# split line into segments
 			items = line.strip().split("||")
 
-			# parse last item 
+			# parse last item
 			tmp_dict = __parseToken(items[-1])
 
 			# create hierachy
@@ -128,7 +128,7 @@ def readDictionary(file):
 				tmp_dict = {item: tmp_dict}
 			
 			# merge temporaly built dictionary into output dictionary
-		__recursiveUpdate(out_dict, tmp_dict)
+			__recursiveUpdate(out_dict, tmp_dict)
 	return out_dict
 
 def dict2csv(dict, prefix=""):
