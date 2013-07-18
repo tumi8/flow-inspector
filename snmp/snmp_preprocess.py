@@ -367,16 +367,6 @@ def main():
 	# enviromental settings
 	cache_treshold = 10000000
 
-	# statistical counters
-	time_begin = time.time()
-	time_last = time_begin
-	counter = 0
-
-	# local document storage
-	lines_since_commit = 0
-	timestamps = set()
-
-	
 	# TODO: implies precedence of operators, maybe something better can be done here
 	if args.directory:
 		files = glob.glob(args.data_path + "/*.txt")
@@ -385,11 +375,23 @@ def main():
 	else:
 		files = [ args.data_path ]
 	
+	# statistical counters
+	time_begin = time.time()
+	time_last = time_begin
+	counter = 0
+
+	# local document storage
+	lines_since_commit = 0
+	timestamps = set()
+	
+	# loop over all files
 	for file in files:
 			(read_lines, timestamp, doc) = parse_snmp_file(file, doc)
 			lines_since_commit += read_lines
 			counter += read_lines
 			timestamps.add(timestamp)
+
+			# files are commited after parse_snmp_file is done, so files are commit at once
 			if lines_since_commit > cache_treshold:
 				commit_doc(doc, collections)
 				lines_since_commit = 0
