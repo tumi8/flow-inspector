@@ -1,5 +1,6 @@
-# parsing function for oid values
+from ordered_dict import OrderedDict
 
+# parsing function for oid values
 def plain(value):
 	""" do nothing function """
 	return value
@@ -58,3 +59,116 @@ def calc_ip_range(ip, mask):
 	high_ip = low_ip + (2**mask_inv - 1)
 
 	return (low_ip, high_ip)
+
+
+	
+	"""
+		Our CSV format:
+		- each line corresponds to one dictionary entry
+		- each level of hierarchy is seperated by ||
+		- so the string level 1||level 2||<token> will be converted to
+			{
+				"level1": {
+					"level2": <token>
+				}
+			}
+		- the nesting depth may be arbitrary
+
+		- the <token> encodes the actual variable
+		- the type is denoted by the first character
+			- 's' encodes string: 'svalue' get string "value"
+			- 'f' encodes functions: 'ffunc' gets a reference to function func
+			- 't' encode tuples
+				- items are seperated by |
+				- for each items the same rules as for <token> apply
+				- tsstring1|string2|ffunc gets ("string1", "string2", func)
+			- 'n' encodes NoneType
+		- commentary lines begin with #
+	"""
+
+def readDictionary(file):
+	""" read csv file and parse it to dictionary """
+
+	# define local function to parse last token in proper Python types
+	def __parseToken(token):
+
+		return {
+			's': lambda x: x,
+			'f': lambda x: globals()[x],
+			't': lambda x: tuple(map(__parseToken, x.split("|"))),
+			'n': lambda x: None 
+		}[token[0]](token[1:])
+	
+	# recursively merge dictionary right into dictionary left
+	def __recursiveUpdate(left, right):
+		for key, value in right.iteritems():
+			if isinstance(value, dict):
+				tmp = __recursiveUpdate(left.get(key, OrderedDict()), value)
+				left[key] = tmp
+			else:
+				left[key] = right[key]
+		return left
+
+	# create dictionary for output
+	out_dict = OrderedDict()
+
+	# open file and iterate over all lines expects empty ones
+	f = open(file, 'r')
+	for line in f:
+		if (line != "\n") and (not line.startswith("#")):
+
+			# split line into segments
+			items = line.strip().split("||")
+
+			# parse last item
+			tmp_dict = __parseToken(items[-1])
+
+			# create hierachy
+			for item in items[:-1:][::-1]:
+				tmp_dict = {item: tmp_dict}
+			
+			# merge temporaly built dictionary into output dictionary
+			__recursiveUpdate(out_dict, tmp_dict)
+	return out_dict
+
+def dict2csv(dict, prefix=""):
+	""" convert dictionary to our csv format """
+
+	# local function for converting variables to our csv format
+	def __parseVariable(var):
+
+		# parse tuples
+		if type(var) == types.TupleType:
+			
+			# recurse into __parseVariable because each item of a tuple must be converted
+			tuplestring = "t" + __parseVariable(var[0])
+			for item in var[1:]:
+				tuplestring += "|" + __parseVariable(item)
+			return tuplestring
+
+		# parse functions
+		elif type(var) == types.FunctionType:
+			return "f" + var.__name__
+		
+		# parse None
+		elif var == None:
+			return "n"
+
+		# else assume we're dealing with a string
+		else:
+			return "s" + var
+
+	# recursively iterate through the dictionary
+	for key, value in dict.iteritems():
+		if prefix == "":
+				tmp_prefix = key + "||"
+		else:
+			tmp_prefix = prefix + key + "||"
+
+		if type(value) == type(dict):
+			dict2csv(value, tmp_prefix)
+		else:
+			print tmp_prefix + __parseVariable(value)
+
+
+
