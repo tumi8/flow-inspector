@@ -17,10 +17,10 @@ interface_phy_if_number||name||sif_number
 interface_phy_if_number||table||sinterface_phy
 interface_phy_if_number||snmp_type||sInterfaceIndex
 
-interface_phy_index_preprocess||name||sindex_preprocess
-interface_phy_index_preprocess||table||sinterface_phy
-interface_phy_index_preprocess||use_type||spredef_value
-interface_phy_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, if_number ASC, timestamp ASC
+#interface_phy_index_preprocess||name||sindex_preprocess
+#interface_phy_index_preprocess||table||sinterface_phy
+#interface_phy_index_preprocess||use_type||spredef_value
+#interface_phy_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, if_number ASC, timestamp ASC
 
 interface_phy_table_options||name||stable_options
 interface_phy_table_options||table||sinterface_phy
@@ -159,10 +159,10 @@ ifXTable_if_number||name||sif_number
 ifXTable_if_number||table||sifXTable
 ifXTable_if_number||snmp_type||sInterfaceIndex
 
-ifXTable_index_preprocess||name||sindex_preprocess
-ifXTable_index_preprocess||table||sifXTable
-ifXTable_index_preprocess||use_type||spredef_value
-ifXTable_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, if_number ASC, timestamp ASC
+#ifXTable_index_preprocess||name||sindex_preprocess
+#ifXTable_index_preprocess||table||sifXTable
+#ifXTable_index_preprocess||use_type||spredef_value
+#ifXTable_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, if_number ASC, timestamp ASC
 
 ifXTable_table_options||name||stable_options
 ifXTable_table_options||table||sifXTable
@@ -285,10 +285,10 @@ interface_log_if_ip||name||sif_ip
 interface_log_if_ip||table||sinterface_log
 interface_log_if_ip||use_type||suint4294967295
 
-interface_log_index_preprocess||name||sindex_preprocess
-interface_log_index_preprocess||table||sinterface_log
-interface_log_index_preprocess||use_type||spredef_value
-interface_log_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, if_ip ASC, timestamp ASC
+#interface_log_index_preprocess||name||sindex_preprocess
+#interface_log_index_preprocess||table||sinterface_log
+#interface_log_index_preprocess||use_type||spredef_value
+#interface_log_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, if_ip ASC, timestamp ASC
 
 interface_log_table_options||name||stable_options
 interface_log_table_options||table||sinterface_log
@@ -351,11 +351,11 @@ ipRoute_high_ip||name||shigh_ip
 ipRoute_high_ip||table||sipRoute
 ipRoute_high_ip||use_type||suint4294967295
 
-ipRoute_index_preprocess||name||sindex_preprocess
-ipRoute_index_preprocess||table||sipRoute
-ipRoute_index_preprocess||use_type||spredef_value
-ipRoute_index_preprocess||value||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, timestamp ASC
-
+#ipRoute_index_preprocess||name||sindex_preprocess
+#ipRoute_index_preprocess||table||sipRoute
+#ipRoute_index_preprocess||use_type||spredef_value
+#ipRoute_index_preprocess||value||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, timestamp ASC
+#
 ipRoute_table_options||name||stable_options
 ipRoute_table_options||table||sipRoute
 ipRoute_table_options||use_type||spredef_value
@@ -465,21 +465,21 @@ ipCidrRoute_high_ip||name||shigh_ip
 ipCidrRoute_high_ip||table||sipCidrRoute
 ipCidrRoute_high_ip||use_type||suint4294967295
 
-ipCidrRoute_index_preprocess||name||sindex_preprocess
-ipCidrRoute_index_preprocess||table||sipCidrRoute
-ipCidrRoute_index_preprocess||use_type||spredef_value
-ipCidrRoute_index_preprocess||value||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, ip_gtw ASC, mask_dst ASC, timestamp ASC
-
-ipCidrRoute_index_findRoute1||name||sindex_findRoute1
-ipCidrRoute_index_findRoute1||table||sipCidrRoute
-ipCidrRoute_index_findRoute1||use_type||spredef_value
-ipCidrRoute_index_findRoute1||value||tsINDEX|sipCidrRouteProto, timestamp, low_ip, high_ip
-
-ipCidrRoute_index_findRoute2||name||sindex_findRoute2
-ipCidrRoute_index_findRoute2||table||sipCidrRoute
-ipCidrRoute_index_findRoute2||use_type||spredef_value
-ipCidrRoute_index_findRoute2||value||tsINDEX|sipCidrRouteProto, timestamp, low_ip, high_ip
-
+#ipCidrRoute_index_preprocess||name||sindex_preprocess
+#ipCidrRoute_index_preprocess||table||sipCidrRoute
+#ipCidrRoute_index_preprocess||use_type||spredef_value
+#ipCidrRoute_index_preprocess||value||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, ip_gtw ASC, mask_dst ASC, timestamp ASC
+#
+#ipCidrRoute_index_findRoute1||name||sindex_findRoute1
+#ipCidrRoute_index_findRoute1||table||sipCidrRoute
+#ipCidrRoute_index_findRoute1||use_type||spredef_value
+#ipCidrRoute_index_findRoute1||value||tsINDEX|sipCidrRouteProto, timestamp, low_ip, high_ip
+#
+#ipCidrRoute_index_findRoute2||name||sindex_findRoute2
+#ipCidrRoute_index_findRoute2||table||sipCidrRoute
+#ipCidrRoute_index_findRoute2||use_type||spredef_value
+#ipCidrRoute_index_findRoute2||value||tsINDEX|sipCidrRouteProto, timestamp, low_ip, high_ip
+#
 ipCidrRoute_table_options||name||stable_options
 ipCidrRoute_table_options||table||sipCidrRoute
 ipCidrRoute_table_options||use_type||spredef_value
@@ -587,12 +587,12 @@ juniperLoadbalancer_router||use_type||sstring15
 juniperLoadbalancer_session_number||name||ssession_number
 juniperLoadbalancer_session_number||table||sjuniperLoadbalancer
 juniperLoadbalancer_session_number||use_type||suint4294967295
-
-juniperLoadbalancer_index_preprocess||name||sindex_preprocess
-juniperLoadbalancer_index_preprocess||table||sjuniperLoadbalancer
-juniperLoadbalancer_index_preprocess||use_type||spredef_value
-juniperLoadbalancer_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, session_number ASC, timestamp ASC
-
+#
+#juniperLoadbalancer_index_preprocess||name||sindex_preprocess
+#juniperLoadbalancer_index_preprocess||table||sjuniperLoadbalancer
+#juniperLoadbalancer_index_preprocess||use_type||spredef_value
+#juniperLoadbalancer_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, session_number ASC, timestamp ASC
+#
 .1.3.6.1.4.1.6213.2.4.2.1.1.2||fct||fplain
 .1.3.6.1.4.1.6213.2.4.2.1.1.2||name||sjuniperClusterSessionCount
 .1.3.6.1.4.1.6213.2.4.2.1.1.2||table||sjuniperLoadbalancer
@@ -624,11 +624,11 @@ ciscoMemory_pool_number||name||spool_number
 ciscoMemory_pool_number||table||sciscoMemory
 ciscoMemory_pool_number||use_type||suint4294967295
 
-ciscoMemory_index_preprocess||name||sindex_preprocess
-ciscoMemory_index_preprocess||table||sciscoMemory
-ciscoMemory_index_preprocess||use_type||spredef_value
-ciscoMemory_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, pool_number ASC, timestamp ASC
-
+#ciscoMemory_index_preprocess||name||sindex_preprocess
+#ciscoMemory_index_preprocess||table||sciscoMemory
+#ciscoMemory_index_preprocess||use_type||spredef_value
+#ciscoMemory_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, pool_number ASC, timestamp ASC
+#
 .1.3.6.1.4.1.9.9.48.1.1.1.2||fct||fplain
 .1.3.6.1.4.1.9.9.48.1.1.1.2||name||sciscoMemoryPoolName
 .1.3.6.1.4.1.9.9.48.1.1.1.2||table||sciscoMemory
@@ -665,12 +665,12 @@ ciscoCpu_router||use_type||sstring15
 ciscoCpu_cpu_number||name||scpu_number
 ciscoCpu_cpu_number||table||sciscoCpu
 ciscoCpu_cpu_number||use_type||suint4294967295
-
-ciscoCpu_index_preprocess||name||sindex_preprocess
-ciscoCpu_index_preprocess||table||sciscoCpu
-ciscoCpu_index_preprocess||use_type||spredef_value
-ciscoCpu_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, cpu_number ASC, timestamp ASC
-
+#
+#ciscoCpu_index_preprocess||name||sindex_preprocess
+#ciscoCpu_index_preprocess||table||sciscoCpu
+#ciscoCpu_index_preprocess||use_type||spredef_value
+#ciscoCpu_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, cpu_number ASC, timestamp ASC
+#
 .1.3.6.1.4.1.9.9.109.1.1.1.1.3||fct||fplain
 .1.3.6.1.4.1.9.9.109.1.1.1.1.3||name||scpmCPUTotal5sec
 .1.3.6.1.4.1.9.9.109.1.1.1.1.3||table||sciscoCpu
@@ -730,11 +730,11 @@ cssLoadbalancer_ident||name||sident
 cssLoadbalancer_ident||table||scssLoadbalancer
 cssLoadbalancer_ident||use_type||sstring50
 
-cssLoadbalancer_index_preprocess||name||sindex_preprocess
-cssLoadbalancer_index_preprocess||table||scssLoadbalancer
-cssLoadbalancer_index_preprocess||use_type||spredef_value
-cssLoadbalancer_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, scm_number ASC, timestamp ASC
-
+#cssLoadbalancer_index_preprocess||name||sindex_preprocess
+#cssLoadbalancer_index_preprocess||table||scssLoadbalancer
+#cssLoadbalancer_index_preprocess||use_type||spredef_value
+#cssLoadbalancer_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, scm_number ASC, timestamp ASC
+#
 .1.3.6.1.4.1.9.9.368.1.15.2.1.1||fct||fplain
 .1.3.6.1.4.1.9.9.368.1.15.2.1.1||name||scssLoadBalancerSessionName
 .1.3.6.1.4.1.9.9.368.1.15.2.1.1||table||scssLoadbalancer
@@ -778,11 +778,11 @@ cEigrp_high_ip||name||shigh_ip
 cEigrp_high_ip||table||scEigrp
 cEigrp_high_ip||use_type||suint4294967295
 
-cEigrp_index_preprocess||name||sindex_preprocess
-cEigrp_index_preprocess||table||scEigrp
-cEigrp_index_preprocess||use_type||spredef_value
-cEigrp_index_preprocess||value||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, mask_dst ASC, timestamp ASC
-
+#cEigrp_index_preprocess||name||sindex_preprocess
+#cEigrp_index_preprocess||table||scEigrp
+#cEigrp_index_preprocess||use_type||spredef_value
+#cEigrp_index_preprocess||value||tsUNIQUE INDEX|sip_src ASC, ip_dst ASC, mask_dst ASC, timestamp ASC
+#
 cEigrp_table_options||name||stable_options
 cEigrp_table_options||table||scEigrp
 cEigrp_table_options||use_type||spredef_value
