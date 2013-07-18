@@ -1,0 +1,20 @@
+InterfaceIndex||suint2147483647
+DisplayString||sstring50
+IANAifType||suint234
+Integer32||suint4294967295
+Gauge32||suint4294967295
+Counter32||suint4294967295
+Counter64||suint64bit
+INTEGER||suint4294967295
+PhysAddress||sstring20
+TimeTicks||sstring50
+OBJECT IDENTIFIER||sstring50
+TruthValue||suint2
+TimeStamp||sstring50
+IpAddress||suint4294967295
+RowStatus||suint6
+InetAddressType||suint16
+InetAddress||suint4294967295
+InetAddressPrefixLength||suint32
+Unsigned32||suint4294967295
+SnmpAdminString||sstring50
