@@ -81,6 +81,19 @@ class SQLBaseBackend(Backend):
 				print "Execute: commit time was ", end_time - start_time
 
 		except Exception as e:
+			try: 
+				# we can handle a large number of exceptions.we cannot do this with all
+				# exceptions. handle_exception will make a decision. If it returns true, 
+				# we can just try to do it again. If not, we can ignore the problem. 
+				# or it can reraise the Exception in which case we want to know the query
+				# that caused the exception
+				if self.handle_exception(e):
+					self.executemany(string, objects, table)
+			except Exception as e:
+				print "Cannot gracefully handle DB Exception", e
+				print "Exception was caused by query: ", string
+				sys.exit(-1)
+
 			if self.handle_exception(e):
 				self.execute(string, params)
 
@@ -112,8 +125,18 @@ class SQLBaseBackend(Backend):
 			if end_time - start_time > maxtime:
 				print "ExecuteMany: commit time on table " + table + " was ", end_time - start_time, "seconds"
 		except Exception as e:
-			if self.handle_exception(e):
-				self.executemany(string, objects, table)
+			try: 
+				# we can handle a large number of exceptions.we cannot do this with all
+				# exceptions. handle_exception will make a decision. If it returns true, 
+				# we can just try to do it again. If not, we can ignore the problem. 
+				# or it can reraise the Exception in which case we want to know the query
+				# that caused the exception
+				if self.handle_exception(e):
+					self.executemany(string, objects, table)
+			except Exception as e:
+				print "Cannot gracefully handle DB Exception", e
+				print "Exception was caused by query: ", string
+				sys.exit(-1)
 
 	def query(self, tablename, string):
 		string = string % (tableName)
