@@ -11,8 +11,8 @@ import time
 import operator
 
 class SQLBaseBackend(Backend):
-	def __init__(self, host, port, user, password, databaseName):
-		Backend.__init__(self, host, port, user, password, databaseName)
+	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
+		Backend.__init__(self, host, port, user, password, databaseName, insertMode)
 		self.tableInsertCache = dict()
 		self.cachingThreshold = 1000000
 		self.counter = 0
@@ -43,6 +43,15 @@ class SQLBaseBackend(Backend):
 		pass
 
 	def insert(self, collectionName, fieldDict):
+		if self.insertMode == "UPDATE":
+			self.insert_update(collectionName, fieldDict)
+		elif self.insertMode == "INSERT":
+			self.insert_insert(collectionName, fieldDict)
+
+	def insert_update(self, collectionName, fieldDict):
+		pass
+
+	def insert_insert(self, collectionName, fieldDict):
 		pass
 
 	def execute(self, string, params = None, cursor=None):
@@ -696,7 +705,10 @@ class SQLBaseBackend(Backend):
 				if fields[f] == 1:
 					if fieldsString != "":
 						fieldsString += ","
-					fieldsString += f
+					if f == "_id":
+						fieldString += "id as _id"
+					else:
+						fieldString += f
 			if fieldsString == "":
 				fieldsString = "*"
 		query = "SELECT " + fieldsString + " FROM " + collectionName + " "
@@ -764,3 +776,21 @@ class SQLBaseBackend(Backend):
 
 		return ret
 
+	def add_to_cache(self, collectionName, queryString, cacheLine):
+		numElem = 1
+		if collectionName in self.tableInsertCache:
+			cache = self.tableInsertCache[collectionName][0]
+			numElem = self.tableInsertCache[collectionName][1] + 1
+			if queryString in cache:
+				cache[queryString].append(cacheLine)
+			else:
+				cache[queryString] = [ cacheLine ]
+		else:
+			cache = dict()
+			cache[queryString] = [ cacheLine ]
+			
+		self.tableInsertCache[collectionName] = (cache, numElem)
+		self.counter += 1
+
+		if numElem > self.cachingThreshold:
+			self.flushCache(collectionName)

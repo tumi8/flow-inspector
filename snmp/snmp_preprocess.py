@@ -341,7 +341,7 @@ def main():
 
 	dst_db = backend.databackend.getBackendObject(
 		args.backend, args.dst_host, args.dst_port,
-		args.dst_user, args.dst_password, args.dst_database)
+		args.dst_user, args.dst_password, args.dst_database, "INSERT")
 
 	if args.clear_database:
 		dst_db.clearDatabase()
@@ -360,7 +360,7 @@ def main():
 		collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("mask_dst", pymongo.ASCENDING), ("ip_gtw", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
 
 		# restore generic backend collection
-		collection = dst_db.getCollection("snmp_raw")
+		collection = dst_db.getCollection(name)
 	else: 
 	#	collection.createIndex("router")
 	#	collection.createIndex("if_number")

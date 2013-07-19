@@ -7,8 +7,8 @@ import operator
 
 
 class OracleBackend(SQLBaseBackend):
-	def __init__(self, host, port, user, password, databaseName):
-		SQLBaseBackend.__init__(self, host, port, user, password, databaseName)
+	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
+		SQLBaseBackend.__init__(self, host, port, user, password, databaseName, insertMode)
 		self.column_map = common.ORACLE_COLUMNMAP
 		self.type_map = common.ORACLE_TYPE_MAPPER
 		self.dynamic_type_wrapper = dict()
@@ -29,8 +29,30 @@ class OracleBackend(SQLBaseBackend):
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to Oracle database: ", inst,
 
+	def insert_insert(self, collectionName, fieldDict):
+		updateString = ""
+		typeString = ""
+		cacheLine = () 
+		params = {}
+		valueString = ""
+		for field in fieldDict:
+			if typeString != "":
+				typeString += ","
+			if valueString != "":
+				valueString += ","
 
-	def insert(self, collectionName, fieldDict):
+			fieldValue = fieldDict[field][0]
+			actionType = fieldDict[field][1]
+
+			typeString += field
+			params[field] = str(fieldDict[0])
+			valueString += "%s"
+	
+		queryString = "INSERT INTO " + collectionName + " (" + typeString + ") VALUES (" + valueString + ") "
+		self.add_to_cache(collectionName, queryString, cacheLine)
+
+
+	def insert_update(self, collectionName, fieldDict):
 		queryString = "MERGE INTO " + collectionName + " target USING (SELECT "
 		selectString = ""
 		matchedString = ""
@@ -67,31 +89,8 @@ class OracleBackend(SQLBaseBackend):
 		queryString += selectString + " FROM dual) SOURCE ON (" + primary + ")"
 		queryString += " WHEN MATCHED THEN UPDATE SET " + matchedString
 		queryString += " WHEN NOT MATCHED THEN INSERT (" + notMatchedInsert + ") VALUES (" + notMatchedValues + ")" 
-		if self.doCache:
-			numElem = 1
-			if collectionName in self.tableInsertCache:
-				cache = self.tableInsertCache[collectionName][0]
-				numElem = self.tableInsertCache[collectionName][1] + 1
-				if queryString in cache:
-					cache[queryString].append(params)
-				else:
-					cache[queryString] = [ params ]
-			else:
-				cache = dict()
-				cache[queryString] = [ params ]
 		
-			self.tableInsertCache[collectionName] = (cache, numElem)
-
-			self.counter += 1
-			#if self.counter % 100000 == 0:
-				#print "Total len:",  len(self.tableInsertCache)
-				#for c in self.tableInsertCache:
-					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
-			
-			if numElem > self.cachingThreshold:
-				self.flushCache(collectionName)
-		else:
-			self.execute(queryString, params)
+		self.add_to_cache(collectionName, queryString, params)
 
 	def clearDatabase(self):
 		import cx_Oracle

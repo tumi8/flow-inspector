@@ -131,12 +131,13 @@ class Collection:
 
 
 class Backend:
-	def __init__(self, host, port, user, password, databaseName):
+	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
 		self.host = host
 		self.port = port
 		self.user = user
 		self.password = password
 		self.databaseName = databaseName
+		self.insertMode = insertMode
 		self.index_cache = {}
 
 	def connect(self):
@@ -304,16 +305,16 @@ class Backend:
 
 
 
-def getBackendObject(backend, host, port, user, password, databaseName):
+def getBackendObject(backend, host, port, user, password, databaseName, insertMode="UPDATE"):
 
 	if backend == "mongo":
 		from mongobackend import MongoBackend
 		return MongoBackend(host, port, user, password, databaseName)
 	elif backend == "mysql":
 		from mysqlbackend import MysqlBackend
-		return MysqlBackend(host, port, user, password, databaseName)
+		return MysqlBackend(host, port, user, password, databaseName, insertMode)
 	elif backend == "oracle":
 		from oraclebackend import OracleBackend
-		return OracleBackend(host, port, user, password, databaseName)
+		return OracleBackend(host, port, user, password, databaseName, insertMode)
 	else:
 		raise Exception("Backend " + backend + " is not a supported backend")

@@ -7,8 +7,8 @@ import time
 import operator
 
 class MysqlBackend(SQLBaseBackend):
-	def __init__(self, host, port, user, password, databaseName):
-		SQLBaseBackend.__init__(self, host, port, user, password, databaseName)
+	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
+		SQLBaseBackend.__init__(self, host, port, user, password, databaseName, insertMode)
 		self.column_map = None
 		self.type_map = common.MYSQL_TYPE_MAPPER
 		self.type = "mysql"
@@ -32,7 +32,29 @@ class MysqlBackend(SQLBaseBackend):
 			print >> sys.stderr, "Cannot connect to MySQL database: ", inst 
 			sys.exit(1)
 
-	def insert(self, collectionName, fieldDict):
+	def insert_insert(self, collectionName, fieldDict):
+		updateString = ""
+		typeString = ""
+		cacheLine = () 
+		valueString = ""
+		for field in fieldDict:
+			if typeString != "":
+				typeString += ","
+			if valueString != "":
+				valueString += ","
+
+			fieldValue = fieldDict[field][0]
+			actionType = fieldDict[field][1]
+
+			typeString += field
+			cacheLine = cacheLine + (fieldValue,)
+			valueString += "%s"
+	
+		queryString = "INSERT INTO " + collectionName + " (" + typeString + ") VALUES (" + valueString + ") "
+		self.add_to_cache(collectionName, queryString, cacheLine)
+
+
+	def insert_update(self, collectionName, fieldDict):
 		updateString = ""
 		typeString = ""
 		cacheLine = () 
@@ -62,31 +84,7 @@ class MysqlBackend(SQLBaseBackend):
 		if updateString != "":
 			queryString += " ON DUPLICATE KEY UPDATE " + updateString
 
-		if self.doCache:
-			numElem = 1
-			if collectionName in self.tableInsertCache:
-				cache = self.tableInsertCache[collectionName][0]
-				numElem = self.tableInsertCache[collectionName][1] + 1
-				if queryString in cache:
-					cache[queryString].append(cacheLine)
-				else:
-					cache[queryString] = [ cacheLine ]
-			else:
-				cache = dict()
-				cache[queryString] = [ cacheLine ]
-		
-			self.tableInsertCache[collectionName] = (cache, numElem)
-
-			self.counter += 1
-			#if self.counter % 100000 == 0:
-				#print "Total len:",  len(self.tableInsertCache)
-				#for c in self.tableInsertCache:
-					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
-			
-			if numElem > self.cachingThreshold:
-				self.flushCache(collectionName)
-		else:
-			self.execute(queryString)
+		self.add_to_cache(collectionName, queryString, cacheLine)
 
 	def handle_exception(self, exception):
 		#print "Received exception: ", exception
