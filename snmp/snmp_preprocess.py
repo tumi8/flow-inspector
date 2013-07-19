@@ -300,9 +300,15 @@ def commit_doc(doc, collections):
 
 	print "Commiting %s entries to databackend" % total
 	
-	for name, table in doc.items():
+	for name, table in doc.items():	
 		# push into the database
 		for value in table.itervalues():
+ 		# fill in ip ranges for ipCidrRoute and cEigrp
+			if name == "ipCidrRoute" or name == "cEigrp":
+				(low_ip, high_ip) = calc_ip_range(value[0]["ip_dst"], value[0]["mask_dst"])
+				value[1]["$set"]["low_ip"] = low_ip
+				value[1]["$set"]["high_ip"] = high_ip
+
 			collections[name].update(value[0], value[1], True)
 			counter = counter + 1
 		time_current = time.time()
@@ -410,21 +416,6 @@ def main():
 	# commit local doc to databackend in the end
 	
 	commit_doc(doc, collections)
-
-	for collection in collections.itervalues():
-		collection.flushCache()
-
-	print "Calculating IP ranges"
-
-	# calculate ip network ranges
-	for timestamp in timestamps:
-		for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
-			(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
-			collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
-	
-		for row in collections["cEigrp"].find({"timestamp": timestamp}):
-			(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
-			collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
 
 	for collection in collections.itervalues():
 		collection.flushCache()
