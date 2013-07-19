@@ -151,7 +151,7 @@ class SQLBaseBackend(Backend):
 					if not "$set" in document:
 						document["$set"] = {}
 					document["$set"][common.COL_BUCKET] = statement[s]
-			elif not collectionName.startswith("flows"):
+			else:
 				if s == "_id":
 					fieldDict["id"] = (statement[s], "PRIMARY")
 				else:

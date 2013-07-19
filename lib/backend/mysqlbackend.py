@@ -99,32 +99,31 @@ class MysqlBackend(SQLBaseBackend):
 		if error == 1051:
 			# trying to delete unkonwn table. this is ok
 			return False
-		if error == 1050:
+		elif error == 1050:
 			# table already exists. that is ok
 			return False
-		if error == 1061:
+		elif error == 1061:
 			# index already exists. that is ok
 			return False
 
-		if error == 1054:
+		elif error == 1054:
 			# unknown column in string. This is likely to be a programming error, but we
 			# need more context to understand what it is. Handle this condition in the
 			# caller ...
 			raise 
 
-		if error == 1146:
+		elif error == 1146:
 			# table does not exist. Probably means that no data was imported yet.
 			return False
-
-		print "ERROR: Received exception (" + str(error) + "):", message
-		# try to reconnect
-		# TODO: Implement better handling
-
-		if error == 1064:
+		elif error == 1064:
 			# error in SQL syntax! This is a programming error and should result in the termination of 
 			# the process or should be handled by another instance ...
 			raise 
-		self.connect()
+		elif error == 1072:
+			# programming error: field not in table
+			raise
+
+		print "ERROR: Received exception (" + str(error) + "):", message
 		return True
 	
 	def add_limit_to_string(self, string, limit):
@@ -137,18 +136,23 @@ class MysqlBackend(SQLBaseBackend):
 		indexes = ""
 		table_options = ""
 		for field in fieldDict:
+			if field == "_id":
+				fieldMod = "id"
+			else:
+				fieldMod = field
+
 			if field == "table_options":
 				table_options = fieldDict[field]
 			elif fieldDict[field][0].endswith("INDEX"):
 				if indexes != "":
 					indexes += ","
-				indexes += fieldDict[field][0] + " " + field + " (" + fieldDict[field][1] + ")" 
+				indexes += fieldDict[field][0] + " " + fieldMod + " (" + fieldDict[field][1] + ")" 
 			else:
 				if not first:
 					createString += ","
-				createString += field + " " + fieldDict[field][0]
+				createString += fieldMod + " " + fieldDict[field][0]
 				if fieldDict[field][1] == "PRIMARY":
-					primary = " PRIMARY KEY(" + field + ")"
+					primary = " PRIMARY KEY(" + fieldMod + ")"
 				if fieldDict[field][2] != None:
 					createString += " " + fieldDict[field][2]
 				first = False
