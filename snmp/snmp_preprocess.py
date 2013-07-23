@@ -39,7 +39,7 @@ def create_fieldDict(backend, convert_generic, convert_snmp):
 
 
 # dictionary which maps oid -> name and fct to parse oid value
-oidmap = readDictionary("oidmap.csv")
+oidmap = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "oidmap.csv"))
 
 def parse_snmp_file(file, doc):
 	# parse file name
@@ -255,8 +255,8 @@ def parse_snmp_file(file, doc):
 
 def getFieldDict(args):
 	if args.backend == "mysql":
-		type_snmp_generic = readDictionary("snmp_generic.csv")
-		type_generic_mysql = readDictionary("generic_mysql.csv")
+		type_snmp_generic = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "snmp_generic.csv"))
+		type_generic_mysql = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "generic_mysql.csv"))
 		
 		def __convert_generic(generic_type):
 			return type_generic_mysql[generic_type]
@@ -266,8 +266,8 @@ def getFieldDict(args):
 		
 		return create_fieldDict('mysql', __convert_generic, __convert_snmp)
 	elif args.backend == "oracle":
-		type_snmp_generic = readDictionary("snmp_generic.csv")
-		type_generic_oracle = readDictionary("generic_oracle.csv")
+		type_snmp_generic = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "snmp_generic.csv"))
+		type_generic_oracle = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "generic_oracle.csv"))
 		
 		def __convert_generic(generic_type):
 			return type_generic_mysql[generic_type]
