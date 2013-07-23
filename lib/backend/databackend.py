@@ -15,7 +15,7 @@ Author: Lothar Braun
 
 import sys
 
-def getBackendObject(backend, host, port, user, password, databaseName, insertMode):
+def getBackendObject(backend, host, port, user, password, databaseName, insertMode = "UPDATE"):
 	if backend == "mongo":
 		from mongobackend import MongoBackend
 		return MongoBackend(host, port, user, password, databaseName)

@@ -729,9 +729,9 @@ class SQLBaseBackend(Backend):
 					if fieldsString != "":
 						fieldsString += ","
 					if f == "_id":
-						fieldString += "id as _id"
+						fieldsString += "id as _id"
 					else:
-						fieldString += f
+						fieldsString += f
 			if fieldsString == "":
 				fieldsString = "*"
 		query = "SELECT " + fieldsString + " FROM " + collectionName + " "

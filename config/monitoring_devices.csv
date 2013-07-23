@@ -1,0 +1,44 @@
+#### Device Table #############
+
+device_table_id||name||s_id
+device_table_id||table||sdevice_table
+device_table_id||use_type||sprimary_key
+
+device_table_ip||name||sip
+device_table_ip||table||sdevice_table
+device_table_ip||use_type||sstring15
+
+device_table_name||name||sname
+device_table_name||table||sdevice_table
+device_table_name||use_type||sstring150
+
+device_table_status||name||sstatus
+device_table_status||table||sdevice_table
+device_table_status||use_type||suint32
+
+device_table_status_changed||name||sstatus_changed
+device_table_status_changed||table||sdevice_table
+device_table_status_changed||use_type||stimestamp
+
+device_table_do_live_check||name||sdo_live_check
+device_table_do_live_check||table||sdevice_table
+device_table_do_live_check||use_type||suint2
+
+device_table_do_snmp||name||sdo_snmp
+device_table_do_snmp||table||sdevice_table
+device_table_do_snmp||use_type||suint2
+
+device_table_community_string||name||scommunity_string
+device_table_community_string||table||sdevice_table
+device_table_community_string||use_type||sstring50
+
+device_table_index||name||sd_idx
+device_table_index||table||sdevice_table
+device_table_index||use_type||spredef_value
+device_table_index||value||tsUNIQUE INDEX|sip ASC
+
+device_table_table_options||name||stable_options
+device_table_table_options||table||sdevice_table
+device_table_table_options||use_type||spredef_value
+device_table_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
+device_table_table_options||only||smysql
