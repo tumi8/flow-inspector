@@ -1,6 +1,8 @@
 import os 
 import math
 import sys
+import argparse
+import config
 
 
 # flow time interval column names
@@ -385,5 +387,6 @@ def get_default_argument_parser(description):
 	parser.add_argument("--dst-password", nargs="?", default=config.data_backend_password, help="Backend database password")
 	parser.add_argument("--dst-database", nargs="?", default=config.data_backend_snmp_name, help="Backend database name")
 	parser.add_argument("--clear-database", nargs="?", type=bool, default=False, const=True, help="Whether to clear the whole databse before importing any flows.")
+	parser.add_argument( "--backend", nargs="?", default=config.data_backend, const=True, help="Selects the backend type that is used to store the data")
 
         return parser

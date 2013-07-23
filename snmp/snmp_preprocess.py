@@ -3,43 +3,24 @@
 
 import sys
 import os.path
-import argparse
-import time
-import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
 
+import time
+import glob
 import config
 import common
 import backend
 
 from common_functions import *
 
-def create_fieldDict(backend, convert_generic, convert_snmp):
-	global oidmap
-	fieldDict = OrderedDict() 
-
-	for key, dictionary in oidmap.iteritems():
-		name = dictionary['name']
-		table = dictionary['table']
-		if (not 'only' in dictionary) or (dictionary['only'] == backend):
-			if not table in fieldDict:
-				fieldDict[table] = OrderedDict()
-	
-			if 'use_type' in dictionary:
-				if dictionary['use_type'] == 'predef_value':
-					fieldDict[table][name] = dictionary['value']
-				else:
-					fieldDict[table][name] = convert_generic(dictionary['use_type'])
-			else:
-				fieldDict[table][name] = convert_snmp(dictionary['snmp_type'])
-	return fieldDict
 
 
 # dictionary which maps oid -> name and fct to parse oid value
-oidmap = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "oidmap.csv"))
+oidmap_filename = os.path.join(os.path.dirname(__file__), '..', 'config', "oidmap.csv")
+oidmap = readDictionary(oidmap_filename)
 
 def parse_snmp_file(file, doc):
 	# parse file name
@@ -253,33 +234,6 @@ def parse_snmp_file(file, doc):
 
 	return (lines, timestamp, doc)
 
-def getFieldDict(args):
-	if args.backend == "mysql":
-		type_snmp_generic = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "snmp_generic.csv"))
-		type_generic_mysql = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "generic_mysql.csv"))
-		
-		def __convert_generic(generic_type):
-			return type_generic_mysql[generic_type]
-		
-		def __convert_snmp(snmp_type):
-			return type_generic_mysql[type_snmp_generic[snmp_type]]
-		
-		return create_fieldDict('mysql', __convert_generic, __convert_snmp)
-	elif args.backend == "oracle":
-		type_snmp_generic = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "snmp_generic.csv"))
-		type_generic_oracle = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "generic_oracle.csv"))
-		
-		def __convert_generic(generic_type):
-			return type_generic_mysql[generic_type]
-		
-		def __convert_snmp(snmp_type):
-			return type_generic_oracle[type_snmp_generic[snmp_type]]
-		
-		return create_fieldDict('oracle', __convert_generic, __convert_snmp)
-	elif args.backend == "mongo":
-		return None
-	else:
-		raise Exception("Unknown data backend: " + args.backend);
 
 def update_doc(doc, table, table_key, db_key, db_values):
 	""" update local document before comitting to databackend """
@@ -337,7 +291,7 @@ def main():
 	if args.clear_database:
 		dst_db.clearDatabase()
 
-	for name, fields in getFieldDict(args).items():
+	for name, fields in read_field_dict_from_csv(args.backend, oidmap_filename).items():
 		dst_db.prepareCollection(name, fields)
 		collections[name] = dst_db.getCollection(name)
 	
