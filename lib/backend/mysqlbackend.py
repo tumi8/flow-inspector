@@ -27,7 +27,8 @@ class MysqlBackend(SQLBaseBackend):
 			)         
 			self.conn = MySQLdb.connect(**dns)
 			self.cursor = self.conn.cursor()
-			self.dictCursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
+			self.dictCursor = self.conn.cursor()
+			#self.dictCursor = self.conn.cursor(MySQLdb.cursors.DictCursor)
 		except Exception as inst:
 			print >> sys.stderr, "Cannot connect to MySQL database: ", inst 
 			sys.exit(1)

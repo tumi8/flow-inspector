@@ -765,6 +765,7 @@ class SQLBaseBackend(Backend):
 			query = self.add_limit_to_string(query, limit)
 
 		self.execute(query, None, self.dictCursor)
+		# TODO: Cleanup. Oracle does the same stuff as mysql
 		if self.type == "oracle":
 			# As alway: Things do not work with oracle ...
 			if not collectionName in self.dynamic_type_wrapper:
@@ -786,8 +787,12 @@ class SQLBaseBackend(Backend):
 				return dict()
 			rows = self.dictCursor.fetchall()
 			columns = [typeWrapper[i[0]] for i in self.dictCursor.description]
-			return [dict(zip(columns, row)) for row in rows]
+			return [OrderedDict(zip(columns, row)) for row in rows]
 		else:
+			rows = self.dictCursor.fetchall()
+			columns = [i[0] for i in self.dictCursor.description]
+			return [OrderedDict(zip(columns, row)) for row in rows]
+				
 			ret = self.dictCursor.fetchall()
 		return ret
 	
