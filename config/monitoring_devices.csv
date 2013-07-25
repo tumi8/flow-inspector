@@ -42,3 +42,25 @@ device_table_table_options||table||sdevice_table
 device_table_table_options||use_type||spredef_value
 device_table_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
 device_table_table_options||only||smysql
+
+###################################################################### Live Check Table ##############################
+
+live_check_table_id||name||sdevice_id
+live_check_table_id||table||slive_check_table
+live_check_table_id||use_type||sprimary_key_self
+
+live_check_table_status||name||sstatus
+live_check_table_status||table||slive_check_table
+live_check_table_status||use_type||suint2
+
+live_check_table_ip||name||slast_checked
+live_check_table_ip||table||slive_check_table
+live_check_table_ip||use_type||stimestamp
+
+live_check_table_first_fail||name||sfirst_fail
+live_check_table_first_fail||table||slive_check_table
+live_check_table_first_fail||use_type||stimestamp
+
+live_check_table_last_fail||name||slast_fail
+live_check_table_last_fail||table||slive_check_table
+live_check_table_last_fail||use_type||stimestamp

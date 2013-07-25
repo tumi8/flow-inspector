@@ -1,4 +1,5 @@
 primary_key||tsNUMBER(20)|sPRIMARY|sAUTO_INCREMENT
+primary_key_self||tsNUMBER(20)|sPRIMARY|n
 timestamp||tsNUMBER(20)|n|n
 string15||tsVARCHAR(15)|n|n
 string20||tsVARCHAR(20)|n|n
