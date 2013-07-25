@@ -64,3 +64,25 @@ live_check_table_first_fail||use_type||stimestamp
 live_check_table_last_fail||name||slast_fail
 live_check_table_last_fail||table||slive_check_table
 live_check_table_last_fail||use_type||stimestamp
+
+###################################################################### snmp_availability ##############################
+
+snmp_availability_id||name||sdevice_id
+snmp_availability_id||table||ssnmp_availability
+snmp_availability_id||use_type||sprimary_key_self
+
+snmp_availability_status||name||sstatus
+snmp_availability_status||table||ssnmp_availability
+snmp_availability_status||use_type||suint2
+
+snmp_availability_ip||name||slast_checked
+snmp_availability_ip||table||ssnmp_availability
+snmp_availability_ip||use_type||stimestamp
+
+snmp_availability_first_fail||name||sfirst_fail
+snmp_availability_first_fail||table||ssnmp_availability
+snmp_availability_first_fail||use_type||stimestamp
+
+snmp_availability_last_fail||name||slast_fail
+snmp_availability_last_fail||table||ssnmp_availability
+snmp_availability_last_fail||use_type||stimestamp
