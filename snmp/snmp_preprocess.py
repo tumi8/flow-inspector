@@ -22,6 +22,13 @@ from common_functions import *
 oidmap_filename = os.path.join(os.path.dirname(__file__), '..', 'config', "oidmap.csv")
 oidmap = readDictionary(oidmap_filename)
 
+def prepare_snmp_collections(dst_db, backend):
+	collections = dict()
+	for name, fields in read_field_dict_from_csv(backend, oidmap_filename).items():
+		dst_db.prepareCollection(name, fields)
+		collections[name] = dst_db.getCollection(name)
+	return collections
+
 def parse_snmp_file(file, doc):
 	# parse file name
 	params = os.path.basename(file).rstrip(".txt").split("-")
@@ -275,7 +282,6 @@ def commit_doc(doc, collections):
 
 def main():
 	doc = {}
-	collections = dict()
 
         parser = common.get_default_argument_parser("Parse SNMP data files and import data to database")
 
@@ -291,9 +297,7 @@ def main():
 	if args.clear_database:
 		dst_db.clearDatabase()
 
-	for name, fields in read_field_dict_from_csv(args.backend, oidmap_filename).items():
-		dst_db.prepareCollection(name, fields)
-		collections[name] = dst_db.getCollection(name)
+	collections = prepare_snmp_collections(dst_db, args.backend)
 	
 	# TODO: hacky ... make something more general ...
 	if backend == "mongo":

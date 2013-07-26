@@ -27,45 +27,45 @@ import common
 import common_functions
 import backend
 
-def update_live_check_list(collection, output_file):
-	"""
-	Queries the DB for devices that should be checked
-	whether they are alive and outputs the list to the
-	output file
-	"""
-	# read a list of devices from the DB which should be included in the live checks
-	live_check_list = collection.find({'do_live_check': 1, 'status': 1}, {'ip': 1})
-	(tmp_fd, tmp_file) = tempfile.mkstemp()
-	live_check_file_handle = os.fdopen(tmp_fd, 'w+')
-	for elem in live_check_list:
-		live_check_file_handle.write(str(elem['ip']) + "\n")
-	live_check_file_handle.close()
-	# move the tmp file to the final location
-	os.rename(tmp_file, output_file)
+# def update_live_check_list(collection, output_file):
+# 	"""
+# 	Queries the DB for devices that should be checked
+# 	whether they are alive and outputs the list to the
+# 	output file
+# 	"""
+# 	# read a list of devices from the DB which should be included in the live checks
+# 	live_check_list = collection.find({'do_live_check': 1, 'status': 1}, {'ip': 1})
+# 	(tmp_fd, tmp_file) = tempfile.mkstemp()
+# 	live_check_file_handle = os.fdopen(tmp_fd, 'w+')
+# 	for elem in live_check_list:
+# 		live_check_file_handle.write(str(elem['ip']) + "\n")
+# 	live_check_file_handle.close()
+# 	# move the tmp file to the final location
+# 	os.rename(tmp_file, output_file)
 
-def update_snmp_poll_list(collection, output_file):
-	"""
-	Queries the DB for devices that should be polled 
-	by SNMP and outputs the list to the output file
-	along with the snmp community string that is 
-	needed to perform the query.
-	"""
-	# do the same for snmp_pools
-	# read a list of devices from the DB which should be included in the live checks
-	snmp_poll_list = collection.find({'do_snmp': 1, 'status': 1}, {'ip': 1, 'community_string': 1})
-	(tmp_fd, tmp_file) = tempfile.mkstemp()
-	snmp_poll_file_handle = os.fdopen(tmp_fd, 'w+')
-	for elem in snmp_poll_list:
-		snmp_poll_file_handle.write(str(elem['ip']) + " " + str(elem["community_string"]) +  "\n")
-	snmp_poll_file_handle.close()
-	# move the tmp file to the final location
-	os.rename(tmp_file, output_file)
+# def update_snmp_poll_list(collection, output_file):
+# 	"""
+# 	Queries the DB for devices that should be polled 
+# 	by SNMP and outputs the list to the output file
+# 	along with the snmp community string that is 
+# 	needed to perform the query.
+# 	"""
+# 	# do the same for snmp_pools
+# 	# read a list of devices from the DB which should be included in the live checks
+# 	snmp_poll_list = collection.find({'do_snmp': 1, 'status': 1}, {'ip': 1, 'community_string': 1})
+# 	(tmp_fd, tmp_file) = tempfile.mkstemp()
+# 	snmp_poll_file_handle = os.fdopen(tmp_fd, 'w+')
+# 	for elem in snmp_poll_list:
+# 		snmp_poll_file_handle.write(str(elem['ip']) + " " + str(elem["community_string"]) +  "\n")
+# 	snmp_poll_file_handle.close()
+# 	# move the tmp file to the final location
+# 	os.rename(tmp_file, output_file)
 		
 if __name__ == "__main__":
 	parser = common.get_default_argument_parser("Script for importing a device list into the monitoring process")
 	parser.add_argument("device_list_file", help="CSV file that contains a list of devices that should be included into the monitoring process")
-	parser.add_argument("live_check_list", help="Result file that contains a list of IPs that should be checked for whether they are up or not")
-	parser.add_argument("snmp_poll_list", help="Result file that contains a list of IPs and community strings which should be polled by SNMP.")
+	# parser.add_argument("live_check_list", help="Result file that contains a list of IPs that should be checked for whether they are up or not")
+	# parser.add_argument("snmp_poll_list", help="Result file that contains a list of IPs and community strings which should be polled by SNMP.")
 
 	args = parser.parse_args()
 
@@ -159,5 +159,5 @@ if __name__ == "__main__":
 		device_table.update({"ip": ip}, doc)
 	device_table.flushCache()
 	
-	update_live_check_list(device_table, args.live_check_list)
-	update_snmp_poll_list (device_table, args.snmp_poll_list)
+	# update_live_check_list(device_table, args.live_check_list)
+	# update_snmp_poll_list (device_table, args.snmp_poll_list)
