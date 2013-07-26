@@ -223,19 +223,20 @@ int read_cache_file(const char* cache_file, const char* rrd_dir, const char* tim
 int main(int argc, char** argv)
 {
 	if (argc != 4) {
-		fprintf(stderr, "Usage: %s <cache-dir> <rra-dir> <timestamp>\n", argv[0]);
+		fprintf(stderr, "Usage: %s <cache-file> <rra-dir> <timestamp>\n", argv[0]);
 		return -1;
 	}
-	char* cache_dir = argv[1];
+	char* cache_file = argv[1];
 	char* rra_dir = argv[2];
 	char* timestamp = argv[3];
 
-	// check if cache_dir is a directory and check if we can read from it
+	// check if cache_file is a file and check if we can read from it
 	struct stat s;
-	if (-1 == stat(cache_dir, &s)) {
-		fprintf(stderr, "ERROR stating cache-dir \"%s\": %s\n", cache_dir, strerror(errno));
+	if (-1 == stat(cache_file, &s)) {
+		fprintf(stderr, "ERROR stating cache-file \"%s\": %s\n", cache_file, strerror(errno));
 		exit(-1);
 	}
+	/*
 	if (!(s.st_mode & S_IFDIR)) {
 		fprintf(stderr, "ERROR: cache-dir is not a directory!\n");
 		exit(-2);
@@ -244,18 +245,19 @@ int main(int argc, char** argv)
 		fprintf(stderr, "ERROR: Insufficient rights on cache-dir \"%s\". Need read and execute rights!\n", cache_dir);
 		exit(-3);
 	}
+	*/
 
 	// check if the rra_dir is a directory and if we have write access to it
 	if (-1 == stat(rra_dir, &s)) {
 		fprintf(stderr, "ERROR stating rra-dir \"%s\": %s\n", rra_dir, strerror(errno));
 		exit(-1);
 	}
-	if (-1 == access(cache_dir, R_OK | X_OK | W_OK)) {
+	if (-1 == access(rra_dir, R_OK | X_OK | W_OK)) {
 		fprintf(stderr, "ERROR: Insufficient rights on rra-dir \"%s\". Need read, write, and execute rights!\n", rra_dir);
 		exit(-3);
 	}
 
-	read_cache_dir(cache_dir, rra_dir, timestamp);
+	read_cache_file(cache_file, rra_dir, timestamp);
 	
 
 	return 0;
