@@ -5,10 +5,10 @@ This is a little tool that performs SNMP queries on a large
 number of machines. And puts the output of these queries into
 a single large file. The syntax of the call is:
 
-Usage: ./snmpwalk-worker <ip_list> <output_dir> <snmp-type-list>
+Usage: ./snmpwalk-worker <output_dir> <snmp-type-list>
 
-<ip_list>:
-	Textfile which contains a list of IP and communitystring
+read from stdin:
+	Text which contains a list of IP and communitystring
 	combinations:
 		127.0.0.1 public
 		127.0.0.1 public 

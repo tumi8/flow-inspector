@@ -296,25 +296,19 @@ int send_snmp_queries(std::vector<host>& hosts, std::vector<session>& session_ve
 
 
 
-int perform_snmp_measurement(const std::string& filename, const std::string& output_dir, const std::string& types_file)
+int perform_snmp_measurement(const std::string& output_dir, const std::string& types_file)
 {
 	std::vector<session> session_vec;
 	std::vector<host> hosts;
 
 	init_snmp();
-	
-	std::ifstream in(filename.c_str());
-	if (!in) {
-		std::cerr << "Error opening snmp device list (" << filename << "): " << strerror(errno) << std::endl;
-		return -1;
-	}
 
-	// read all hosts and community strings from the input file
+	// read all hosts and community strings from stdin
 	// and store them in the hosts vector. This is later on used
 	// to create the sessions
 	std::string line;
-	while (in && !in.eof()) {
-		std::getline(in, line);
+	while (std::cin && !std::cin.eof()) {
+		std::getline(std::cin, line);
 		if (line == "") {
 			continue;
 		}
@@ -402,14 +396,14 @@ int perform_snmp_availability_check()
 
 int main(int argc, char** argv)
 {
-	if (argc == 4) {
+	if (argc == 3) {
 		do_output = true;
-		return perform_snmp_measurement(argv[1], argv[2], argv[3]);
+		return perform_snmp_measurement(argv[1], argv[2]);
 	} else if (argc == 1) {
 		do_output = false;
 		return perform_snmp_availability_check();
 	} else {
-		std::cerr << "Usage: " << argv[0] << " <ip_list> <output_dir> <snmp-type-list>" << std::endl;
+		std::cerr << "Usage: " << argv[0] << " <output_dir> <snmp-type-list>" << std::endl;
 		std::cerr << "or " << std::endl;
 		std::cerr << "Usage: " << argv[0] << std::endl;
 		return -1;
