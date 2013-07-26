@@ -16,15 +16,39 @@ import glob
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'tools'))
 
 import config
 import common
 import backend
 import common_functions
 import snmp_preprocess
+import config_snmp_dump
+
+
+def generate_output_string(value, allowed_collections):
+	output = ""
+	for field in config_snmp_dump.data_source_fields: 
+		(collection) = config_snmp_dump.data_source_fields[field]
+		if not collection in allowed_collections:
+			continue
+		# TODO: We assume that the ordering is good. There should be some checks for that ...
+		try:
+			v = value[field]
+		except:
+			v = None
+		if v != None:
+			fieldValue = long(v)
+		else: 
+			fieldValue = 0
+		if output != "":
+			output += " "
+		output += field + ":" + str(fieldValue)
+	return output
+	
 
 def dump_to_rrd(snmp_dump_file, rrd_dir, timestamp):
-	os.system(os.path.join(os.path.dirname(__file__), '..', 'tools', 'update_rras') + " " + snmp_dump_file + " " + rrd_dir + " " + str(timestamp))
+	os.system(os.path.join(os.path.dirname(__file__), '..', 'tools', 'update-rras') + " " + snmp_dump_file + " " + rrd_dir + " " + str(timestamp))
 
 
 def prepare_data_for_rrd_dump(doc, outfile):
