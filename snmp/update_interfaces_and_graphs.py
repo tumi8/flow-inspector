@@ -39,25 +39,52 @@ def create_interface_list(device_coll, interface_phy_coll, ifxtable_coll, destin
 	iface_phy_results = interface_phy_coll.find({}, fields={"DISTINCT router" : 1, "if_number" : 1, "ifOperStatus": 1, "ifType":1})
 
 	print "Retrieving a list of device ids ..."
-	deviceresults = device_table.find({}, fields={"IP": 1, "_id": 1})
-	devices_map = dict()
+	deviceresults = device_coll.find({}, fields={"ip": 1, "_id": 1})
+	device_map = dict()
 	for result in deviceresults:
-		print result
+		device_map[result['ip']] = result['_id']
 
 	interface_list = {}
-	print "Building interface list ..."
-	for r in interface_results:
-		ip = r['router']
-		if_num = r["if_number"] 
-		if if_num == None:
-			print "Found interface without if_number:", r
-			continue
-		else:
-			if_num = str(if_num)
-		interface_list[ip + "_" + if_num] = r
-	
-
-	
+	for res in interface_results:
+		interface_list_entry = dict()
+		if_number = res['if_number']
+		ip = res['router']
+		if_id = ip + "_" + str(if_number)
+		if if_id in interface_list:
+			print "FATAL: Found duplicate interface in interface_list:", res
+			sys.exit(-1)
+		if not ip in device_map:
+			print "FATAL: Found IP \"" + ip + "\" in interface_results but IP is not known in device_map"
+			sys.exit(-2)
+		interface_list_entry['device_id'] = device_map[ip]
+		interface_list_entry['if_number'] = res['if_number']
+		interface_list_entry['if_alias']  = res['ifAlias']
+		interface_list_entry['if_name']   = res['ifName']
+		interface_list[if_id] = interface_list_entry
+	# we now have the basic information for the interfaces. 
+	# we now want to enrich this informaiton with the interface status from interface_phy_results
+	for res in iface_phy_results:
+		if_number = res['if_number']
+		ip = res['router']
+		if_id = ip + "_" + str(if_number)
+		if not if_id in interface_list:
+			print "FATAL: Found an interface in interface_list (ifXTable) that does not have a corresponding interface in (interface_phy):", res
+			sys.exit(-3)
+		interface_list[if_id]['if_status'] = res['ifOperStatus']
+		interface_list[if_id]['if_type'] = res['ifType']
+	print "Pushing data into database..."
+	for if_id in interface_list:
+		interface = interface_list[if_id]
+		device_id = interface['device_id']
+		if_number = interface['if_number']
+		del interface['device_id']
+		del interface['if_number']
+		print interface
+		doc = dict()
+		doc["$set"] = interface
+		destination_coll.update({'device_id': device_id, 'if_number' : if_number}, doc)
+	destination_coll.flushCache()
+		
 
 def create_graph_templates(collection):
 	"""
@@ -95,5 +122,11 @@ if __name__ == "__main__":
 		dst_db.prepareCollection(name, fields)
 
 	create_graph_templates(dst_db.getCollection("graph_list"))
-	create_interface_list(dst_db.getCollection("interfaces"))
+
+	device_coll = dst_db.getCollection("device_table")
+	interface_phy_coll = dst_db.getCollection("interface_phy")
+	ifxtable_coll = dst_db.getCollection("ifXTable")
+	destination_coll = dst_db.getCollection("interface_list")
+
+	create_interface_list(device_coll, interface_phy_coll, ifxtable_coll, destination_coll)
 	
