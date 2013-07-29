@@ -100,19 +100,27 @@ if __name__ == "__main__":
 		ip = row[0]
 		csv_content[ip] = dict()
 		csv_content[ip]["name"] = row[1]
-		if row[2] != "0" and row[2] != "1":
-			print "ERROR in CSV: status value of", row[2], "is illegal for IP", ip
-			sys.exit(-3)
-		csv_content[ip]["status"] = row[2]
+		csv_content[ip]["device_type"] = row[2]
+
+		# device status
 		if row[3] != "0" and row[3] != "1":
 			print "ERROR in CSV: status value of", row[3], "is illegal for IP", ip
 			sys.exit(-3)
-		csv_content[ip]["do_snmp"] = row[3]
+		csv_content[ip]["status"] = row[3]
+
+		# so_snmp
 		if row[4] != "0" and row[4] != "1":
-			print "ERROR in CSV: status value of", row[4], "is illegal for IP", ip
+			print "ERROR in CSV: do_snmp value of", row[4], "is illegal for IP", ip
 			sys.exit(-3)
-		csv_content[ip]["do_live_check"] = row[4]
-		csv_content[ip]["community_string"] = row[5]
+		csv_content[ip]["do_snmp"] = row[4]
+
+		# do_live_check
+		if row[5] != "0" and row[5] != "1":
+			print "ERROR in CSV: do_live_check value of", row[5], "is illegal for IP", ip
+			sys.exit(-3)
+		csv_content[ip]["do_live_check"] = row[5]
+
+		csv_content[ip]["community_string"] = row[6]
 
 	csv_file_handle.close()
 

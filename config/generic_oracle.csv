@@ -6,6 +6,7 @@ string20||tsVARCHAR(20)|n|n
 string50||tsVARCHAR(50)|n|n
 string100||tsVARCHAR(100)|n|n
 string150||tsVARCHAR(150)|n|n
+string255||tsVARCHAR(255)|n|n
 uint4294967295||tsNUMBER(11)|n|n
 uint234||tsNUMBER(3)|n|n
 uint1||tsNUMBER(3)|n|n
@@ -19,5 +20,6 @@ uint32||tsNUMBER(3)|n|n
 uint100||tsNUMBER(3)|n|n
 uint65535||tsNUMBER(5)|n|n
 uint2147483647||tsNUMBER(11)|n|n
+int2147483647||tsNUMBER(11)|n|n
 uint18446744073709551615||tsNUMBER(20)|n|n
 uint64bit||tsNUMBER(20)|n|n
