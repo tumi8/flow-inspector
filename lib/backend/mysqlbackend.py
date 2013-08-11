@@ -82,7 +82,7 @@ class MysqlBackend(SQLBaseBackend):
 				#print "Total len:",  len(self.tableInsertCache)
 				#for c in self.tableInsertCache:
 					#print c, len(self.tableInsertCache[c][0]), self.tableInsertCache[c][1]
-			
+
 			if numElem > self.cachingThreshold:
 				self.flushCache(collectionName)
 		else:
@@ -158,3 +158,10 @@ class MysqlBackend(SQLBaseBackend):
 			createString += "," + indexes
 		createString += ") " + table_options
 		self.execute(createString)
+	
+	def getIndexes(self, collectionName):
+		indexFields = []
+		self.execute("SHOW INDEX FROM " + collectionName + ";")
+		for indexField in self.cursor.fetchall():
+			indexFields.append(indexField[4])
+		return indexFields

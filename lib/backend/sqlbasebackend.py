@@ -764,3 +764,6 @@ class SQLBaseBackend(Backend):
 
 		return ret
 
+	def getIndexes(self, collectionName):
+		pass
+
