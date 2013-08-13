@@ -259,7 +259,7 @@ def commit_doc(doc, collections):
 	counter = 0
 	total = sum(len(doc[table]) for table in doc)
 
-	print "Commiting %s entries to databackend" % total
+	#print "Commiting %s entries to databackend" % total
 	
 	for name, table in doc.items():	
 		# push into the database
