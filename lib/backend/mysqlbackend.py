@@ -8,6 +8,10 @@ import operator
 
 class MysqlBackend(SQLBaseBackend):
 	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
+		from warnings import filterwarnings
+		import MySQLdb
+		import _mysql_exceptions
+		filterwarnings('ignore', category = MySQLdb.Warning)
 		SQLBaseBackend.__init__(self, host, port, user, password, databaseName, insertMode)
 		self.column_map = None
 		self.type_map = common.MYSQL_TYPE_MAPPER
