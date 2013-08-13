@@ -84,7 +84,7 @@ def prepare_data_for_rrd_dump(doc, outfile):
 				memoryResultSet[dict_key] = dict(keys.items() + value[1]["$set"].items())
 			
 
-	print "Dumping interface data to disk ..."
+	#print "Dumping interface data to disk ..."
 
 	f_desc = open(outfile, 'w+')
 	for key, value in interfaceResultSet.items():
@@ -137,13 +137,13 @@ def parse_snmp_data(source_dir):
 		# output some performance statistics
 		time_current = time.time()
 		if (time_current - time_last > 5):
-			print "Processed %s lines in %s seconds (%s lines per second)" % (
-			counter, time_current - time_begin, counter / (time_current - time_begin))
+			#print "Processed %s lines in %s seconds (%s lines per second)" % (
+			#counter, time_current - time_begin, counter / (time_current - time_begin))
 			time_last = time_current
 	
 	if (time_current - time_last > 5):
-		print "Processed %s lines in %s seconds (%s lines per second)" % (
-		counter, time_current - time_begin, counter / (time_current - time_begin))
+		#print "Processed %s lines in %s seconds (%s lines per second)" % (
+		#counter, time_current - time_begin, counter / (time_current - time_begin))
 		time_last = time_current
 
 	if len(timestamps) != 1:
@@ -167,10 +167,8 @@ def perform_snmp_measurement(ip_list_community_strings, output_dir):
 		input_for_snmpwalk_worker += ip + " " + community_string + "\n"
 
 	output = snmpwalk_pipe.communicate(input=input_for_snmpwalk_worker)[0].split('\n')
-
-	print output
+	# TODO: decide on what to do with the output. do we want to dump it?
 	
-
 
 if __name__ == "__main__":
 	parser = common.get_default_argument_parser("Tool for performing live checks on the devices that require the monitoring")

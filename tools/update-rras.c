@@ -210,7 +210,7 @@ int read_cache_file(const char* cache_file, const char* rrd_dir, const char* tim
 
 		counter++;
 		if (counter % 1000 == 0) {
-			printf("Worked on %lu rrdfiles ...\n", counter);
+			//printf("Worked on %lu rrdfiles ...\n", counter);
 		}
 
 	}
