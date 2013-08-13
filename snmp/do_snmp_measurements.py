@@ -224,3 +224,6 @@ if __name__ == "__main__":
 	for collection in collections.itervalues():
 		collection.flushCache()
 
+	# remove the temporary output directory
+	import shutil
+	shutil.rmtree(output_dir)
