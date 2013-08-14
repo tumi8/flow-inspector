@@ -71,8 +71,8 @@ rtt_graph_configs = [
 ]
 
 graph_dict = {
-	"interface_details": interface_graph_configs,
-	"cpu_details": cpu_graph_configs,
-	"memory_details": mem_graph_configs,
+	"interface": interface_graph_configs,
+	"cpu": cpu_graph_configs,
+	"memory": mem_graph_configs,
 	"rtt": rtt_graph_configs,
 }
