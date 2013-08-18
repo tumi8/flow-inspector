@@ -172,3 +172,6 @@ class MysqlBackend(SQLBaseBackend):
 		for indexField in self.cursor.fetchall():
 			indexFields.append(indexField[4])
 		return indexFields
+
+	def check_index_column(self, column, collectionName):
+		return column in self.getIndexes(collectionName)
