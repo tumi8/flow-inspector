@@ -1,3 +1,4 @@
+import os
 from ordered_dict import OrderedDict
 
 # parsing function for oid values
@@ -172,3 +173,50 @@ def dict2csv(dict, prefix=""):
 
 
 
+def create_fieldDict(backend, convert_generic, convert_snmp, csv_file):
+	field_map = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', csv_file))
+	fieldDict = OrderedDict() 
+
+	for key, dictionary in field_map.iteritems():
+		name = dictionary['name']
+		table = dictionary['table']
+		if (not 'only' in dictionary) or (dictionary['only'] == backend):
+			if not table in fieldDict:
+				fieldDict[table] = OrderedDict()
+	
+			if 'use_type' in dictionary:
+				if dictionary['use_type'] == 'predef_value':
+					fieldDict[table][name] = dictionary['value']
+				else:
+					fieldDict[table][name] = convert_generic(dictionary['use_type'])
+			else:
+				fieldDict[table][name] = convert_snmp(dictionary['snmp_type'])
+	return fieldDict
+
+def read_field_dict_from_csv(backend, csv_file):
+	if backend == "mysql":
+		type_snmp_generic = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "snmp_generic.csv"))
+		type_generic_mysql = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "generic_mysql.csv"))
+		
+		def __convert_generic(generic_type):
+			return type_generic_mysql[generic_type]
+		
+		def __convert_snmp(snmp_type):
+			return type_generic_mysql[type_snmp_generic[snmp_type]]
+		
+		return create_fieldDict('mysql', __convert_generic, __convert_snmp, csv_file)
+	elif backend == "oracle":
+		type_snmp_generic = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "snmp_generic.csv"))
+		type_generic_oracle = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "generic_oracle.csv"))
+		
+		def __convert_generic(generic_type):
+			return type_generic_mysql[generic_type]
+		
+		def __convert_snmp(snmp_type):
+			return type_generic_oracle[type_snmp_generic[snmp_type]]
+		
+		return create_fieldDict('oracle', __convert_generic, __convert_snmp, csv_file)
+	elif args.backend == "mongo":
+		return None
+	else:
+		raise Exception("Unknown data backend: " + args.backend);

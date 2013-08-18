@@ -3,43 +3,31 @@
 
 import sys
 import os.path
-import argparse
-import time
-import glob
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
 
+import time
+import glob
 import config
 import common
 import backend
 
 from common_functions import *
 
-def create_fieldDict(backend, convert_generic, convert_snmp):
-	global oidmap
-	fieldDict = OrderedDict() 
-
-	for key, dictionary in oidmap.iteritems():
-		name = dictionary['name']
-		table = dictionary['table']
-		if (not 'only' in dictionary) or (dictionary['only'] == backend):
-			if not table in fieldDict:
-				fieldDict[table] = OrderedDict()
-	
-			if 'use_type' in dictionary:
-				if dictionary['use_type'] == 'predef_value':
-					fieldDict[table][name] = dictionary['value']
-				else:
-					fieldDict[table][name] = convert_generic(dictionary['use_type'])
-			else:
-				fieldDict[table][name] = convert_snmp(dictionary['snmp_type'])
-	return fieldDict
 
 
 # dictionary which maps oid -> name and fct to parse oid value
-oidmap = readDictionary("oidmap.csv")
+oidmap_filename = os.path.join(os.path.dirname(__file__), '..', 'config', "oidmap.csv")
+oidmap = readDictionary(oidmap_filename)
+
+def prepare_snmp_collections(dst_db, backend):
+	collections = dict()
+	for name, fields in read_field_dict_from_csv(backend, oidmap_filename).items():
+		dst_db.prepareCollection(name, fields)
+		collections[name] = dst_db.getCollection(name)
+	return collections
 
 def parse_snmp_file(file, doc):
 	# parse file name
@@ -253,33 +241,6 @@ def parse_snmp_file(file, doc):
 
 	return (lines, timestamp, doc)
 
-def getFieldDict(args):
-	if args.backend == "mysql":
-		type_snmp_generic = readDictionary("snmp_generic.csv")
-		type_generic_mysql = readDictionary("generic_mysql.csv")
-		
-		def __convert_generic(generic_type):
-			return type_generic_mysql[generic_type]
-		
-		def __convert_snmp(snmp_type):
-			return type_generic_mysql[type_snmp_generic[snmp_type]]
-		
-		return create_fieldDict('mysql', __convert_generic, __convert_snmp)
-	elif args.backend == "oracle":
-		type_snmp_generic = readDictionary("snmp_generic.csv")
-		type_generic_oracle = readDictionary("generic_oracle.csv")
-		
-		def __convert_generic(generic_type):
-			return type_generic_mysql[generic_type]
-		
-		def __convert_snmp(snmp_type):
-			return type_generic_oracle[type_snmp_generic[snmp_type]]
-		
-		return create_fieldDict('oracle', __convert_generic, __convert_snmp)
-	elif args.backend == "mongo":
-		return None
-	else:
-		raise Exception("Unknown data backend: " + args.backend);
 
 def update_doc(doc, table, table_key, db_key, db_values):
 	""" update local document before comitting to databackend """
@@ -298,11 +259,17 @@ def commit_doc(doc, collections):
 	counter = 0
 	total = sum(len(doc[table]) for table in doc)
 
-	print "Commiting %s entries to databackend" % total
+	#print "Commiting %s entries to databackend" % total
 	
-	for name, table in doc.items():
+	for name, table in doc.items():	
 		# push into the database
 		for value in table.itervalues():
+ 		# fill in ip ranges for ipCidrRoute and cEigrp
+			if name == "ipCidrRoute" or name == "cEigrp":
+				(low_ip, high_ip) = calc_ip_range(value[0]["ip_dst"], value[0]["mask_dst"])
+				value[1]["$set"]["low_ip"] = low_ip
+				value[1]["$set"]["high_ip"] = high_ip
+
 			collections[name].update(value[0], value[1], True)
 			counter = counter + 1
 		time_current = time.time()
@@ -315,34 +282,22 @@ def commit_doc(doc, collections):
 
 def main():
 	doc = {}
-	collections = dict()
 
+        parser = common.get_default_argument_parser("Parse SNMP data files and import data to database")
 
-	parser = argparse.ArgumentParser(description="Parse SNMP data files and import data to database")
 	parser.add_argument("data_path", help="Path to the data that should be inserted. This must be a file if neither -d or -r are given.")
 	parser.add_argument("-d", "--directory", action="store_true", help="Parse directory instead of a single file. The directory will be scanned for <directory>/*.txt:")
 	parser.add_argument("-r", "--recursive", action="store_true", help="Recurse direcory, i.e. expecting files in <directory>/*/*.txt")
-	parser.add_argument("--dst-host", nargs="?", default=config.data_backend_host, help="Backend database host")
-	parser.add_argument("--dst-port", nargs="?", default=config.data_backend_port, type=int, help="Backend database port")
-	parser.add_argument("--dst-user", nargs="?", default=config.data_backend_user, help="Backend database user")
-	parser.add_argument("--dst-password", nargs="?", default=config.data_backend_password, help="Backend database password")
-	parser.add_argument("--dst-database", nargs="?", default=config.data_backend_snmp_name, help="Backend database name")
-	parser.add_argument("--clear-database", nargs="?", type=bool, default=False, const=True, help="Whether to clear the whole databse before importing any flows.")
-	parser.add_argument( "--backend", nargs="?", default=config.data_backend, const=True, help="Selects the backend type that is used to store the data")
-
-
 	args = parser.parse_args()
 
 	dst_db = backend.databackend.getBackendObject(
 		args.backend, args.dst_host, args.dst_port,
-		args.dst_user, args.dst_password, args.dst_database)
+		args.dst_user, args.dst_password, args.dst_database, "INSERT")
 
 	if args.clear_database:
 		dst_db.clearDatabase()
 
-	for name, fields in getFieldDict(args).items():
-		dst_db.prepareCollection(name, fields)
-		collections[name] = dst_db.getCollection(name)
+	collections = prepare_snmp_collections(dst_db, args.backend)
 	
 	# TODO: hacky ... make something more general ...
 	if backend == "mongo":
@@ -354,7 +309,7 @@ def main():
 		collection.ensure_index([("ip_src", pymongo.ASCENDING), ("ip_dst", pymongo.ASCENDING), ("mask_dst", pymongo.ASCENDING), ("ip_gtw", pymongo.ASCENDING), ("timestamp", pymongo.ASCENDING), ("type", pymongo.ASCENDING)])
 
 		# restore generic backend collection
-		collection = dst_db.getCollection("snmp_raw")
+		collection = dst_db.getCollection(name)
 	else: 
 	#	collection.createIndex("router")
 	#	collection.createIndex("if_number")
@@ -410,21 +365,6 @@ def main():
 	# commit local doc to databackend in the end
 	
 	commit_doc(doc, collections)
-
-	for collection in collections.itervalues():
-		collection.flushCache()
-
-	print "Calculating IP ranges"
-
-	# calculate ip network ranges
-	for timestamp in timestamps:
-		for row in collections["ipCidrRoute"].find({"timestamp": timestamp}):
-			(low_ip, high_ip) = calc_ip_range(row["ip_dst"], row["mask_dst"])
-			collections["ipCidrRoute"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
-	
-		for row in collections["cEigrp"].find({"timestamp": timestamp}):
-			(low_ip, high_ip) = calc_ip_range(row["ip_dst"], int(row["mask_dst"]))
-			collections["cEigrp"].update({"_id": row["_id"]}, {"$set": {"low_ip": low_ip, "high_ip": high_ip}}, True)
 
 	for collection in collections.itervalues():
 		collection.flushCache()

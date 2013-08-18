@@ -85,4 +85,9 @@ host_info__user = "username"
 host_info_password = "password"
 host_info_name = "hostinfo"
 
+# SNMP specfic options
+#----------------------------------------------------------------
 
+snmp_oid_file="flow-inspector/config/oid_list.txt"
+snmp_query_tmp_dir="flow-inspector/tmp/snmp_query_cache/"
+rrd_file_dir="flow-inspector/rrd/"
