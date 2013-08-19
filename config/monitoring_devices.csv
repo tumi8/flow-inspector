@@ -211,3 +211,26 @@ mem_list_index||value||tsUNIQUE INDEX|sdevice_id ASC,pool_number ASC
 mem_list_note||name||snote
 mem_list_note||table||smem_list
 mem_list_note||use_type||suint1
+
+########################################## Location Table ###############################
+
+location_table_id||name||slocation_id
+location_table_id||table||slocation_table
+location_table_id||use_type||sprimary_key_self
+
+location_table_description||name||sdescription
+location_table_description||table||slocation_table
+location_table_description||use_type||sstring255
+
+location_table_checked_ip||name||schecked_ip
+location_table_checked_ip||table||slocation_table
+location_table_checked_ip||use_type||sstring15
+
+location_table_subnet_list||name||ssubnet_list
+location_table_subnet_list||table||slocation_table
+location_table_subnet_list||use_type||sstring255
+
+location_table_index||name||sd_idx
+location_table_index||table||slocation_table
+location_table_index||use_type||spredef_value
+location_table_index||value||tsUNIQUE INDEX|slocation_id ASC
