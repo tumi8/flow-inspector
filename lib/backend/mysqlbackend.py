@@ -28,7 +28,9 @@ class MysqlBackend(SQLBaseBackend):
 				port = self.port,
 				user = self.user,
 				passwd = self.password
-			)         
+			)
+			if self.conn:
+				self.conn.close()
 			self.conn = MySQLdb.connect(**dns)
 			self.cursor = self.conn.cursor()
 			self.dictCursor = self.conn.cursor()

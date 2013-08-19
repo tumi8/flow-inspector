@@ -27,6 +27,7 @@ class SQLBaseBackend(Backend):
 		self.connect()
 
 		self.dbType = None
+		self.did_reconnect_on_error = False
 
 		self.executeTimes = 0
 		self.executeManyTimes = 0
@@ -80,6 +81,9 @@ class SQLBaseBackend(Backend):
 			if end_time - start_time > maxtime:
 				print "Execute: commit time was ", end_time - start_time
 
+			# successful operation. Reset did_reconnect
+			self.did_reconnect_on_error = False
+
 		except Exception as e:
 			try: 
 				# we can handle a large number of exceptions.we cannot do this with all
@@ -88,14 +92,22 @@ class SQLBaseBackend(Backend):
 				# or it can reraise the Exception in which case we want to know the query
 				# that caused the exception
 				if self.handle_exception(e):
-					self.executemany(string, objects, table)
+					self.execute(string, params, cursor)
+				else:
+					# there are a number of errors that could be mitigated by a single
+					# attempt to reconnect to the db. If one reconnect failes, then we
+					# should except and end
+					if not self.did_reconnect_on_error:
+						self.did_reconnect_on_error = True
+						self.connect() # will close the old connection and do a reconnect
+						self.execute(string, params, cursor)
+					else:
+						# ok. we give up now ...
+						raise						
 			except Exception as e:
 				print "Cannot gracefully handle DB Exception", e
 				print "Exception was caused by query: ", string
 				sys.exit(-1)
-
-			if self.handle_exception(e):
-				self.execute(string, params)
 
 
 	def executemany(self, string, objects, table = None):
@@ -124,6 +136,8 @@ class SQLBaseBackend(Backend):
 			end_time = time.time()
 			if end_time - start_time > maxtime:
 				print "ExecuteMany: commit time on table " + table + " was ", end_time - start_time, "seconds"
+			# successful operation. Reset did_reconnect
+			self.did_reconnect_on_error = False
 		except Exception as e:
 			try: 
 				# we can handle a large number of exceptions.we cannot do this with all
@@ -133,6 +147,17 @@ class SQLBaseBackend(Backend):
 				# that caused the exception
 				if self.handle_exception(e):
 					self.executemany(string, objects, table)
+				else:
+					# there are a number of errors that could be mitigated by a single
+					# attempt to reconnect to the db. If one reconnect failes, then we
+					# should except and end
+					if not self.did_reconnect_on_error:
+						self.did_reconnect_on_error = True
+						self.connect() # will close the old connection and do a reconnect
+						self.execute(string, params, cursor)
+					else:
+						# ok. we give up now ...
+						raise						
 			except Exception as e:
 				print "Cannot gracefully handle DB Exception", e
 				print "Exception was caused by query: ", string
