@@ -191,6 +191,7 @@ class SQLBaseBackend(Backend):
 			return
 
 		fieldDict = {}
+	
 		for s in statement:
 			# TODO: this will break if we have a non-flow collection name that 
 			#       has a name starting with index ... 
@@ -220,6 +221,8 @@ class SQLBaseBackend(Backend):
 				if s == "_id":
 					fieldDict["id"] = (statement[s], "PRIMARY")
 				else:
+					if not self.check_index_column(s, collectionName):
+						print >> sys.stderr, "Warning: Using " + s + " as key, although it is not an index in " + collectionName
 					fieldDict[s] = (statement[s], "PRIMARY")
 
 		for part in [ "$set", "$inc" ]:
@@ -836,6 +839,11 @@ class SQLBaseBackend(Backend):
 			ret.append(entry[field])
 
 		return ret
+
+
+	def check_index_column(self, column, collectionName):
+		return true
+
 
 	def add_to_cache(self, collectionName, queryString, cacheLine):
 		numElem = 1
