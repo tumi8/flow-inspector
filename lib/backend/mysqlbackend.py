@@ -167,3 +167,13 @@ class MysqlBackend(SQLBaseBackend):
 			createString += "," + indexes
 		createString += ") " + table_options
 		self.execute(createString)
+	
+	def getIndexes(self, collectionName):
+		indexFields = []
+		self.execute("SHOW INDEX FROM " + collectionName + ";")
+		for indexField in self.cursor.fetchall():
+			indexFields.append(indexField[4])
+		return indexFields
+
+	def check_index_column(self, column, collectionName):
+		return column in self.getIndexes(collectionName)
