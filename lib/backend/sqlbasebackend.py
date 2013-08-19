@@ -221,7 +221,7 @@ class SQLBaseBackend(Backend):
 				if s == "_id":
 					fieldDict["id"] = (statement[s], "PRIMARY")
 				else:
-					if not self.check_index_column(s, collectionName):
+					if self.insertMode == "UPDATE" and not self.check_index_column(s, collectionName):
 						print >> sys.stderr, "Warning: Using " + s + " as key, although it is not an index in " + collectionName
 					fieldDict[s] = (statement[s], "PRIMARY")
 
