@@ -56,7 +56,7 @@ def perform_live_check(ip_list):
 	Retrieves a list of IP addresses that should be checked. All IPs 
 	are checked with fping and a list of unreachable IPs is returend to the caller.
 	"""
-	fping_pipe = subprocess.Popen(['fping', '-u', '-i', '10', '-p', '20', '-t', '50'], stdout=subprocess.PIPE,stdin=subprocess.PIPE)
+	#fping_pipe = subprocess.Popen(['fping', '-u', '-i', '10', '-p', '20', '-t', '50'], stdout=subprocess.PIPE,stdin=subprocess.PIPE)
 
 	input_for_fping = ""
 	for ip in monitoring_ips:
