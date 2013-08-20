@@ -91,7 +91,8 @@ class SQLBaseBackend(Backend):
 				# we can just try to do it again. If not, we can ignore the problem. 
 				# or it can reraise the Exception in which case we want to know the query
 				# that caused the exception
-				if self.handle_exception(e):
+				print e
+				if not self.did_reconnect_on_error and  self.handle_exception(e):
 					self.execute(string, params, cursor)
 				else:
 					# there are a number of errors that could be mitigated by a single
@@ -145,7 +146,7 @@ class SQLBaseBackend(Backend):
 				# we can just try to do it again. If not, we can ignore the problem. 
 				# or it can reraise the Exception in which case we want to know the query
 				# that caused the exception
-				if self.handle_exception(e):
+				if not self.did_reconnect_on_error and self.handle_exception(e):
 					self.executemany(string, objects, table)
 				else:
 					# there are a number of errors that could be mitigated by a single
@@ -154,7 +155,7 @@ class SQLBaseBackend(Backend):
 					if not self.did_reconnect_on_error:
 						self.did_reconnect_on_error = True
 						self.connect() # will close the old connection and do a reconnect
-						self.execute(string, params, cursor)
+						self.executemany(string, params, cursor)
 					else:
 						# ok. we give up now ...
 						raise						

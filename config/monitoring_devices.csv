@@ -234,3 +234,26 @@ location_table_index||name||sd_idx
 location_table_index||table||slocation_table
 location_table_index||use_type||spredef_value
 location_table_index||value||tsUNIQUE INDEX|slocation_id ASC
+
+########################################## Location Check Results Table ###############################
+
+location_results_id||name||slocation_id
+location_results_id||table||slocation_results
+location_results_id||use_type||suint64bit
+
+location_results_timestamp||name||stimestamp
+location_results_timestamp||table||slocation_results
+location_results_timestamp||use_type||stimestamp
+
+location_results_success||name||ssuccess
+location_results_success||table||slocation_results
+location_results_success||use_type||suint2
+
+location_results_rtt||name||srtt
+location_results_rtt||table||slocation_results
+location_results_rtt||use_type||suint32
+
+location_results_index||name||sd_idx
+location_results_index||table||slocation_results
+location_results_index||use_type||spredef_value
+location_results_index||value||tsINDEX|slocation_id ASC
