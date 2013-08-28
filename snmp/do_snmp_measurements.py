@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
 	dst_db = backend.databackend.getBackendObject(
 		args.backend, args.dst_host, args.dst_port,
-		args.dst_user, args.dst_password, args.dst_database)
+		args.dst_user, args.dst_password, args.dst_database, "INSERT")
 
 	measurement_map_filename =  os.path.join(os.path.dirname(__file__), "..", "config",  "monitoring_devices.csv")
 	for name, fields in common_functions.read_field_dict_from_csv(args.backend, measurement_map_filename).items():
