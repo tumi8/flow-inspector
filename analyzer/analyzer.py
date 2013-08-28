@@ -1,14 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# import base class
-import Analyzer
-
-# import standard python modules
 import math
 import sys
 
-class IntervalAnalyzer(Analyzer.Analyzer):
+class Analyzer:
+	""" Generic base class for all analyzers """
+
+
+	def __init__(self):
+		pass
+
+	def passDataSet(self, data):
+		pass
+
+	@staticmethod		
+	def getInstances(data):
+		pass
+
+
+class IntervalAnalyzer(Analyzer):
 	
 	def __init__(self, router, interface):
 		self.router = router
@@ -47,6 +58,24 @@ class IntervalAnalyzer(Analyzer.Analyzer):
 
 		self.last_timestamp = data[router][interface]["timestamp"]
 	
+	@staticmethod
+	def getInstances(data):
+		return ((str(router) + "-" + str(interface), (router, interface)) for router in data for interface in data[router])
+
+class StatusAnalyzer(Analyzer):
+	
+	def __init__(self, router, interface):
+		self.router = router
+		self.interface = interface
+
+	def passDataSet(self, data):
+		router = self.router
+		interface = self.interface
+		record = data[router][interface]
+		if (record["ifOperStatus"] != record["ifAdminStatus"]):
+			print "---> Mismatch"
+			print time.strftime("%d/%m/%y %H:%M:%S", time.localtime(record["timestamp"])), record["router"], record["ifIndex"], record["ifLastChange"], record["ifAdminStatus"], record["ifOperStatus"]
+
 	@staticmethod
 	def getInstances(data):
 		return ((str(router) + "-" + str(interface), (router, interface)) for router in data for interface in data[router])

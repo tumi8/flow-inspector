@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# import base class
-import Importer
-
 # prepare paths
 import sys
 import os.path
@@ -20,6 +17,14 @@ import config
 #import math
 #import datetime
 #import subprocess
+
+class Importer:
+
+	def __init__(self):
+		pass
+
+	def getNextDataSet(self):
+		pass
 
 class FlowBackendImporter(Importer.Importer):
 	
