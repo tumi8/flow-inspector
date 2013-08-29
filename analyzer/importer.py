@@ -4,8 +4,8 @@
 # prepare paths
 import sys
 import os.path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..', 'config'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..', 'lib'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 # import other modules
 import common
@@ -26,7 +26,7 @@ class Importer:
 	def getNextDataSet(self):
 		pass
 
-class FlowBackendImporter(Importer.Importer):
+class FlowBackendImporter(Importer):
 	
 	def __init__(self):
 	

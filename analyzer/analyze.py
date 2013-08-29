@@ -2,13 +2,16 @@
 # -*- coding: utf-8 -*-
 
 import importer
+import exporter
 import analyzer
 
-print dir()
-
+import common
+import backend
+import config
 
 analyzer_store = {}
 importer = importer.FlowBackendImporter()
+exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
 
 while True:
 	data = importer.getNextDataSet()
@@ -16,7 +19,10 @@ while True:
 	for key, initArgs in analyzer.IntervalAnalyzer.getInstances(data):
 	    if not key in analyzer_store:
 	    	analyzer_store[key] = analyzer.IntervalAnalyzer(*initArgs)
-	    analyzer_store[key].passDataSet(data)
+	    result = analyzer_store[key].passDataSet(data)
+	    if result != None:
+	    	for exp in exporter:
+	    		exp.writeEventDataSet(*result)
 
 #	for key, initArgs in analyzer.StatusAnalyzer.getInstances(data):
 #	    if not key in analyzer_store:

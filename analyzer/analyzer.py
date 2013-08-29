@@ -52,8 +52,10 @@ class IntervalAnalyzer(Analyzer):
 		upper_bound = self.st + self.L * math.sqrt(self.ewmv * self.p_st / (2 - self.p_st))
 
 		if lower_bound - t > 6e-14:
-			print "%s %s: %s - time too small - %s < %s" % (timestamp, router, interface, t, lower_bound)
+			return ("IntervalAnalyzer", router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound))
+			# print "%s %s: %s - time too small - %s < %s" % (timestamp, router, interface, t, lower_bound)i
 		if upper_bound - t < -6e-14:
+			return ("IntervalAnalyzer", router, interface, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound))
 			print "%s %s: %s - time too big - %s > %s" % (timestamp, router, interface, t, upper_bound)
 
 		self.last_timestamp = data[router][interface]["timestamp"]
