@@ -14,7 +14,7 @@ class SQLBaseBackend(Backend):
 	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
 		Backend.__init__(self, host, port, user, password, databaseName, insertMode)
 		self.tableInsertCache = dict()
-		self.cachingThreshold = 1000000
+		self.cachingThreshold = config.data_backend_caching_threshold
 		self.counter = 0
 
 		self.column_map = None

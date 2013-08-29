@@ -34,6 +34,7 @@ data_backend_user = "username"
 data_backend_password = "password"
 data_backend_name = "flows"
 data_backend_snmp_name = "snmp"
+data_backend_caching_threshold = 1000000
 
 
 # Flow settings
