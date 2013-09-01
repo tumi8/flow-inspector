@@ -320,7 +320,7 @@ def main():
 		pass
 
 	# enviromental settings
-	cache_treshold = 10000000
+	cache_treshold = 100000
 
 	# TODO: implies precedence of operators, maybe something better can be done here
 	if args.directory:
