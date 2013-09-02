@@ -259,7 +259,7 @@ def commit_doc(doc, collections):
 	counter = 0
 	total = sum(len(doc[table]) for table in doc)
 
-	#print "Commiting %s entries to databackend" % total
+	print "Commiting %s entries to databackend" % total
 	
 	for name, table in doc.items():	
 		# push into the database
@@ -278,7 +278,7 @@ def commit_doc(doc, collections):
 				counter, time_current - time_begin,
 				counter / (time_current - time_begin), 100.0 * counter / total)
 			time_last = time_current 
-	doc = {}
+	doc.clear()
 
 def main():
 	doc = {}
@@ -320,7 +320,7 @@ def main():
 		pass
 
 	# enviromental settings
-	cache_treshold = 100000
+	cache_treshold = 10000000
 
 	# TODO: implies precedence of operators, maybe something better can be done here
 	if args.directory:
