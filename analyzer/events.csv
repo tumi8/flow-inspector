@@ -33,6 +33,10 @@ events_description||name||sdescription
 events_description||table||sevents
 events_description||use_type||sstring255
 
+events_parameterdump||name||sparameterdump
+events_parameterdump||table||sevents
+events_parameterdump||use_type||sstring1000
+
 events_index||name||sevents_index
 events_index||table||sevents
 events_index||use_type||spredef_value

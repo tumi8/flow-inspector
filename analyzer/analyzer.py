@@ -4,6 +4,8 @@
 import math
 import sys
 
+from ordered_dict import OrderedDict
+
 class Analyzer:
 	""" Generic base class for all analyzers """
 
@@ -45,16 +47,32 @@ class IntervalAnalyzer(Analyzer):
 		t = data[router][interface]["timestamp"] - self.last_timestamp
 		self.st = self.p_st * t + (1 - self.p_st) * self.st
 		self.ewmv = self.p_ewmv * (t - self.st)**2 + (1 - self.p_ewmv) * self.ewmv
-		self.last_timestamp = data[router][interface]["timestamp"]
 
 		lower_bound = self.st - self.L * math.sqrt(self.ewmv * self.p_st / (2 - self.p_st))
 		upper_bound = self.st + self.L * math.sqrt(self.ewmv * self.p_st / (2 - self.p_st))
 
+		parameterdump = OrderedDict([
+			("router", self.router),
+			("interface", self.interface),
+			("last_timestamp", self.last_timestamp),
+			("L", self.L),
+			("st", self.st),
+			("p_st", self.p_st),
+			("ewmv", self.ewmv),
+			("p_ewmv", self.ewmv),
+			("timestamp", timestamp),
+			("t", t),
+			("lower_bound", lower_bound),
+			("upper_bound", upper_bound)
+		])
+
+		self.last_timestamp = data[router][interface]["timestamp"]
+
 		if lower_bound - t > 6e-14:
-			return ("IntervalAnalyzer", router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound))
+			return ("IntervalAnalyzer", router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
 			# print "%s %s: %s - time too small - %s < %s" % (timestamp, router, interface, t, lower_bound)i
 		if upper_bound - t < -6e-14:
-			return ("IntervalAnalyzer", router, interface, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound))
+			return ("IntervalAnalyzer", router, interface, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
 			# print "%s %s: %s - time too big - %s > %s" % (timestamp, router, interface, t, upper_bound)
 
 	@staticmethod

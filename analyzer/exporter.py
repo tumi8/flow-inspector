@@ -23,7 +23,7 @@ class Exporter:
 	def __init__(self):
 		pass
 
-	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description):
+	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description, parameterdump):
 		pass
 
 
@@ -33,7 +33,7 @@ class ConsoleExporter(Exporter):
 	def __init__(self):
 		self.keys = set()
 
-	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description):
+	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description, parameterdump):
 		key = (analyzer, mainid, subid, eventtype, start)
 		
 		from datetime import datetime
@@ -69,9 +69,9 @@ class FlowBackendExporter(Exporter):
 		global events
 		events = db.getCollection("events")
 
-	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description):
+	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description, parameterdump):
 		events.update(
 			{"analyzer": analyzer, "mainid": mainid, "subid": subid, "eventtype": eventtype, "start": start},
-			{"$set": {"end": end, "description": description}}
+			{"$set": {"end": end, "description": description, "parameterdump": parameterdump}}
 		)
 		events.flushCache()
