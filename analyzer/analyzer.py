@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import math
@@ -22,26 +21,11 @@ class Analyzer:
 		pass
 
 
-class IntervalAnalyzer(Analyzer):
+class EWMAAnalyzer(Analyzer):
 	
 	def __init__(self, router, interface, field):
-		self.router = router
-		self.interface = interface
-		self.field = field
-		self.last_value = 0
-
-		# import read csv functionalities
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'snmp'))
-                import common_functions
-
-		values = common_functions.readDictionary("IntervalAnalyzerValues.csv")[field]
-		self.st = values['st']
-		self.p_st = values['p_st']
-		self.ewmv = values['ewmv']
-		self.p_ewmv = values['p_ewmv']
-		
-		self.L = values['L']  
-
+		pass
+	
 	def passDataSet(self, data):
 		router = self.router
 		interface = self.interface
@@ -80,13 +64,37 @@ class IntervalAnalyzer(Analyzer):
 		# print >> sys.stderr, parameterdump		
 
 		if lower_bound - t > 6e-14:
-			return ("IntervalAnalyzer", router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
+			return (self.__class__.__name__, router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
 		if upper_bound - t < -6e-14:
-			return ("IntervalAnalyzer", router, interface, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
+			return (self.__class__.__name__, router, interface, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
+
+
+
+class TimeStampAnalyzer(EWMAAnalyzer):
+
+	def __init__(self, router, interface, field):
+		self.router = router
+		self.interface = interface
+		self.field = field
+		self.last_value = 0
+
+		# import read csv functionalities
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'snmp'))
+                import common_functions
+
+		values = common_functions.readDictionary("IntervalAnalyzerValues.csv")[field]
+		self.st = values['st']
+		self.p_st = values['p_st']
+		self.ewmv = values['ewmv']
+		self.p_ewmv = values['p_ewmv']
+		
+		self.L = values['L']  
 
 	@staticmethod
 	def getInstances(data):
 		return ((str(router) + "-" + str(interface), (router, interface, "timestamp")) for router in data for interface in data[router])
+
+
 
 class StatusAnalyzer(Analyzer):
 	

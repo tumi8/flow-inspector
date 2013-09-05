@@ -24,9 +24,9 @@ for i in range(0, skip):
 
 	print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
 
-        for key, initArgs in analyzer.IntervalAnalyzer.getInstances(data):
+        for key, initArgs in analyzer.TimeStampAnalyzer.getInstances(data):
             if not key in analyzer_store:
-                analyzer_store[key] = analyzer.IntervalAnalyzer(*initArgs)
+                analyzer_store[key] = analyzer.TimeStampAnalyzer(*initArgs)
             result = analyzer_store[key].passDataSet(data)
 
 # Actual main loop
@@ -35,9 +35,9 @@ while True:
 
 	print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
 
-	for key, initArgs in analyzer.IntervalAnalyzer.getInstances(data):
+	for key, initArgs in analyzer.TimeStampAnalyzer.getInstances(data):
 	    if not key in analyzer_store:
-	    	analyzer_store[key] = analyzer.IntervalAnalyzer(*initArgs)
+	    	analyzer_store[key] = analyzer.TimeStampAnalyzer(*initArgs)
 	    result = analyzer_store[key].passDataSet(data)
 	    if result != None:
 	    	for exp in exporter:
