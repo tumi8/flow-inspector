@@ -3,6 +3,7 @@
 
 import math
 import sys
+import os
 
 from ordered_dict import OrderedDict
 
@@ -23,28 +24,36 @@ class Analyzer:
 
 class IntervalAnalyzer(Analyzer):
 	
-	def __init__(self, router, interface):
+	def __init__(self, router, interface, field):
 		self.router = router
 		self.interface = interface
-		self.last_timestamp = 0
+		self.field = field
+		self.last_value = 0
 
-		self.st = 0
-		self.p_st = 0.25
-		self.ewmv = 0
-		self.p_ewmv = 0.25
+		# import read csv functionalities
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'snmp'))
+                import common_functions
+
+		values = common_functions.readDictionary("IntervalAnalyzerValues.csv")[field]
+		self.st = values['st']
+		self.p_st = values['p_st']
+		self.ewmv = values['ewmv']
+		self.p_ewmv = values['p_ewmv']
 		
-		self.L = 1.5  
+		self.L = values['L']  
 
 	def passDataSet(self, data):
 		router = self.router
 		interface = self.interface
-		timestamp = data[router][interface]["timestamp"]
-		
-		if self.last_timestamp == 0:
-			self.last_timestamp = data[router][interface]["timestamp"]
+		field = self.field
+		value = data[router][interface][field]
+	 	timestamp = data[router][interface]["timestamp"]
+	
+		if self.last_value == 0:
+			self.last_value = data[router][interface][field]
 			return
 
-		t = data[router][interface]["timestamp"] - self.last_timestamp
+		t = value - self.last_value
 		self.st = self.p_st * t + (1 - self.p_st) * self.st
 		self.ewmv = self.p_ewmv * (t - self.st)**2 + (1 - self.p_ewmv) * self.ewmv
 
@@ -54,30 +63,30 @@ class IntervalAnalyzer(Analyzer):
 		parameterdump = OrderedDict([
 			("router", self.router),
 			("interface", self.interface),
-			("last_timestamp", self.last_timestamp),
+			("last_value", self.last_value),
 			("L", self.L),
 			("st", self.st),
 			("p_st", self.p_st),
 			("ewmv", self.ewmv),
-			("p_ewmv", self.ewmv),
-			("timestamp", timestamp),
+			("p_ewmv", self.p_ewmv),
+			("value", value),
 			("t", t),
 			("lower_bound", lower_bound),
 			("upper_bound", upper_bound)
 		])
 
-		self.last_timestamp = data[router][interface]["timestamp"]
+		self.last_value = data[router][interface][field]
+			
+		print >> sys.stderr, parameterdump		
 
 		if lower_bound - t > 6e-14:
 			return ("IntervalAnalyzer", router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
-			# print "%s %s: %s - time too small - %s < %s" % (timestamp, router, interface, t, lower_bound)i
 		if upper_bound - t < -6e-14:
 			return ("IntervalAnalyzer", router, interface, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
-			# print "%s %s: %s - time too big - %s > %s" % (timestamp, router, interface, t, upper_bound)
 
 	@staticmethod
 	def getInstances(data):
-		return ((str(router) + "-" + str(interface), (router, interface)) for router in data for interface in data[router])
+		return ((str(router) + "-" + str(interface), (router, interface, "timestamp")) for router in data for interface in data[router])
 
 class StatusAnalyzer(Analyzer):
 	
