@@ -13,6 +13,18 @@ analyzer_store = {}
 importer = importer.FlowBackendImporter()
 exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
 
+# Skip first result 
+skip = 10
+print "Skipping first %s outputs" % skip
+for i in range(0, skip):
+        data = importer.getNextDataSet()
+
+        for key, initArgs in analyzer.IntervalAnalyzer.getInstances(data):
+            if not key in analyzer_store:
+                analyzer_store[key] = analyzer.IntervalAnalyzer(*initArgs)
+            result = analyzer_store[key].passDataSet(data)
+
+# Actual main loop
 while True:
 	data = importer.getNextDataSet()
 
@@ -24,9 +36,5 @@ while True:
 	    	for exp in exporter:
 	    		exp.writeEventDataSet(*result)
 
-#	for key, initArgs in analyzer.StatusAnalyzer.getInstances(data):
-#	    if not key in analyzer_store:
-#	    	analyzer_store[key] = analyzer.StatusAnalyzer(*initArgs)
-#	    analyzer_store[key].passDataSet(data)
 
 
