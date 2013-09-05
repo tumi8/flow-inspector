@@ -78,6 +78,8 @@ def calc_ip_range(ip, mask):
 		- the <token> encodes the actual variable
 		- the type is denoted by the first character
 			- 's' encodes string: 'svalue' get string "value"
+			- 'i' enocdes integer: 'i42' becomes int(42)
+			- 'd' encodes float: 'd42.3' becomes float(42.3)
 			- 'f' encodes functions: 'ffunc' gets a reference to function func
 			- 't' encode tuples
 				- items are seperated by |
@@ -95,6 +97,8 @@ def readDictionary(file):
 
 		return {
 			's': lambda x: x,
+			'i': lambda x: int(x),
+			'd': lambda x: float(x),
 			'f': lambda x: globals()[x],
 			't': lambda x: tuple(map(__parseToken, x.split("|"))),
 			'n': lambda x: None 
