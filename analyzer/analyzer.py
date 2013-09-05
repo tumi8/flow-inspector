@@ -77,7 +77,7 @@ class IntervalAnalyzer(Analyzer):
 
 		self.last_value = data[router][interface][field]
 			
-		print >> sys.stderr, parameterdump		
+		# print >> sys.stderr, parameterdump		
 
 		if lower_bound - t > 6e-14:
 			return ("IntervalAnalyzer", router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))

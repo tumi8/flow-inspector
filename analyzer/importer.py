@@ -38,10 +38,11 @@ class FlowBackendImporter(Importer):
 
 	def getNextDataSet(self):
 		interface_phy = self.db.getCollection("interface_phy")
-		db_result = interface_phy.find({"timestamp": self.timestamps.pop(0)})
+		timestamp = self.timestamps.pop(0)
+		db_result = interface_phy.find({"timestamp": timestamp})
 		result = {}
 		for data in db_result:
 			if not data["router"] in result:
 				result[data["router"]] = dict()
 			result[data["router"]][data["ifIndex"]] = data
-		return result
+		return (timestamp, result)

@@ -9,6 +9,9 @@ import common
 import backend
 import config
 
+import datetime
+import sys
+
 analyzer_store = {}
 importer = importer.FlowBackendImporter()
 exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
@@ -17,7 +20,9 @@ exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
 skip = 10
 print "Skipping first %s outputs" % skip
 for i in range(0, skip):
-        data = importer.getNextDataSet()
+        (timestamp, data) = importer.getNextDataSet()
+
+	print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
 
         for key, initArgs in analyzer.IntervalAnalyzer.getInstances(data):
             if not key in analyzer_store:
@@ -26,7 +31,9 @@ for i in range(0, skip):
 
 # Actual main loop
 while True:
-	data = importer.getNextDataSet()
+	(timestamp, data) = importer.getNextDataSet()
+
+	print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
 
 	for key, initArgs in analyzer.IntervalAnalyzer.getInstances(data):
 	    if not key in analyzer_store:
