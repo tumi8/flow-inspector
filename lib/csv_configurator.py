@@ -19,6 +19,7 @@ from ordered_dict import OrderedDict
 		- 'i' enocdes integer: 'i42' becomes int(42)
 		- 'd' encodes float: 'd42.3' becomes float(42.3)
 		- 'f' encodes functions: 'ffunc' gets a reference to function func
+			all functions must be importable from the lib directory
 		- 't' encode tuples
 			- items are seperated by |
 			- for each items the same rules as for <token> apply
@@ -30,21 +31,26 @@ from ordered_dict import OrderedDict
 def readDictionary(file):
 	""" read csv file and parse it to dictionary """
 
-	# TODO: This looks very, very hacky...
-	# gain access to main modules functions
-	import __main__
-	
 	# define local function to parse last token in proper Python types
 	def __parseToken(token):
-
+		
 		return {
 			's': lambda x: x,
 			'i': lambda x: int(x),
 			'd': lambda x: float(x),
-			'f': lambda x: __main__.__dict__[x],
+			'f': lambda x: __findFunction(x),
 			't': lambda x: tuple(map(__parseToken, x.split("|"))),
 			'n': lambda x: None 
 		}[token[0]](token[1:])
+	
+	def __findFunction(string):
+		# does not allow for nested functions right now
+		# split name into parts	
+		string = string.split(".")
+		# import module
+		module = __import__(string[0], globals(), locals(), [], -1)
+		# return function object
+		return module.__dict__[string[1]]
 	
 	# recursively merge dictionary right into dictionary left
 	def __recursiveUpdate(left, right):

@@ -28,114 +28,114 @@ interface_phy_table_options||use_type||spredef_value
 interface_phy_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
 interface_phy_table_options||only||smysql
 
-.1.3.6.1.2.1.2.2.1.1||fct||fplain
+.1.3.6.1.2.1.2.2.1.1||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.1||name||sifIndex
 .1.3.6.1.2.1.2.2.1.1||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.1||snmp_type||sInterfaceIndex
 
-.1.3.6.1.2.1.2.2.1.2||fct||fplain
+.1.3.6.1.2.1.2.2.1.2||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.2||name||sifDescr
 .1.3.6.1.2.1.2.2.1.2||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.2||snmp_type||sDisplayString
 
-.1.3.6.1.2.1.2.2.1.3||fct||fplain
+.1.3.6.1.2.1.2.2.1.3||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.3||name||sifType
 .1.3.6.1.2.1.2.2.1.3||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.3||snmp_type||sIANAifType
 
-.1.3.6.1.2.1.2.2.1.4||fct||fplain
+.1.3.6.1.2.1.2.2.1.4||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.4||name||sifMtu
 .1.3.6.1.2.1.2.2.1.4||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.4||snmp_type||sInteger32
 
-.1.3.6.1.2.1.2.2.1.5||fct||fplain
+.1.3.6.1.2.1.2.2.1.5||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.5||name||sifSpeed
 .1.3.6.1.2.1.2.2.1.5||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.5||snmp_type||sGauge32
 
-.1.3.6.1.2.1.2.2.1.6||fct||fplain
+.1.3.6.1.2.1.2.2.1.6||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.6||name||sifPhysAddress
 .1.3.6.1.2.1.2.2.1.6||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.6||snmp_type||sPhysAddress
 
-.1.3.6.1.2.1.2.2.1.7||fct||fplain
+.1.3.6.1.2.1.2.2.1.7||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.7||name||sifAdminStatus
 .1.3.6.1.2.1.2.2.1.7||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.7||snmp_type||sINTEGER
 .1.3.6.1.2.1.2.2.1.7||use_type||suint3
 
-.1.3.6.1.2.1.2.2.1.8||fct||fplain
+.1.3.6.1.2.1.2.2.1.8||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.8||name||sifOperStatus
 .1.3.6.1.2.1.2.2.1.8||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.8||snmp_type||sINTEGER
 .1.3.6.1.2.1.2.2.1.8||use_type||suint3
 
-.1.3.6.1.2.1.2.2.1.9||fct||fplain
+.1.3.6.1.2.1.2.2.1.9||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.9||name||sifLastChange
 .1.3.6.1.2.1.2.2.1.9||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.9||snmp_type||sTimeTicks
 
-.1.3.6.1.2.1.2.2.1.10||fct||fplain
+.1.3.6.1.2.1.2.2.1.10||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.10||name||sifInOctets
 .1.3.6.1.2.1.2.2.1.10||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.10||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.11||fct||fplain
+.1.3.6.1.2.1.2.2.1.11||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.11||name||sifInUcastPkts
 .1.3.6.1.2.1.2.2.1.11||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.11||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.12||fct||fplain
+.1.3.6.1.2.1.2.2.1.12||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.12||name||sifInNUcastPkts
 .1.3.6.1.2.1.2.2.1.12||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.12||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.13||fct||fplain
+.1.3.6.1.2.1.2.2.1.13||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.13||name||sifInDiscards
 .1.3.6.1.2.1.2.2.1.13||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.13||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.14||fct||fplain
+.1.3.6.1.2.1.2.2.1.14||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.14||name||sifInErrors
 .1.3.6.1.2.1.2.2.1.14||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.14||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.15||fct||fplain
+.1.3.6.1.2.1.2.2.1.15||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.15||name||sifInUnknownProtos
 .1.3.6.1.2.1.2.2.1.15||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.15||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.16||fct||fplain
+.1.3.6.1.2.1.2.2.1.16||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.16||name||sifOutOctets
 .1.3.6.1.2.1.2.2.1.16||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.16||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.17||fct||fplain
+.1.3.6.1.2.1.2.2.1.17||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.17||name||sifOutUcastPkts
 .1.3.6.1.2.1.2.2.1.17||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.17||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.18||fct||fplain
+.1.3.6.1.2.1.2.2.1.18||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.18||name||sifOutNUcastPkts
 .1.3.6.1.2.1.2.2.1.18||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.18||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.19||fct||fplain
+.1.3.6.1.2.1.2.2.1.19||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.19||name||sifOutDiscards
 .1.3.6.1.2.1.2.2.1.19||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.19||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.20||fct||fplain
+.1.3.6.1.2.1.2.2.1.20||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.20||name||sifOutErrors
 .1.3.6.1.2.1.2.2.1.20||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.20||snmp_type||sCounter32
 
-.1.3.6.1.2.1.2.2.1.21||fct||fplain
+.1.3.6.1.2.1.2.2.1.21||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.21||name||sifOutQLen
 .1.3.6.1.2.1.2.2.1.21||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.21||snmp_type||sGauge32
 
-.1.3.6.1.2.1.2.2.1.22||fct||fplain
+.1.3.6.1.2.1.2.2.1.22||fct||fnet_functions.plain
 .1.3.6.1.2.1.2.2.1.22||name||sifSpecific
 .1.3.6.1.2.1.2.2.1.22||table||sinterface_phy
 .1.3.6.1.2.1.2.2.1.22||snmp_type||sOBJECT IDENTIFIER
@@ -170,98 +170,98 @@ ifXTable_table_options||use_type||spredef_value
 ifXTable_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
 ifXTable_table_options||only||smysql
 
-.1.3.6.1.2.1.31.1.1.1.1||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.1||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.1||name||sifName
 .1.3.6.1.2.1.31.1.1.1.1||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.1||snmp_type||sDisplayString
 
-.1.3.6.1.2.1.31.1.1.1.2||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.2||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.2||name||sifInMulticastPkts
 .1.3.6.1.2.1.31.1.1.1.2||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.2||snmp_type||sCounter32
 
-.1.3.6.1.2.1.31.1.1.1.3||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.3||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.3||name||sifInBroadcastPkts
 .1.3.6.1.2.1.31.1.1.1.3||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.3||snmp_type||sCounter32
 
-.1.3.6.1.2.1.31.1.1.1.4||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.4||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.4||name||sifOutMulticastPkts
 .1.3.6.1.2.1.31.1.1.1.4||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.4||snmp_type||sCounter32
 
-.1.3.6.1.2.1.31.1.1.1.5||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.5||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.5||name||sifOutBroadcastPkts
 .1.3.6.1.2.1.31.1.1.1.5||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.5||snmp_type||sCounter32
 
-.1.3.6.1.2.1.31.1.1.1.6||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.6||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.6||name||sifHCInOctets
 .1.3.6.1.2.1.31.1.1.1.6||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.6||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.7||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.7||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.7||name||sifHCInUcastPkts
 .1.3.6.1.2.1.31.1.1.1.7||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.7||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.8||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.8||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.8||name||sifHCInMulticastPkts
 .1.3.6.1.2.1.31.1.1.1.8||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.8||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.9||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.9||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.9||name||sifHCInBroadcastPkts
 .1.3.6.1.2.1.31.1.1.1.9||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.9||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.10||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.10||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.10||name||sifHCOutOctets
 .1.3.6.1.2.1.31.1.1.1.10||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.10||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.11||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.11||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.11||name||sifHCOutUcastPkts
 .1.3.6.1.2.1.31.1.1.1.11||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.11||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.12||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.12||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.12||name||sifHCOutMulticastPkts
 .1.3.6.1.2.1.31.1.1.1.12||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.12||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.13||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.13||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.13||name||sifHCOutBroadcastPkts
 .1.3.6.1.2.1.31.1.1.1.13||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.13||snmp_type||sCounter64
 
-.1.3.6.1.2.1.31.1.1.1.14||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.14||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.14||name||sifLinkUpDownTrapEnable
 .1.3.6.1.2.1.31.1.1.1.14||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.14||snmp_type||sINTEGER
 .1.3.6.1.2.1.31.1.1.1.14||use_type||suint2
 
-.1.3.6.1.2.1.31.1.1.1.15||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.15||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.15||name||sifHighSpeed
 .1.3.6.1.2.1.31.1.1.1.15||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.15||snmp_type||sGauge32
 
-.1.3.6.1.2.1.31.1.1.1.16||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.16||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.16||name||sifPromiscuousMode
 .1.3.6.1.2.1.31.1.1.1.16||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.16||snmp_type||sTruthValue
 
-.1.3.6.1.2.1.31.1.1.1.17||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.17||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.17||name||sifConnectorPresent
 .1.3.6.1.2.1.31.1.1.1.17||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.17||snmp_type||sTruthValue
 
-.1.3.6.1.2.1.31.1.1.1.18||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.18||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.18||name||sifAlias
 .1.3.6.1.2.1.31.1.1.1.18||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.18||snmp_type||sDisplayString
 
-.1.3.6.1.2.1.31.1.1.1.19||fct||fplain
+.1.3.6.1.2.1.31.1.1.1.19||fct||fnet_functions.plain
 .1.3.6.1.2.1.31.1.1.1.19||name||sifCounterDiscontinuityTime
 .1.3.6.1.2.1.31.1.1.1.19||table||sifXTable
 .1.3.6.1.2.1.31.1.1.1.19||snmp_type||sTimeStamp
@@ -296,29 +296,29 @@ interface_log_table_options||use_type||spredef_value
 interface_log_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
 interface_log_table_options||only||smysql
 
-.1.3.6.1.2.1.4.20.1.1||fct||fip2int
+.1.3.6.1.2.1.4.20.1.1||fct||fnet_functions.ip2int
 .1.3.6.1.2.1.4.20.1.1||name||sipAdEntAddr
 .1.3.6.1.2.1.4.20.1.1||table||sinterface_log
 .1.3.6.1.2.1.4.20.1.1||snmp_type||sIpAddress
 
-.1.3.6.1.2.1.4.20.1.2||fct||fplain
+.1.3.6.1.2.1.4.20.1.2||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.20.1.2||name||sipAdEntIfIndex
 .1.3.6.1.2.1.4.20.1.2||table||sinterface_log
 .1.3.6.1.2.1.4.20.1.2||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.20.1.3||fct||fnetmask2int
+.1.3.6.1.2.1.4.20.1.3||fct||fnet_functions.netmask2int
 .1.3.6.1.2.1.4.20.1.3||name||sipAdEntNetMask
 .1.3.6.1.2.1.4.20.1.3||table||sinterface_log
 .1.3.6.1.2.1.4.20.1.3||snmp_type||sIpAddress
 .1.3.6.1.2.1.4.20.1.3||use_type||suint32
 
-.1.3.6.1.2.1.4.20.1.4||fct||fplain
+.1.3.6.1.2.1.4.20.1.4||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.20.1.4||name||sipAdEntBcastAddr
 .1.3.6.1.2.1.4.20.1.4||table||sinterface_log
 .1.3.6.1.2.1.4.20.1.4||snmp_type||sINTEGER
 .1.3.6.1.2.1.4.20.1.4||use_type||suint1
 
-.1.3.6.1.2.1.4.20.1.5||fct||fplain
+.1.3.6.1.2.1.4.20.1.5||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.20.1.5||name||sipAdEntReasmMaxSize
 .1.3.6.1.2.1.4.20.1.5||table||sinterface_log
 .1.3.6.1.2.1.4.20.1.5||snmp_type||sINTEGER
@@ -362,70 +362,70 @@ ipRoute_table_options||use_type||spredef_value
 ipRoute_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
 ipRoute_table_options||only||smysql
 
-.1.3.6.1.2.1.4.21.1.1||fct||fip2int
+.1.3.6.1.2.1.4.21.1.1||fct||fnet_functions.ip2int
 .1.3.6.1.2.1.4.21.1.1||name||sipRouteDest
 .1.3.6.1.2.1.4.21.1.1||table||sipRoute
 .1.3.6.1.2.1.4.21.1.1||snmp_type||sIpAddress
 
-.1.3.6.1.2.1.4.21.1.2||fct||fplain
+.1.3.6.1.2.1.4.21.1.2||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.2||name||sipRouteIfIndex
 .1.3.6.1.2.1.4.21.1.2||table||sipRoute
 .1.3.6.1.2.1.4.21.1.2||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.21.1.3||fct||fplain
+.1.3.6.1.2.1.4.21.1.3||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.3||name||sipRouteMetric1
 .1.3.6.1.2.1.4.21.1.3||table||sipRoute
 .1.3.6.1.2.1.4.21.1.3||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.21.1.4||fct||fplain
+.1.3.6.1.2.1.4.21.1.4||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.4||name||sipRouteMetric2
 .1.3.6.1.2.1.4.21.1.4||table||sipRoute
 .1.3.6.1.2.1.4.21.1.4||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.21.1.5||fct||fplain
+.1.3.6.1.2.1.4.21.1.5||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.5||name||sipRouteMetric3
 .1.3.6.1.2.1.4.21.1.5||table||sipRoute
 .1.3.6.1.2.1.4.21.1.5||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.21.1.6||fct||fplain
+.1.3.6.1.2.1.4.21.1.6||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.6||name||sipRouteMetric4
 .1.3.6.1.2.1.4.21.1.6||table||sipRoute
 .1.3.6.1.2.1.4.21.1.6||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.21.1.7||fct||fip2int
+.1.3.6.1.2.1.4.21.1.7||fct||fnet_functions.ip2int
 .1.3.6.1.2.1.4.21.1.7||name||sipRouteNextHop
 .1.3.6.1.2.1.4.21.1.7||table||sipRoute
 .1.3.6.1.2.1.4.21.1.7||snmp_type||sIpAddress
 
-.1.3.6.1.2.1.4.21.1.8||fct||fplain
+.1.3.6.1.2.1.4.21.1.8||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.8||name||sipRouteType
 .1.3.6.1.2.1.4.21.1.8||table||sipRoute
 .1.3.6.1.2.1.4.21.1.8||snmp_type||sINTEGER
 .1.3.6.1.2.1.4.21.1.8||use_type||suint4
 
-.1.3.6.1.2.1.4.21.1.9||fct||fplain
+.1.3.6.1.2.1.4.21.1.9||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.9||name||sipRouteProto
 .1.3.6.1.2.1.4.21.1.9||table||sipRoute
 .1.3.6.1.2.1.4.21.1.9||snmp_type||sINTEGER
 .1.3.6.1.2.1.4.21.1.9||use_type||suint14
 
-.1.3.6.1.2.1.4.21.1.10||fct||fplain
+.1.3.6.1.2.1.4.21.1.10||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.10||name||sipRouteAge
 .1.3.6.1.2.1.4.21.1.10||table||sipRoute
 .1.3.6.1.2.1.4.21.1.10||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.21.1.11||fct||fnetmask2int
+.1.3.6.1.2.1.4.21.1.11||fct||fnet_functions.netmask2int
 .1.3.6.1.2.1.4.21.1.11||name||sipRouteMask
 .1.3.6.1.2.1.4.21.1.11||table||sipRoute
 .1.3.6.1.2.1.4.21.1.11||snmp_type||sIpAddress
 .1.3.6.1.2.1.4.21.1.11||use_type||suint32
 
-.1.3.6.1.2.1.4.21.1.12||fct||fplain
+.1.3.6.1.2.1.4.21.1.12||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.12||name||sipRouteMetric5
 .1.3.6.1.2.1.4.21.1.12||table||sipRoute
 .1.3.6.1.2.1.4.21.1.12||snmp_type||sINTEGER
 
-.1.3.6.1.2.1.4.21.1.13||fct||fplain
+.1.3.6.1.2.1.4.21.1.13||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.21.1.13||name||sipRouteInfo
 .1.3.6.1.2.1.4.21.1.13||table||sipRoute
 .1.3.6.1.2.1.4.21.1.13||snmp_type||sOBJECT IDENTIFIER
@@ -486,85 +486,85 @@ ipCidrRoute_table_options||use_type||spredef_value
 ipCidrRoute_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
 ipCidrRoute_table_options||only||smysql
 
-.1.3.6.1.2.1.4.24.4.1.1||fct||fip2int
+.1.3.6.1.2.1.4.24.4.1.1||fct||fnet_functions.ip2int
 .1.3.6.1.2.1.4.24.4.1.1||name||sipCidrRouteDest
 .1.3.6.1.2.1.4.24.4.1.1||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.1||snmp_type||sIpAddress
 
-.1.3.6.1.2.1.4.24.4.1.2||fct||fnetmask2int
+.1.3.6.1.2.1.4.24.4.1.2||fct||fnet_functions.netmask2int
 .1.3.6.1.2.1.4.24.4.1.2||name||sipCidrRouteMask
 .1.3.6.1.2.1.4.24.4.1.2||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.2||snmp_type||sIpAddress
 .1.3.6.1.2.1.4.24.4.1.2||use_type||suint32
 
-.1.3.6.1.2.1.4.24.4.1.3||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.3||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.3||name||sipCidrRouteTos
 .1.3.6.1.2.1.4.24.4.1.3||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.3||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.4||fct||fip2int
+.1.3.6.1.2.1.4.24.4.1.4||fct||fnet_functions.ip2int
 .1.3.6.1.2.1.4.24.4.1.4||name||sipCidrRouteNextHop
 .1.3.6.1.2.1.4.24.4.1.4||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.4||snmp_type||sIpAddress
 
-.1.3.6.1.2.1.4.24.4.1.5||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.5||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.5||name||sipCidrRouteIfIndex
 .1.3.6.1.2.1.4.24.4.1.5||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.5||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.6||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.6||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.6||name||sipCidrRouteType
 .1.3.6.1.2.1.4.24.4.1.6||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.6||snmp_type||sINTEGER
 .1.3.6.1.2.1.4.24.4.1.6||use_type||suint4
 
-.1.3.6.1.2.1.4.24.4.1.7||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.7||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.7||name||sipCidrRouteProto
 .1.3.6.1.2.1.4.24.4.1.7||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.7||snmp_type||sINTEGER
 .1.3.6.1.2.1.4.24.4.1.7||use_type||suint16
 
-.1.3.6.1.2.1.4.24.4.1.8||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.8||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.8||name||sipCidrRouteAge
 .1.3.6.1.2.1.4.24.4.1.8||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.8||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.9||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.9||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.9||name||sipCidrRouteInfo
 .1.3.6.1.2.1.4.24.4.1.9||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.9||snmp_type||sOBJECT IDENTIFIER
 
-.1.3.6.1.2.1.4.24.4.1.10||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.10||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.10||name||sipCidrRouteNextHopAS
 .1.3.6.1.2.1.4.24.4.1.10||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.10||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.11||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.11||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.11||name||sipCidrRouteMetric1
 .1.3.6.1.2.1.4.24.4.1.11||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.11||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.12||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.12||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.12||name||sipCidrRouteMetric2
 .1.3.6.1.2.1.4.24.4.1.12||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.12||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.13||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.13||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.13||name||sipCidrRouteMetric3
 .1.3.6.1.2.1.4.24.4.1.13||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.13||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.14||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.14||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.14||name||sipCidrRouteMetric4
 .1.3.6.1.2.1.4.24.4.1.14||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.14||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.15||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.15||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.15||name||sipCidrRouteMetric5
 .1.3.6.1.2.1.4.24.4.1.15||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.15||snmp_type||sInteger32
 
-.1.3.6.1.2.1.4.24.4.1.16||fct||fplain
+.1.3.6.1.2.1.4.24.4.1.16||fct||fnet_functions.plain
 .1.3.6.1.2.1.4.24.4.1.16||name||sipCidrRouteStatus
 .1.3.6.1.2.1.4.24.4.1.16||table||sipCidrRoute
 .1.3.6.1.2.1.4.24.4.1.16||snmp_type||sRowStatus
@@ -593,13 +593,13 @@ juniperLoadbalancer_session_number||use_type||suint4294967295
 #juniperLoadbalancer_index_preprocess||use_type||spredef_value
 #juniperLoadbalancer_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, session_number ASC, timestamp ASC
 #
-.1.3.6.1.4.1.6213.2.4.2.1.1.2||fct||fplain
+.1.3.6.1.4.1.6213.2.4.2.1.1.2||fct||fnet_functions.plain
 .1.3.6.1.4.1.6213.2.4.2.1.1.2||name||sjuniperClusterSessionCount
 .1.3.6.1.4.1.6213.2.4.2.1.1.2||table||sjuniperLoadbalancer
 .1.3.6.1.4.1.6213.2.4.2.1.1.2||snmp_type||sFIX_ME
 .1.3.6.1.4.1.6213.2.4.2.1.1.2||use_type||suint18446744073709551615
 
-.1.3.6.1.4.1.6213.2.4.2.5.1.2||fct||fplain
+.1.3.6.1.4.1.6213.2.4.2.5.1.2||fct||fnet_functions.plain
 .1.3.6.1.4.1.6213.2.4.2.5.1.2||name||sjuniperClusterName
 .1.3.6.1.4.1.6213.2.4.2.5.1.2||table||sjuniperLoadbalancer
 .1.3.6.1.4.1.6213.2.4.2.5.1.2||snmp_type||sFIX_ME
@@ -629,19 +629,19 @@ ciscoMemory_pool_number||use_type||suint4294967295
 #ciscoMemory_index_preprocess||use_type||spredef_value
 #ciscoMemory_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, pool_number ASC, timestamp ASC
 #
-.1.3.6.1.4.1.9.9.48.1.1.1.2||fct||fplain
+.1.3.6.1.4.1.9.9.48.1.1.1.2||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.48.1.1.1.2||name||sciscoMemoryPoolName
 .1.3.6.1.4.1.9.9.48.1.1.1.2||table||sciscoMemory
 .1.3.6.1.4.1.9.9.48.1.1.1.2||snmp_type||sDisplayString
 .1.3.6.1.4.1.9.9.48.1.1.1.2||use_type||sstring100
 
-.1.3.6.1.4.1.9.9.48.1.1.1.5||fct||fplain
+.1.3.6.1.4.1.9.9.48.1.1.1.5||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.48.1.1.1.5||name||sciscoMemoryPoolUsed
 .1.3.6.1.4.1.9.9.48.1.1.1.5||table||sciscoMemory
 .1.3.6.1.4.1.9.9.48.1.1.1.5||snmp_type||sGauge32
 .1.3.6.1.4.1.9.9.48.1.1.1.5||use_type||sstring100
 
-.1.3.6.1.4.1.9.9.48.1.1.1.6||fct||fplain
+.1.3.6.1.4.1.9.9.48.1.1.1.6||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.48.1.1.1.6||name||sciscoMemoryPoolFree
 .1.3.6.1.4.1.9.9.48.1.1.1.6||table||sciscoMemory
 .1.3.6.1.4.1.9.9.48.1.1.1.6||snmp_type||sGauge32
@@ -671,37 +671,37 @@ ciscoCpu_cpu_number||use_type||suint4294967295
 #ciscoCpu_index_preprocess||use_type||spredef_value
 #ciscoCpu_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, cpu_number ASC, timestamp ASC
 #
-.1.3.6.1.4.1.9.9.109.1.1.1.1.3||fct||fplain
+.1.3.6.1.4.1.9.9.109.1.1.1.1.3||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.109.1.1.1.1.3||name||scpmCPUTotal5sec
 .1.3.6.1.4.1.9.9.109.1.1.1.1.3||table||sciscoCpu
 .1.3.6.1.4.1.9.9.109.1.1.1.1.3||snmp_type||sGauge32
 .1.3.6.1.4.1.9.9.109.1.1.1.1.3||use_type||suint100
 
-.1.3.6.1.4.1.9.9.109.1.1.1.1.4||fct||fplain
+.1.3.6.1.4.1.9.9.109.1.1.1.1.4||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.109.1.1.1.1.4||name||scpmCPUTotal1min
 .1.3.6.1.4.1.9.9.109.1.1.1.1.4||table||sciscoCpu
 .1.3.6.1.4.1.9.9.109.1.1.1.1.4||snmp_type||sGauge32
 .1.3.6.1.4.1.9.9.109.1.1.1.1.4||use_type||suint100
 
-.1.3.6.1.4.1.9.9.109.1.1.1.1.5||fct||fplain
+.1.3.6.1.4.1.9.9.109.1.1.1.1.5||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.109.1.1.1.1.5||name||scpmCPUTotal5min
 .1.3.6.1.4.1.9.9.109.1.1.1.1.5||table||sciscoCpu
 .1.3.6.1.4.1.9.9.109.1.1.1.1.5||snmp_type||sGauge32
 .1.3.6.1.4.1.9.9.109.1.1.1.1.5||use_type||suint100
 
-.1.3.6.1.4.1.9.9.109.1.1.1.1.6||fct||fplain
+.1.3.6.1.4.1.9.9.109.1.1.1.1.6||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.109.1.1.1.1.6||name||scpmCPUTotal5secRev
 .1.3.6.1.4.1.9.9.109.1.1.1.1.6||table||sciscoCpu
 .1.3.6.1.4.1.9.9.109.1.1.1.1.6||snmp_type||sGauge32
 .1.3.6.1.4.1.9.9.109.1.1.1.1.6||use_type||suint100
 
-.1.3.6.1.4.1.9.9.109.1.1.1.1.7||fct||fplain
+.1.3.6.1.4.1.9.9.109.1.1.1.1.7||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.109.1.1.1.1.7||name||scpmCPUTotal1minRev
 .1.3.6.1.4.1.9.9.109.1.1.1.1.7||table||sciscoCpu
 .1.3.6.1.4.1.9.9.109.1.1.1.1.7||snmp_type||sGauge32
 .1.3.6.1.4.1.9.9.109.1.1.1.1.7||use_type||suint100
 
-.1.3.6.1.4.1.9.9.109.1.1.1.1.8||fct||fplain
+.1.3.6.1.4.1.9.9.109.1.1.1.1.8||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.109.1.1.1.1.8||name||scpmCPUTotal5minRev
 .1.3.6.1.4.1.9.9.109.1.1.1.1.8||table||sciscoCpu
 .1.3.6.1.4.1.9.9.109.1.1.1.1.8||snmp_type||sGauge32
@@ -735,13 +735,13 @@ cssLoadbalancer_ident||use_type||sstring50
 #cssLoadbalancer_index_preprocess||use_type||spredef_value
 #cssLoadbalancer_index_preprocess||value||tsUNIQUE INDEX|srouter ASC, scm_number ASC, timestamp ASC
 #
-.1.3.6.1.4.1.9.9.368.1.15.2.1.1||fct||fplain
+.1.3.6.1.4.1.9.9.368.1.15.2.1.1||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.368.1.15.2.1.1||name||scssLoadBalancerSessionName
 .1.3.6.1.4.1.9.9.368.1.15.2.1.1||table||scssLoadbalancer
 .1.3.6.1.4.1.9.9.368.1.15.2.1.1||snmp_type||sFIX_ME
 .1.3.6.1.4.1.9.9.368.1.15.2.1.1||use_type||sstring100
 
-.1.3.6.1.4.1.9.9.368.1.15.2.1.20||fct||fplain
+.1.3.6.1.4.1.9.9.368.1.15.2.1.20||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.368.1.15.2.1.20||name||scssLoadBalancerSessionCount
 .1.3.6.1.4.1.9.9.368.1.15.2.1.20||table||scssLoadbalancer
 .1.3.6.1.4.1.9.9.368.1.15.2.1.20||snmp_type||sFIX_ME
@@ -789,82 +789,82 @@ cEigrp_table_options||use_type||spredef_value
 cEigrp_table_options||value||sENGINE=MyISAM ROW_FORMAT=DYNAMIC
 cEigrp_table_options||only||smysql
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.1||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.1||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.1||name||scEigrpDestNetType
 .1.3.6.1.4.1.9.9.449.1.3.1.1.1||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.1||snmp_type||sInetAddressType
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.2||fct||fip2int
+.1.3.6.1.4.1.9.9.449.1.3.1.1.2||fct||fnet_functions.ip2int
 .1.3.6.1.4.1.9.9.449.1.3.1.1.2||name||scEigrpDestNet
 .1.3.6.1.4.1.9.9.449.1.3.1.1.2||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.2||snmp_type||sInetAddress
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.3||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.3||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.3||name||scEigrpDestNetPrefixLen
 .1.3.6.1.4.1.9.9.449.1.3.1.1.3||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.3||snmp_type||sInetAddressType
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.4||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.4||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.4||name||scEigrpDestNetPrefixLen
 .1.3.6.1.4.1.9.9.449.1.3.1.1.4||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.4||snmp_type||sInetAddressPrefixLength
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.5||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.5||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.5||name||scEigrpActive
 .1.3.6.1.4.1.9.9.449.1.3.1.1.5||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.5||snmp_type||sTruthValue
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.6||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.6||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.6||name||scEigrpStuckInActive
 .1.3.6.1.4.1.9.9.449.1.3.1.1.6||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.6||snmp_type||sTruthValue
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.7||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.7||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.7||name||scEigrpDestSuccessors
 .1.3.6.1.4.1.9.9.449.1.3.1.1.7||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.7||snmp_type||sUnsigned32
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.8||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.8||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.8||name||scEigrpFdistance
 .1.3.6.1.4.1.9.9.449.1.3.1.1.8||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.8||snmp_type||sUnsigned32
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.9||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.9||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.9||name||scEigrpRouteOriginType
 .1.3.6.1.4.1.9.9.449.1.3.1.1.9||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.9||snmp_type||sSnmpAdminString
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.10||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.10||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.10||name||scEigrpRouteOriginAddrType
 .1.3.6.1.4.1.9.9.449.1.3.1.1.10||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.10||snmp_type||sInetAddressType
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.11||fct||fhex2ip2int
+.1.3.6.1.4.1.9.9.449.1.3.1.1.11||fct||fnet_functions.hex2ip2int
 .1.3.6.1.4.1.9.9.449.1.3.1.1.11||name||scEigrpRouteOriginAddr
 .1.3.6.1.4.1.9.9.449.1.3.1.1.11||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.11||snmp_type||sInetAddress
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.12||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.12||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.12||name||scEigrpNextHopAddressType
 .1.3.6.1.4.1.9.9.449.1.3.1.1.12||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.12||snmp_type||sInetAddressType
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.13||fct||fhex2ip2int
+.1.3.6.1.4.1.9.9.449.1.3.1.1.13||fct||fnet_functions.hex2ip2int
 .1.3.6.1.4.1.9.9.449.1.3.1.1.13||name||scEigrpNextHopAddress
 .1.3.6.1.4.1.9.9.449.1.3.1.1.13||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.13||snmp_type||sInetAddress
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.14||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.14||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.14||name||scEigrpNextHopInterface
 .1.3.6.1.4.1.9.9.449.1.3.1.1.14||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.14||snmp_type||sSnmpAdminString
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.15||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.15||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.15||name||scEigrpDistance
 .1.3.6.1.4.1.9.9.449.1.3.1.1.15||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.15||snmp_type||sUnsigned32
 
-.1.3.6.1.4.1.9.9.449.1.3.1.1.16||fct||fplain
+.1.3.6.1.4.1.9.9.449.1.3.1.1.16||fct||fnet_functions.plain
 .1.3.6.1.4.1.9.9.449.1.3.1.1.16||name||scEigrpReportDistance
 .1.3.6.1.4.1.9.9.449.1.3.1.1.16||table||scEigrp
 .1.3.6.1.4.1.9.9.449.1.3.1.1.16||snmp_type||sUnsigned32

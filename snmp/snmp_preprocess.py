@@ -15,9 +15,7 @@ import common
 import backend
 
 from common_functions import *
-from csv import *
-
-
+from csv_configurator import *
 
 # dictionary which maps oid -> name and fct to parse oid value
 oidmap_filename = os.path.join(os.path.dirname(__file__), '..', 'config', "oidmap.csv")
