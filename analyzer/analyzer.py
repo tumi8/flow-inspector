@@ -23,18 +23,32 @@ class Analyzer:
 
 class EWMAAnalyzer(Analyzer):
 	
-	def __init__(self, router, interface, field):
-		pass
+	def __init__(self, mainid, subid, field):
+		self.mainid = mainid 
+		self.subid = subid
+		self.field = field
+		self.last_value = None
+
+		# import read csv functionalities
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'snmp'))
+                import common_functions
+
+		values = common_functions.readDictionary("AnalyzerConfig.csv")[self.__class__.__name__]
+		self.st = values['st']
+		self.p_st = values['p_st']
+		self.ewmv = values['ewmv']
+		self.p_ewmv = values['p_ewmv']
+		self.L = values['L'] 
 	
 	def passDataSet(self, data):
-		router = self.router
-		interface = self.interface
+		mainid = self.mainid
+		subid = self.subid
 		field = self.field
-		value = data[router][interface][field]
-	 	timestamp = data[router][interface]["timestamp"]
+		value = data[mainid][subid][field]
+	 	timestamp = data[mainid][subid]["timestamp"]
 	
-		if self.last_value == 0:
-			self.last_value = data[router][interface][field]
+		if self.last_value is None:
+			self.last_value = data[mainid][subid][field]
 			return
 
 		t = value - self.last_value
@@ -45,8 +59,8 @@ class EWMAAnalyzer(Analyzer):
 		upper_bound = self.st + self.L * math.sqrt(self.ewmv * self.p_st / (2 - self.p_st))
 
 		parameterdump = OrderedDict([
-			("router", self.router),
-			("interface", self.interface),
+			("mainid", self.mainid),
+			("subid", self.subid),
 			("last_value", self.last_value),
 			("L", self.L),
 			("st", self.st),
@@ -59,36 +73,18 @@ class EWMAAnalyzer(Analyzer):
 			("upper_bound", upper_bound)
 		])
 
-		self.last_value = data[router][interface][field]
+		self.last_value = data[mainid][subid][field]
 			
 		# print >> sys.stderr, parameterdump		
 
 		if lower_bound - t > 6e-14:
-			return (self.__class__.__name__, router, interface, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
+			return (self.__class__.__name__, mainid, subid, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
 		if upper_bound - t < -6e-14:
-			return (self.__class__.__name__, router, interface, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
+			return (self.__class__.__name__, mainid, subid, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
 
 
 
 class TimeStampAnalyzer(EWMAAnalyzer):
-
-	def __init__(self, router, interface, field):
-		self.router = router
-		self.interface = interface
-		self.field = field
-		self.last_value = 0
-
-		# import read csv functionalities
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'snmp'))
-                import common_functions
-
-		values = common_functions.readDictionary("IntervalAnalyzerValues.csv")[field]
-		self.st = values['st']
-		self.p_st = values['p_st']
-		self.ewmv = values['ewmv']
-		self.p_ewmv = values['p_ewmv']
-		
-		self.L = values['L']  
 
 	@staticmethod
 	def getInstances(data):
