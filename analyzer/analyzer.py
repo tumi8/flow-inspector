@@ -4,6 +4,7 @@ import math
 import sys
 import os
 
+import csv
 from ordered_dict import OrderedDict
 
 class Analyzer:
@@ -29,11 +30,7 @@ class EWMAAnalyzer(Analyzer):
 		self.field = field
 		self.last_value = None
 
-		# import read csv functionalities
-                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'snmp'))
-                import common_functions
-
-		values = common_functions.readDictionary("AnalyzerConfig.csv")[self.__class__.__name__]
+		values = csv.readDictionary("AnalyzerConfig.csv")[self.__class__.__name__]
 		self.st = values['st']
 		self.p_st = values['p_st']
 		self.ewmv = values['ewmv']

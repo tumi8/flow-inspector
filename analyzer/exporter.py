@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 import common
 import backend
 import config
+import csv
 
 # include python modules
 #import argparse
@@ -54,14 +55,9 @@ class FlowBackendExporter(Exporter):
 		# prepare mysql target database
 		# TODO: make this more generic later on
 
-
-		# import read csv functionalities
-		sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'snmp'))
-		import common_functions
-
 		# prepare fieldDict
-		generic_mysql = common_functions.readDictionary("../config/generic_mysql.csv")
-		fieldDict = common_functions.create_fieldDict("mysql", lambda generic_type: generic_mysql[generic_type], lambda snmp_type: snmp_type, "../analyzer/events.csv")
+		generic_mysql = csv.readDictionary("../config/generic_mysql.csv")
+		fieldDict = csv.create_fieldDict("mysql", lambda generic_type: generic_mysql[generic_type], lambda snmp_type: snmp_type, "../analyzer/events.csv")
 
 		# prepare database connection and create required collection objects
 		db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name, "UPDATE")
