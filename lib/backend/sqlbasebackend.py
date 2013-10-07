@@ -11,10 +11,10 @@ import time
 import operator
 
 class SQLBaseBackend(Backend):
-	def __init__(self, host, port, user, password, databaseName):
-		Backend.__init__(self, host, port, user, password, databaseName)
+	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
+		Backend.__init__(self, host, port, user, password, databaseName, insertMode)
 		self.tableInsertCache = dict()
-		self.cachingThreshold = 1000000
+		self.cachingThreshold = config.data_backend_caching_threshold
 		self.counter = 0
 
 		self.column_map = None
@@ -27,6 +27,7 @@ class SQLBaseBackend(Backend):
 		self.connect()
 
 		self.dbType = None
+		self.did_reconnect_on_error = False
 
 		self.executeTimes = 0
 		self.executeManyTimes = 0
@@ -43,6 +44,15 @@ class SQLBaseBackend(Backend):
 		pass
 
 	def insert(self, collectionName, fieldDict):
+		if self.insertMode == "UPDATE":
+			self.insert_update(collectionName, fieldDict)
+		elif self.insertMode == "INSERT":
+			self.insert_insert(collectionName, fieldDict)
+
+	def insert_update(self, collectionName, fieldDict):
+		pass
+
+	def insert_insert(self, collectionName, fieldDict):
 		pass
 
 	def execute(self, string, params = None, cursor=None):
@@ -71,9 +81,34 @@ class SQLBaseBackend(Backend):
 			if end_time - start_time > maxtime:
 				print "Execute: commit time was ", end_time - start_time
 
+			# successful operation. Reset did_reconnect
+			self.did_reconnect_on_error = False
+
 		except Exception as e:
-			if self.handle_exception(e):
-				self.execute(string, params)
+			try: 
+				# we can handle a large number of exceptions.we cannot do this with all
+				# exceptions. handle_exception will make a decision. If it returns true, 
+				# we can just try to do it again. If not, we can ignore the problem. 
+				# or it can reraise the Exception in which case we want to know the query
+				# that caused the exception
+				print e
+				if not self.did_reconnect_on_error and  self.handle_exception(e):
+					self.execute(string, params, cursor)
+				else:
+					# there are a number of errors that could be mitigated by a single
+					# attempt to reconnect to the db. If one reconnect failes, then we
+					# should except and end
+					if not self.did_reconnect_on_error:
+						self.did_reconnect_on_error = True
+						self.connect() # will close the old connection and do a reconnect
+						self.execute(string, params, cursor)
+					else:
+						# ok. we give up now ...
+						raise						
+			except Exception as e:
+				print "Cannot gracefully handle DB Exception", e
+				print "Exception was caused by query: ", string
+				sys.exit(-1)
 
 
 	def executemany(self, string, objects, table = None):
@@ -102,9 +137,32 @@ class SQLBaseBackend(Backend):
 			end_time = time.time()
 			if end_time - start_time > maxtime:
 				print "ExecuteMany: commit time on table " + table + " was ", end_time - start_time, "seconds"
+			# successful operation. Reset did_reconnect
+			self.did_reconnect_on_error = False
 		except Exception as e:
-			if self.handle_exception(e):
-				self.executemany(string, objects, table)
+			try: 
+				# we can handle a large number of exceptions.we cannot do this with all
+				# exceptions. handle_exception will make a decision. If it returns true, 
+				# we can just try to do it again. If not, we can ignore the problem. 
+				# or it can reraise the Exception in which case we want to know the query
+				# that caused the exception
+				if not self.did_reconnect_on_error and self.handle_exception(e):
+					self.executemany(string, objects, table)
+				else:
+					# there are a number of errors that could be mitigated by a single
+					# attempt to reconnect to the db. If one reconnect failes, then we
+					# should except and end
+					if not self.did_reconnect_on_error:
+						self.did_reconnect_on_error = True
+						self.connect() # will close the old connection and do a reconnect
+						self.executemany(string, params, cursor)
+					else:
+						# ok. we give up now ...
+						raise						
+			except Exception as e:
+				print "Cannot gracefully handle DB Exception", e
+				print "Exception was caused by query: ", string
+				sys.exit(-1)
 
 	def query(self, tablename, string):
 		string = string % (tableName)
@@ -134,6 +192,7 @@ class SQLBaseBackend(Backend):
 			return
 
 		fieldDict = {}
+	
 		for s in statement:
 			# TODO: this will break if we have a non-flow collection name that 
 			#       has a name starting with index ... 
@@ -151,10 +210,20 @@ class SQLBaseBackend(Backend):
 					if not "$set" in document:
 						document["$set"] = {}
 					document["$set"][common.COL_BUCKET] = statement[s]
-			elif not collectionName.startswith("flows"):
+			elif collectionName.startswith("flows_"):
+				if s == common.COL_ID:
+					# skip the id field. We don't need it
+					continue
+				if s == common.COL_BUCKET:
+					if not "$set" in document:
+						document["$set"] = {}
+					document["$set"][common.COL_BUCKET] = statement[s]
+			else:
 				if s == "_id":
 					fieldDict["id"] = (statement[s], "PRIMARY")
 				else:
+					if self.insertMode == "UPDATE" and not self.check_index_column(s, collectionName):
+						print >> sys.stderr, "Warning: Using " + s + " as key, although it is not an index in " + collectionName
 					fieldDict[s] = (statement[s], "PRIMARY")
 
 		for part in [ "$set", "$inc" ]:
@@ -696,7 +765,10 @@ class SQLBaseBackend(Backend):
 				if fields[f] == 1:
 					if fieldsString != "":
 						fieldsString += ","
-					fieldsString += f
+					if f == "_id":
+						fieldsString += "id as _id"
+					else:
+						fieldsString += f
 			if fieldsString == "":
 				fieldsString = "*"
 		query = "SELECT " + fieldsString + " FROM " + collectionName + " "
@@ -730,6 +802,7 @@ class SQLBaseBackend(Backend):
 			query = self.add_limit_to_string(query, limit)
 
 		self.execute(query, None, self.dictCursor)
+		# TODO: Cleanup. Oracle does the same stuff as mysql
 		if self.type == "oracle":
 			# As alway: Things do not work with oracle ...
 			if not collectionName in self.dynamic_type_wrapper:
@@ -751,8 +824,12 @@ class SQLBaseBackend(Backend):
 				return dict()
 			rows = self.dictCursor.fetchall()
 			columns = [typeWrapper[i[0]] for i in self.dictCursor.description]
-			return [dict(zip(columns, row)) for row in rows]
+			return [OrderedDict(zip(columns, row)) for row in rows]
 		else:
+			rows = self.dictCursor.fetchall()
+			columns = [i[0] for i in self.dictCursor.description]
+			return [OrderedDict(zip(columns, row)) for row in rows]
+				
 			ret = self.dictCursor.fetchall()
 		return ret
 	
@@ -764,3 +841,26 @@ class SQLBaseBackend(Backend):
 
 		return ret
 
+
+	def check_index_column(self, column, collectionName):
+		return true
+
+
+	def add_to_cache(self, collectionName, queryString, cacheLine):
+		numElem = 1
+		if collectionName in self.tableInsertCache:
+			cache = self.tableInsertCache[collectionName][0]
+			numElem = self.tableInsertCache[collectionName][1] + 1
+			if queryString in cache:
+				cache[queryString].append(cacheLine)
+			else:
+				cache[queryString] = [ cacheLine ]
+		else:
+			cache = dict()
+			cache[queryString] = [ cacheLine ]
+			
+		self.tableInsertCache[collectionName] = (cache, numElem)
+		self.counter += 1
+
+		if numElem > self.cachingThreshold:
+			self.flushCache(collectionName)

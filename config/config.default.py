@@ -34,6 +34,7 @@ data_backend_user = "username"
 data_backend_password = "password"
 data_backend_name = "flows"
 data_backend_snmp_name = "snmp"
+data_backend_caching_threshold = 1000000
 
 
 # Flow settings
@@ -85,6 +86,11 @@ host_info__user = "username"
 host_info_password = "password"
 host_info_name = "hostinfo"
 
+# SNMP specfic options
+#----------------------------------------------------------------
+snmp_oid_file="flow-inspector/config/oid_list.txt"
+snmp_query_tmp_dir="flow-inspector/tmp/snmp_query_cache/"
+rrd_file_dir="flow-inspector/rrd/"
 
 # Mail Reports
 # --------------------------------------------------------------
@@ -94,3 +100,4 @@ smtp_username = None
 smtp_password = None
 smtp_from = "vermont"
 smtp_to   = "test@example.com"
+

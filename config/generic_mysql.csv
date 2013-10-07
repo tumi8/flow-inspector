@@ -1,0 +1,25 @@
+primary_key||tsBIGINT|sPRIMARY|sAUTO_INCREMENT
+primary_key_self||tsBIGINT|sPRIMARY|n|n
+timestamp||tsBIGINT UNSIGNED|n|n
+string15||tsVARCHAR(15)|n|n
+string20||tsVARCHAR(20)|n|n
+string50||tsVARCHAR(50)|n|n
+string100||tsVARCHAR(100)|n|n
+string150||tsVARCHAR(150)|n|n
+string255||tsVARCHAR(255)|n|n
+uint4294967295||tsINT UNSIGNED|n|n
+uint234||tsTINYINT UNSIGNED|n|n
+uint1||tsTINYINT UNSIGNED|n|n
+uint2||tsTINYINT UNSIGNED|n|n
+uint3||tsTINYINT UNSIGNED|n|n
+uint4||tsTINYINT UNSIGNED|n|n
+uint6||tsTINYINT UNSIGNED|n|n
+uint14||tsTINYINT UNSIGNED|n|n
+uint16||tsTINYINT UNSIGNED|n|n
+uint32||tsTINYINT UNSIGNED|n|n
+uint100||tsTINYINT UNSIGNED|n|n
+uint65535||tsSMALLINT UNSIGNED|n|n
+uint2147483647||tsINT UNSIGNED|n|n
+int2147483647||tsINT|n|n
+uint18446744073709551615||tsBIGINT UNSIGNED|n|n
+uint64bit||tsBIGINT UNSIGNED|n|n

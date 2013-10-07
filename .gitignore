@@ -2,3 +2,5 @@
 ._*
 *.pyc
 /config/config.py
+*.swp
+

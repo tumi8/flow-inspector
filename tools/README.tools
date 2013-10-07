@@ -5,10 +5,10 @@ This is a little tool that performs SNMP queries on a large
 number of machines. And puts the output of these queries into
 a single large file. The syntax of the call is:
 
-Usage: ./snmpwalk-worker <ip_list> <output_dir> <snmp-type-list>
+Usage: ./snmpwalk-worker <output_dir> <snmp-type-list>
 
-<ip_list>:
-	Textfile which contains a list of IP and communitystring
+read from stdin:
+	Text which contains a list of IP and communitystring
 	combinations:
 		127.0.0.1 public
 		127.0.0.1 public 
@@ -48,3 +48,20 @@ dump_data_dir.py
 Syntax:
 
 update-rras <dump_data_dir_output_dir> <rrd_file_dir> <timestamp>
+
+onlinecheck
+===========
+
+Performs online check on a list of IPs by starting large numbers of
+ping processes. It outputs the IP addresses that are not reachable 
+mimicking the output of fping -u. This tool is meant to be used for
+environments where you have to perform fping like measurements but
+cannot perform them as a root user. Fping will limit the number of
+online checks if you are not a root user. onlinecheck will finish
+your measurements more quickly than fping. 
+Use fping if you can perform your measurements as root, as it will
+be much better than onlinecheck
+
+Syntax:
+
+onlinecheck <ipfilelist>

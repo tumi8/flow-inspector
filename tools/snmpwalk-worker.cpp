@@ -51,6 +51,7 @@ struct host {
 
 std::vector<std::string> oid_string_list;
 std::vector<std::string> oid_prefix_list;
+bool do_output;
 volatile int active_hosts;
 
 
@@ -66,6 +67,12 @@ int dump_result (int status, struct snmp_session *sp, struct snmp_pdu *pdu, oid*
 	switch (status) {
 		case STAT_SUCCESS:
 			{
+			if (!do_output) {
+				// this is just a availablity check.
+				// don't generate any output 
+				return 1;
+			}	
+
 			std::stringstream s;
 			s << session->output_dir << "/" << session->prefix << "-" << session->ip << "-" << session->measurement_time << ".txt";
 			FILE* f = fopen(s.str().c_str(), "a+");
@@ -120,12 +127,22 @@ int dump_result (int status, struct snmp_session *sp, struct snmp_pdu *pdu, oid*
 			struct timezone tz;
 			struct tm *tm;
 		
-			gettimeofday(&now, &tz);
-			tm = localtime(&now.tv_sec);
-			fprintf(stdout, "%.2d:%.2d:%.2d.%.6d - %s - Timeout\n", tm->tm_hour, tm->tm_min, tm->tm_sec,now.tv_usec, sp->peername);
+			if (do_output) {
+				gettimeofday(&now, &tz);
+				tm = localtime(&now.tv_sec);
+				fprintf(stdout, "%.2d:%.2d:%.2d.%.6d - %s - Timeout\n", tm->tm_hour, tm->tm_min, tm->tm_sec,now.tv_usec, sp->peername);
+			} else {
+				// this is the availability check. We must output the IP that does not react
+				fprintf(stdout, "%s\n", sp->peername);
+			}
 			return 0;
 		case STAT_ERROR:
-			snmp_perror(sp->peername);
+			if (do_output) {
+				snmp_perror(sp->peername);
+			} else {
+				// this is the availability check. We must output the IP that does not react
+				fprintf(stdout, "%s\n", sp->peername);
+			}
 			return 0;
 	}
 	return 0;
@@ -189,74 +206,23 @@ int asynch_response(int operation, struct snmp_session *sp, int reqid, struct sn
 	return 1;
 }
 
-int perform_snmp_measurement(const std::string& filename, const std::string& output_dir, const std::string& types_file)
+int init_snmp()
 {
-	std::cout << "Starting data collection ..." << std::endl;
 	init_snmp("snmpwalk-worker");
-
-	std::vector<session> session_vec;
-	std::vector<host> hosts;
-
 	// make sure we have the output options -O benq activated
 	snmp_out_toggle_options((char*)"benq");
+}
 
+int check_snmp_availability()
+{
+	init_snmp("snmpwalk-worker-availability");
+}
+
+int send_snmp_queries(std::vector<host>& hosts, std::vector<session>& session_vec, const std::string& output_dir)
+{
 	time_t measurement_time = time(NULL);	// all snmpbulkwalk output files *MUST* encode the same timestamp
 						// regardless of when the actuall process did return its data
-	std::ifstream in(filename.c_str());
-	if (!in) {
-		std::cerr << "Error opening snmp device list (" << filename << "): " << strerror(errno) << std::endl;
-		return -1;
-	}
 
-	// read all hosts and community strings from the input file
-	// and store them in the hosts vector. This is later on used
-	// to create the sessions
-	std::string line;
-	while (in && !in.eof()) {
-		std::getline(in, line);
-		if (line == "") {
-			continue;
-		}
-		
-		// Split line into ip address and snmp community string
-		// expected format for the lines: 
-		// IP COMMUNITY_STRING
-		std::stringstream line_split(line);
-		std::string ip, community_string;
-		line_split >> ip >> community_string;
-		host h;
-		h.name = ip;
-		h.community = community_string;
-		hosts.push_back(h);
-
-		// add a new persistent entry to session_vec
-		// and get point hs to this element. We need
-		// it for the asynchronous callback handler
-		struct session s_base;
-		session_vec.push_back(s_base);
-	}
-
-	// read list of snmp-strings and resulting file names
-	std::ifstream types_in(types_file.c_str());
-	if (!types_in) {
-		std::cout << "ERROR: Could not open types file " << types_file << ": " << strerror(errno) << std::endl;
-		return -1;
-	}
-
-	while (types_in && !types_in.eof()) {
-		std::getline(types_in, line);
-		if (line == "") {
-			continue;
-		}
-		// Split line into snmp-oid and IP
-		// expected format for the lines: 
-		// SNMP-OID (in dotted format) FILE_PREFIX
-		std::stringstream line_split(line);
-		std::string oid, file_prefix;
-		line_split >> oid >> file_prefix;
-		oid_string_list.push_back(oid);
-		oid_prefix_list.push_back(file_prefix);
-	}
 	// create one session for each host and each oid. Please note that this
 	// will create multiple sessions for a single host!
 	for (std::vector<host>::const_iterator i = hosts.begin(); i != hosts.end(); ++i) {
@@ -326,15 +292,121 @@ int perform_snmp_measurement(const std::string& filename, const std::string& out
 		if (i->sess) 
 			snmp_close(i->sess);
 	}
+}
+
+
+
+int perform_snmp_measurement(const std::string& output_dir, const std::string& types_file)
+{
+	std::vector<session> session_vec;
+	std::vector<host> hosts;
+
+	init_snmp();
+
+	// read all hosts and community strings from stdin
+	// and store them in the hosts vector. This is later on used
+	// to create the sessions
+	std::string line;
+	while (std::cin && !std::cin.eof()) {
+		std::getline(std::cin, line);
+		if (line == "") {
+			continue;
+		}
+		
+		// Split line into ip address and snmp community string
+		// expected format for the lines: 
+		// IP COMMUNITY_STRING
+		std::stringstream line_split(line);
+		std::string ip, community_string;
+		line_split >> ip >> community_string;
+		host h;
+		h.name = ip;
+		h.community = community_string;
+		hosts.push_back(h);
+
+		// add a new persistent entry to session_vec
+		// and get point hs to this element. We need
+		// it for the asynchronous callback handler
+		struct session s_base;
+		session_vec.push_back(s_base);
+	}
+
+	// read list of snmp-strings and resulting file names
+	std::ifstream types_in(types_file.c_str());
+	if (!types_in) {
+		std::cout << "ERROR: Could not open types file " << types_file << ": " << strerror(errno) << std::endl;
+		return -1;
+	}
+
+	while (types_in && !types_in.eof()) {
+		std::getline(types_in, line);
+		if (line == "") {
+			continue;
+		}
+		// Split line into snmp-oid and IP
+		// expected format for the lines: 
+		// SNMP-OID (in dotted format) FILE_PREFIX
+		std::stringstream line_split(line);
+		std::string oid, file_prefix;
+		line_split >> oid >> file_prefix;
+		oid_string_list.push_back(oid);
+		oid_prefix_list.push_back(file_prefix);
+	}
+
+	send_snmp_queries(hosts, session_vec, output_dir);
+
 	return 0;
+}
+
+int perform_snmp_availability_check()
+{
+	std::vector<session> session_vec;
+	std::vector<host> hosts;
+
+	init_snmp();
+
+	// read hosts from std::cin
+	std::string line;
+	while (std::cin) {
+		std::getline(std::cin, line);
+		if (!std::cin.eof()) {
+			// Split line into ip address and snmp community string
+			// expected format for the lines: 
+			// IP COMMUNITY_STRING
+			std::stringstream line_split(line);
+			std::string ip, community_string;
+			line_split >> ip >> community_string;
+			host h;
+			h.name = ip;
+			h.community = community_string;
+			hosts.push_back(h);
+
+			// add a new persistent entry to session_vec
+			// and get point hs to this element. We need
+			// it for the asynchronous callback handler
+			struct session s_base;
+			session_vec.push_back(s_base);
+		}
+	}
+
+	oid_string_list.push_back("1.3.6.1.2.1.1.4.0");
+	oid_prefix_list.push_back("none");
+	send_snmp_queries(hosts, session_vec, "");
 }
 
 int main(int argc, char** argv)
 {
-	if (argc != 4) {
-		std::cerr << "Usage: " << argv[0] << " <ip_list> <output_dir> <snmp-type-list>" << std::endl;
+	if (argc == 3) {
+		do_output = true;
+		return perform_snmp_measurement(argv[1], argv[2]);
+	} else if (argc == 1) {
+		do_output = false;
+		return perform_snmp_availability_check();
+	} else {
+		std::cerr << "Usage: " << argv[0] << " <output_dir> <snmp-type-list>" << std::endl;
+		std::cerr << "or " << std::endl;
+		std::cerr << "Usage: " << argv[0] << std::endl;
 		return -1;
 	}
-
-	return perform_snmp_measurement(argv[1], argv[2], argv[3]);
+	return 0;
 }

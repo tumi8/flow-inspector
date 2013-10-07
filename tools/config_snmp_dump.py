@@ -69,3 +69,10 @@ mem_graph_configs = [
 rtt_graph_configs = [
 	("RTT", "RTT", "RTT Timings", "RTT", 1),
 ]
+
+graph_dict = {
+	"interface": interface_graph_configs,
+	"cpu": cpu_graph_configs,
+	"memory": mem_graph_configs,
+	"rtt": rtt_graph_configs,
+}
