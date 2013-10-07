@@ -176,11 +176,11 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	dst_db = backend.databackend.getBackendObject(
-		args.backend, args.dst_host, args.dst_port,
-		args.dst_user, args.dst_password, args.dst_database, "INSERT")
+		args.data_backend, args.data_backend_host, args.data_backend_port,
+		args.data_backend_user, args.data_backend_password, args.data_backend_database, "INSERT")
 
 	measurement_map_filename =  os.path.join(os.path.dirname(__file__), "..", "config",  "monitoring_devices.csv")
-	for name, fields in common_functions.read_field_dict_from_csv(args.backend, measurement_map_filename).items():
+	for name, fields in common_functions.read_field_dict_from_csv(args.data_backend, measurement_map_filename).items():
 		dst_db.prepareCollection(name, fields)
 
 

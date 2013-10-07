@@ -291,8 +291,8 @@ def main():
 	args = parser.parse_args()
 
 	dst_db = backend.databackend.getBackendObject(
-		args.backend, args.dst_host, args.dst_port,
-		args.dst_user, args.dst_password, args.dst_database, "INSERT")
+		args.data_backend, args.data_backend_host, args.data_backend_port,
+		args.data_backend_user, args.dat_backend_password, args.data_backend_database, "INSERT")
 
 	if args.clear_database:
 		dst_db.clearDatabase()
