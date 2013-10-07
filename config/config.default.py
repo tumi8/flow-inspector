@@ -32,8 +32,8 @@ data_backend_host = "127.0.0.1"
 data_backend_port = 3306
 data_backend_user = "username"
 data_backend_password = "password"
-data_backend_database = "flowinspector_data"
-data_backend_snmp_table = "snmp"
+data_backend_name = "flows"
+data_backend_snmp_name = "snmp"
 data_backend_caching_threshold = 1000000
 
 

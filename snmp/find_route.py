@@ -188,7 +188,7 @@ def main():
 
 	args = parser.parse_args()
 
-	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_database)
+	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name)
 	
 	global ipCidrRoute, interface_log
 	ipCidrRoute = db.getCollection("ipCidrRoute")
@@ -209,7 +209,7 @@ def main():
 if __name__ == "__main__":
 	main()
 else:
-	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_database)
+	db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name)
 	ipCidrRoute = db.getCollection("ipCidrRoute")
 	interface_log = db.getCollection("interface_log")
 	timestamp = sorted(ipCidrRoute.distinct("timestamp"), reverse=True)[0]
