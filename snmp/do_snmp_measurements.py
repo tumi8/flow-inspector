@@ -146,7 +146,7 @@ def parse_snmp_data(source_dir):
 		#counter, time_current - time_begin, counter / (time_current - time_begin))
 		time_last = time_current
 
-	if len(timestamps) != 1:
+	if len(timestamps) != 1 and len(timestamps) != 0:
 		print "ERROR: There should only be a single timestamp in the directory. Check your configuration ..."
 		sys.exit(1)
 	return doc
@@ -159,7 +159,6 @@ def perform_snmp_measurement(ip_list_community_strings, output_dir):
 	queries. It takes a list of tuples of (ip_list, community_string)
 	that can be used to query the device for the OID ???
 	"""
-	print output_dir, config.snmp_oid_file
 	snmpwalk_pipe = subprocess.Popen([os.path.join(os.path.dirname(__file__), '..', 'tools', 'snmpwalk-worker'), output_dir, config.snmp_oid_file], stdout=subprocess.PIPE,stdin=subprocess.PIPE)
 
 	input_for_snmpwalk_worker = ""
