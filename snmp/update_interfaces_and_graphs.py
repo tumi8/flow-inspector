@@ -69,7 +69,7 @@ def create_interface_list(device_coll, interface_phy_coll, ifxtable_coll, destin
 		if_id = ip + "_" + str(if_number)
 		if not if_id in interface_list:
 			print "FATAL: Found an interface in interface_list (ifXTable) that does not have a corresponding interface in (interface_phy):", res
-			sys.exit(-3)
+			continue
 		interface_list[if_id]['if_status'] = res['ifOperStatus']
 		interface_list[if_id]['if_type'] = res['ifType']
 	print "Pushing data into database..."
@@ -79,7 +79,6 @@ def create_interface_list(device_coll, interface_phy_coll, ifxtable_coll, destin
 		if_number = interface['if_number']
 		del interface['device_id']
 		del interface['if_number']
-		print interface
 		doc = dict()
 		doc["$set"] = interface
 		destination_coll.update({'device_id': device_id, 'if_number' : if_number}, doc)
@@ -120,6 +119,7 @@ if __name__ == "__main__":
 	measurement_map_filename =  os.path.join(os.path.dirname(__file__), "..", "config",  "monitoring_devices.csv")
 	for name, fields in common_functions.read_field_dict_from_csv(args.data_backend, measurement_map_filename).items():
 		dst_db.prepareCollection(name, fields)
+	snmp_preprocess.prepare_snmp_collections(dst_db, args.backend)
 
 	create_graph_templates(dst_db.getCollection("graph_list"))
 

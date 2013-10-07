@@ -91,7 +91,6 @@ class SQLBaseBackend(Backend):
 				# we can just try to do it again. If not, we can ignore the problem. 
 				# or it can reraise the Exception in which case we want to know the query
 				# that caused the exception
-				print e
 				if not self.did_reconnect_on_error and  self.handle_exception(e):
 					self.execute(string, params, cursor)
 				else:
@@ -104,7 +103,7 @@ class SQLBaseBackend(Backend):
 						self.execute(string, params, cursor)
 					else:
 						# ok. we give up now ...
-						raise						
+						pass						
 			except Exception as e:
 				print "Cannot gracefully handle DB Exception", e
 				print "Exception was caused by query: ", string
@@ -766,7 +765,10 @@ class SQLBaseBackend(Backend):
 					if fieldsString != "":
 						fieldsString += ","
 					if f == "_id":
-						fieldsString += "id as _id"
+						if self.type != "oracle":
+							fieldsString += "id as _id"
+						else:
+							fieldsString += "id"
 					else:
 						fieldsString += f
 			if fieldsString == "":
@@ -843,7 +845,7 @@ class SQLBaseBackend(Backend):
 
 
 	def check_index_column(self, column, collectionName):
-		return true
+		return True
 
 
 	def add_to_cache(self, collectionName, queryString, cacheLine):
