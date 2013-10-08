@@ -205,25 +205,19 @@ if __name__ == "__main__":
 	if  not os.path.isdir(output_dir):
 		os.makedirs(output_dir)
 
-	print "Getting SNMP data ..."
 	perform_snmp_measurement(snmp_ips, output_dir)
 
-	print "Parsing SNMP data ..."
 	doc = parse_snmp_data(output_dir)
 
-	print "Dumping to tmp file ..."
 	# dump data to rrd files 
 	snmp_dump_file = os.path.join(output_dir,"snmp_dump_tmp_file.tmp")
 
-	print "Preparing for rrd dump ..."
 	prepare_data_for_rrd_dump(doc, snmp_dump_file)
 	if not os.path.isdir(config.rrd_file_dir):
 		os.makedirs(config.rrd_file_dir)
-	print "Dumping to rrd files ..."
 	dump_to_rrd(snmp_dump_file, config.rrd_file_dir, measurement_time)
 
 	# dump data to data backend
-	print "Pushing to Oracle DB ..."
 	collections = snmp_preprocess.prepare_snmp_collections(dst_db, args.backend)
 	snmp_preprocess.commit_doc(doc, collections)
 	for collection in collections.itervalues():
