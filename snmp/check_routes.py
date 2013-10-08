@@ -13,7 +13,7 @@ from find_route import findRouteIPTable, findRouteEIGRP
 from copy import deepcopy
 from netaddr import *
 from collections import deque
-from common_functions import *
+from net_functions import *
 
 import common
 import backend

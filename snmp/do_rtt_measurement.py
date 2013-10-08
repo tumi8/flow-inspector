@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'tools'))
 import config
 import common
 import backend
-import common_functions
+import csv_configurator
 import snmp_preprocess
 import config_snmp_dump
 
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 		args.dst_user, args.dst_password, args.dst_database, "INSERT")
 
 	measurement_map_filename =  os.path.join(os.path.dirname(__file__), "..", "config",  "monitoring_devices.csv")
-	for name, fields in common_functions.read_field_dict_from_csv(args.backend, measurement_map_filename).items():
+	for name, fields in csv_configurator.read_field_dict_from_csv(args.backend, measurement_map_filename).items():
 		dst_db.prepareCollection(name, fields)
 
 

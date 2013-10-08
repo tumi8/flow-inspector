@@ -10,7 +10,7 @@ import argparse
 
 from netaddr import *
 from collections import deque
-from common_functions import *
+from net_functions import *
 
 import common
 import backend

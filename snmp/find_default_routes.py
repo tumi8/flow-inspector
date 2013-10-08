@@ -11,7 +11,7 @@ import pymongo
 
 from netaddr import *
 from collections import deque
-from common_functions import *
+from net_functions import *
 from find_route import findRouteIPTable, findRouteEIGRP
 
 import common

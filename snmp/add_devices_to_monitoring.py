@@ -24,7 +24,7 @@ import time
 import tempfile
 
 import common
-import common_functions
+import csv_configurator
 import backend
 
 # def update_live_check_list(collection, output_file):
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 		args.dst_user, args.dst_password, args.dst_database)
 
 	measurement_map_filename =  os.path.join(os.path.dirname(__file__), "..", "config",  "monitoring_devices.csv")
-	for name, fields in common_functions.read_field_dict_from_csv(args.backend, measurement_map_filename).items():
+	for name, fields in csv_configurator.read_field_dict_from_csv(args.backend, measurement_map_filename).items():
 		dst_db.prepareCollection(name, fields)
 
 	device_table = dst_db.getCollection("device_table")

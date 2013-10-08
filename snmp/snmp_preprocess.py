@@ -14,7 +14,7 @@ import config
 import common
 import backend
 
-from common_functions import *
+from net_functions import *
 from csv_configurator import *
 
 # dictionary which maps oid -> name and fct to parse oid value
