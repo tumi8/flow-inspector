@@ -129,6 +129,14 @@ class Collection:
 	def distinct(self, field):
 		return self.backendObject.distinct(self.collectionName, field)
 
+	def count(self):
+		return self.backendObject.count(self.collectionName)
+
+	def min(self, field):
+		return self.backendObject.min(self.collectionName, field)
+
+	def max(self, field):
+		return self.backendObject.max(self.collectionName, field)
 
 class Backend:
 	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
@@ -142,6 +150,25 @@ class Backend:
 
 	def connect(self):
 		pass
+
+	def count(self, collectionName):
+		"""
+		Returns number of elements in the collection
+		"""
+		pass
+
+	def min(self, collectionName, field):
+		"""
+		Returns the minimum value for field in the collection
+		"""
+		pass
+
+	def max(self, collectionName, field):
+		"""
+		Returns the maximum value for field in the collection
+		"""
+		pass
+
 
 	def getMinBucket(self, bucketSize = None):
 		"""
@@ -173,6 +200,12 @@ class Backend:
 		Removes all data from the backend
 		"""
 		pass
+
+	def getCollectionList(self):
+		"""
+		Generates a list of available connections/tables in the database.
+		"""
+		return []
 
 	def getCollection(self, name):
 		"""

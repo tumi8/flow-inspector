@@ -55,6 +55,19 @@ class SQLBaseBackend(Backend):
 	def insert_insert(self, collectionName, fieldDict):
 		pass
 
+	def count(self, collectionName):
+		self.execute("SELECT COUNT(*) FROM %s" % (collectionName))
+		return self.cursor.fetchall()[0][0]
+
+	def min(self, collectionName, field):
+		self.cursor.execute(("SELECT MIN(%s) FROM %s") % (field, collectionName))
+		return self.cursor.fetchall()[0][0]
+
+	def max(self, collectionName, field):
+		self.cursor.execute(("SELECT MAX(%s) FROM %s") % (field, collectionName))
+		return self.cursor.fetchall()[0][0]
+
+
 	def execute(self, string, params = None, cursor=None):
 		self.executeTimes += 1
 		#print "Execute: ", self.executeTimes

@@ -17,6 +17,13 @@ class MysqlBackend(SQLBaseBackend):
 		self.type_map = common.MYSQL_TYPE_MAPPER
 		self.type = "mysql"
 
+	def getCollectionList(self):
+		self.execute("SHOW TABLES")
+		coll_list = []
+		for i in  self.cursor.fetchall():
+			coll_list.append(i[0])
+		return coll_list
+
 	def connect(self):
 		import MySQLdb
 		import _mysql_exceptions

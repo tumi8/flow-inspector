@@ -14,6 +14,13 @@ class OracleBackend(SQLBaseBackend):
 		self.dynamic_type_wrapper = dict()
 		self.type = "oracle"
 
+	def getCollectionList(self):
+		self.execute("SELECT table_name FROM user_tables")
+		coll_list = []
+		for i in  self.cursor.fetchall():
+			coll_list.append(i[0])
+		return coll_list
+
 	def connect(self):
 		import cx_Oracle
 		try:
