@@ -51,6 +51,9 @@ class MongoBackend(Backend):
 	def flushCache(self, collectionName = None):
 		self.flush_index_cache()
 
+	def count(self, collectionName):
+		return self.dst_db[collectionName].count()
+
 	def connect(self):
 		# init pymongo connection
 		try:

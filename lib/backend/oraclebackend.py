@@ -14,6 +14,13 @@ class OracleBackend(SQLBaseBackend):
 		self.dynamic_type_wrapper = dict()
 		self.type = "oracle"
 
+	def getCollectionList(self):
+		self.execute("SELECT table_name FROM user_tables")
+		coll_list = []
+		for i in  self.cursor.fetchall():
+			coll_list.append(i[0])
+		return coll_list
+
 	def connect(self):
 		import cx_Oracle
 		try:
@@ -30,9 +37,7 @@ class OracleBackend(SQLBaseBackend):
 			print >> sys.stderr, "Cannot connect to Oracle database: ", inst,
 
 	def insert_insert(self, collectionName, fieldDict):
-		updateString = ""
 		typeString = ""
-		cacheLine = () 
 		params = {}
 		valueString = ""
 		for field in fieldDict:
@@ -42,14 +47,13 @@ class OracleBackend(SQLBaseBackend):
 				valueString += ","
 
 			fieldValue = fieldDict[field][0]
-			actionType = fieldDict[field][1]
 
 			typeString += field
-			params[field] = str(fieldDict[0])
-			valueString += "%s"
+			params[field] = str(fieldValue)
+			valueString += ":" + field
 	
 		queryString = "INSERT INTO " + collectionName + " (" + typeString + ") VALUES (" + valueString + ") "
-		self.add_to_cache(collectionName, queryString, cacheLine)
+		self.add_to_cache(collectionName, queryString, params)
 
 
 	def insert_update(self, collectionName, fieldDict):

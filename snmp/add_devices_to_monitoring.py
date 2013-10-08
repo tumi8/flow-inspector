@@ -9,7 +9,7 @@ be added using the values provided in the input file.
 
 The Input file is a CSV file that contains the following fields on each line:
 
-<IP>, <NAME>, <ACTIVE>, <DO_SNMP>, <DO_LIVE_CHECK>, <SNMP_COMMUNITY_STRING>
+<IP>, <NAME>, <TYPE>, <ACTIVE>, <DO_SNMP>, <DO_LIVE_CHECK>, <SNMP_COMMUNITY_STRING>
 """
 
 import sys
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 	insert_time = time.time()
 	for row in device_reader:
 		# expected format:
-		#<IP>, <NAME>, <ACTIVE>, <DO_SNMP>, <DO_LIVE_CHECK>, <SNMP_COMMUNITY_STRING>
+		#<IP>, <NAME>, <TYPE>, <ACTIVE>, <DO_SNMP>, <DO_LIVE_CHECK>, <SNMP_COMMUNITY_STRING>
 		if row[0] in csv_content:
 			print "ERROR: IP \"" + row[0] + "\" occurs two times in config file. This is not allowed!"
 			sys.exit(-2)

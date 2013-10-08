@@ -55,6 +55,19 @@ class SQLBaseBackend(Backend):
 	def insert_insert(self, collectionName, fieldDict):
 		pass
 
+	def count(self, collectionName):
+		self.execute("SELECT COUNT(*) FROM %s" % (collectionName))
+		return self.cursor.fetchall()[0][0]
+
+	def min(self, collectionName, field):
+		self.cursor.execute(("SELECT MIN(%s) FROM %s") % (field, collectionName))
+		return self.cursor.fetchall()[0][0]
+
+	def max(self, collectionName, field):
+		self.cursor.execute(("SELECT MAX(%s) FROM %s") % (field, collectionName))
+		return self.cursor.fetchall()[0][0]
+
+
 	def execute(self, string, params = None, cursor=None):
 		self.executeTimes += 1
 		#print "Execute: ", self.executeTimes
@@ -91,7 +104,6 @@ class SQLBaseBackend(Backend):
 				# we can just try to do it again. If not, we can ignore the problem. 
 				# or it can reraise the Exception in which case we want to know the query
 				# that caused the exception
-				print e
 				if not self.did_reconnect_on_error and  self.handle_exception(e):
 					self.execute(string, params, cursor)
 				else:
@@ -104,7 +116,7 @@ class SQLBaseBackend(Backend):
 						self.execute(string, params, cursor)
 					else:
 						# ok. we give up now ...
-						raise						
+						pass						
 			except Exception as e:
 				print "Cannot gracefully handle DB Exception", e
 				print "Exception was caused by query: ", string
@@ -766,7 +778,10 @@ class SQLBaseBackend(Backend):
 					if fieldsString != "":
 						fieldsString += ","
 					if f == "_id":
-						fieldsString += "id as _id"
+						if self.type != "oracle":
+							fieldsString += "id as _id"
+						else:
+							fieldsString += "id"
 					else:
 						fieldsString += f
 			if fieldsString == "":
@@ -843,7 +858,7 @@ class SQLBaseBackend(Backend):
 
 
 	def check_index_column(self, column, collectionName):
-		return true
+		return True
 
 
 	def add_to_cache(self, collectionName, queryString, cacheLine):

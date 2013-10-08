@@ -60,4 +60,3 @@ def calc_ip_range(ip, mask):
 	high_ip = low_ip + (2**mask_inv - 1)
 
 	return (low_ip, high_ip)
-

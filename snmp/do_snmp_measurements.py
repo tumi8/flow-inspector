@@ -146,7 +146,7 @@ def parse_snmp_data(source_dir):
 		#counter, time_current - time_begin, counter / (time_current - time_begin))
 		time_last = time_current
 
-	if len(timestamps) != 1:
+	if len(timestamps) != 1 and len(timestamps) != 0:
 		print "ERROR: There should only be a single timestamp in the directory. Check your configuration ..."
 		sys.exit(1)
 	return doc
@@ -211,6 +211,7 @@ if __name__ == "__main__":
 
 	# dump data to rrd files 
 	snmp_dump_file = os.path.join(output_dir,"snmp_dump_tmp_file.tmp")
+
 	prepare_data_for_rrd_dump(doc, snmp_dump_file)
 	if not os.path.isdir(config.rrd_file_dir):
 		os.makedirs(config.rrd_file_dir)

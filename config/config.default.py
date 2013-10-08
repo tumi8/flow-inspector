@@ -32,8 +32,8 @@ data_backend_host = "127.0.0.1"
 data_backend_port = 3306
 data_backend_user = "username"
 data_backend_password = "password"
-data_backend_name = "flows"
-data_backend_snmp_name = "snmp"
+data_backend_database = "flowinspector_data"
+data_backend_snmp_table = "snmp"
 data_backend_caching_threshold = 1000000
 
 
@@ -88,7 +88,16 @@ host_info_name = "hostinfo"
 
 # SNMP specfic options
 #----------------------------------------------------------------
-
 snmp_oid_file="flow-inspector/config/oid_list.txt"
 snmp_query_tmp_dir="flow-inspector/tmp/snmp_query_cache/"
 rrd_file_dir="flow-inspector/rrd/"
+
+# Mail Reports
+# --------------------------------------------------------------
+smtp_host = "localhost"
+smtp_port = 25
+smtp_username = None
+smtp_password = None
+smtp_from = "vermont"
+smtp_to   = "test@example.com"
+
