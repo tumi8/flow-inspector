@@ -25,6 +25,47 @@ import csv_configurator
 import snmp_preprocess
 import config_snmp_dump
 
+def create_cpu_list(cpu_coll):
+	# creating CPU tables
+	print "Retrieving CPU infos"
+	cisco_cpu_coll = dst_db.getCollection("ciscoCpu")
+	cpu_list_coll = dst_db.getCollection('cpu_list')
+	resultSet = cisco_cpu_coll.find({}, fields={"DISTINCT ROUTER": 1, "CPU_NUMBER": 1})
+	for i in resultSet:
+		print i
+		ip = i["ROUTER"]
+		if not ip in device_list:
+			print "ERROR: Device %s has CPU statistics but does not have any interface stats!"
+			continue
+		device_id = device_list[ip]['r_id']
+# get device id in snmp_dev_coll for router
+		
+		doc = dict()
+		table_entry = { 'NOTE': ""}
+		doc["$set"] = table_entry
+		cpu_list_coll.update({ "DEVICE_ID": device_id, "CPU_NUMBER": i["CPU_NUMBER"]}, doc)
+	cpu_list_coll.flushCache()
+
+def create_mem_list(mem_coll):
+	# creating MEM tables
+	print "Retrieving MEM infos"
+	cisco_mem_coll = dst_db.getCollection("ciscoMemory")
+	mem_list_coll = dst_db.getCollection('mem_list')
+	resultSet = cisco_mem_coll.find({}, fields={"DISTINCT ROUTER": 1, "POOL_NUMBER": 1})
+	for i in resultSet:
+		ip = i["ROUTER"]
+		if not ip in device_list:
+			print "ERROR: Device %s has MEM statistics but does not have any interface stats!"
+			continue
+		device_id = device_list[ip]['r_id']
+	# get device id in snmp_dev_coll for router
+		doc = dict()
+		table_entry = { 'NOTE': ""}
+		doc["$set"] = table_entry
+		mem_list_coll.update({ "DEVICE_ID": device_id, "POOL_NUMBER": i["POOL_NUMBER"]}, doc)
+	print "Flushing memory cache..."
+	mem_list_coll.flushCache()
+
 def create_interface_list(device_coll, interface_phy_coll, ifxtable_coll, destination_coll):
 	"""
 	Extract all devices that are known to ifXTable and interface_phy.
@@ -51,8 +92,12 @@ def create_interface_list(device_coll, interface_phy_coll, ifxtable_coll, destin
 		ip = res['router']
 		if_id = ip + "_" + str(if_number)
 		if if_id in interface_list:
-			print "FATAL: Found duplicate interface in interface_list:", res
-			sys.exit(-1)
+			# duplicates can occur. E.g. when an alias or name of the interface was changed by an operator
+			# we need some error handling to get the latest value for ifName and ifAlias
+			# TODO: implement error handling. for now we just take the update and discard the old value
+			pass
+			#print "FATAL: Found duplicate interface in interface_list.\nFATAL: Old Entry: ", interface_list[if_id], '\nFATAL: New entry: ', res
+			#sys.exit(-1)
 		if not ip in device_map:
 			print "FATAL: Found IP \"" + ip + "\" in interface_results but IP is not known in device_map"
 			sys.exit(-2)
@@ -127,6 +172,11 @@ if __name__ == "__main__":
 	interface_phy_coll = dst_db.getCollection("interface_phy")
 	ifxtable_coll = dst_db.getCollection("ifXTable")
 	destination_coll = dst_db.getCollection("interface_list")
+	cpu_list = dst_db.getCollection('ciscoCpu')
+	mem_list = dst_db.getCollection('ciscoMemory')
 
 	create_interface_list(device_coll, interface_phy_coll, ifxtable_coll, destination_coll)
+	create_cpu_list(cpu_list)
+	create_mem_list(mem_list)
+	
 	
