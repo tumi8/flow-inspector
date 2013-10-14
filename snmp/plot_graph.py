@@ -7,6 +7,11 @@ import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+
+
 # include python modules
 import argparse
 import math
@@ -27,6 +32,7 @@ parser.add_argument("interface", nargs="?", default="38", help="selects interfac
 parser.add_argument("--timestamp_begin", default="1362024000", help="begin of data analysis")
 parser.add_argument("--timestamp_end", default="1362099600", help="end of data analysis")
 parser.add_argument("--outfile", default="test.png")
+parser.add_argument("--backend", nargs="?", default=config.data_backend, help="Backend database type")
 parser.add_argument("--dst-host", nargs="?", default=config.data_backend_host, help="Backend database host")
 parser.add_argument("--dst-port", nargs="?", default=config.data_backend_port, type=int, help="Backend database port")
 parser.add_argument("--dst-user", nargs="?", default=config.data_backend_user, help="Backend database user")
@@ -37,14 +43,23 @@ args = parser.parse_args()
 # prepare database connection and create required collection objects
 db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_database)
 interface_phy = db.getCollection("interface_phy")
+ifxtable = db.getCollection("ifXTable")
 
 
 # request data from database
 # TODO: sqlbackend does not support AND-clauses... 'Solve' this by using case-sensitivity of the dictionary used (timestamp vs. TiMeStAmP)
-data_set = interface_phy.find({ "router": args.router, "ifIndex": args.interface,
+#data_set = interface_phy.find({ "router": args.router, "ifIndex": args.interface,
+#	"timestamp": {"$gt": args.timestamp_begin}, "TiMeStAmP": {"$lt": args.timestamp_end}},
+#	sort={"timestamp": 1})
+
+data_set = ifxtable.find({ "router": args.router, "if_number": args.interface,
 	"timestamp": {"$gt": args.timestamp_begin}, "TiMeStAmP": {"$lt": args.timestamp_end}},
 	sort={"timestamp": 1})
 
+
+if len(data_set) == 0:
+	print "Empty data set for router", args.router, "and interface", args.interface
+	sys.exit(0)
 
 # ----------------------------------------------------------------------------- #
 
@@ -54,14 +69,18 @@ data_set = interface_phy.find({ "router": args.router, "ifIndex": args.interface
 # here: convert absolut values into differential values, correct counter overruns and parse timestamps
 # TODO: maye make a function out of this
 values = []
-last = data_set[0]["ifInOctets"]
+last = data_set[0]["ifHCOutOctets"]
+lastTimestamp = data_set[0]["timestamp"]
 for record in data_set[1:]:
-	if (last > record["ifInOctets"]):
-		value = 2**32 - last + record["ifInOctets"]
+	if (last > record["ifHCOutOctets"]):
+		value = 2**32 - last + record["ifHCOutOctets"]
 	else:
-		value = record["ifInOctets"] - last
+		value = record["ifHCOutOctets"] - last
+	if record["timestamp"] - lastTimestamp != 300:
+		print "foo"
+	lastTimestamp = record["timestamp"]
 	values.append((datetime.datetime.fromtimestamp(record["timestamp"]).strftime("%m-%d_%H:%M:%S") , value))
-	last = record["ifInOctets"]
+	last = record["ifHCOutOctets"]
 data_set = values
 print >> sys.stderr, values
 
@@ -170,12 +189,12 @@ print >> gnuplot.stdin, 'set xtics 5 rotate'
 print >> gnuplot.stdin, 'set grid'
 print >> gnuplot.stdin, 'set datafile missing "NoV"'
 # print >> gnuplot.stdin, 'plot "data.tmp" using 0:3:xtic((int(column(0)) % 15 == 0) ? stringcolumn(1) : "") title "data" with lines linewidth 2, \\'
-print >> gnuplot.stdin, 'plot "%s" using 0:3 title "data" with lines linewidth 2, \\' % tmp_filename
-print >> gnuplot.stdin, '             "" using 3 title "sx" with lines linecolor rgb "green" linewidth 2, \\'
-print >> gnuplot.stdin, '             "" using 4 title "dsx" with lines linecolor rgb "blue" linewidth 2, \\'
-print >> gnuplot.stdin, '             "" using 5 title "ddsx" with lines linecolor rgb "orange" linewidth 2, \\'
-print >> gnuplot.stdin, '             "" using 10 title "marker" linecolor rgb "red", \\'
-print >> gnuplot.stdin, '             "" using 11 title "marker" linecolor rgb "red"'
+print >> gnuplot.stdin, 'plot "%s" using 0:2 title "data" with lines linewidth 2' % tmp_filename
+#print >> gnuplot.stdin, '             "" using 3 title "sx" with lines linecolor rgb "green" linewidth 2, \\'
+#print >> gnuplot.stdin, '             "" using 4 title "dsx" with lines linecolor rgb "blue" linewidth 2, \\'
+#print >> gnuplot.stdin, '             "" using 5 title "ddsx" with lines linecolor rgb "orange" linewidth 2, \\'
+#print >> gnuplot.stdin, '             "" using 10 title "marker" linecolor rgb "red", \\'
+#print >> gnuplot.stdin, '             "" using 11 title "marker" linecolor rgb "red"'
 print >> gnuplot.stdin, 'quit'
 
 # wait for gnuplot to quit

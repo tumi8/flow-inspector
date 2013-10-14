@@ -83,8 +83,8 @@ class BaseImporter:
 			try:
 				print "Failed to connect to postgresql db. Reason: ", e
 				print "Trying mysql instead ..."
-				import MySQLdb
-				import _mysql_exceptions
+				#import MySQLdb
+				#import _mysql_exceptions
 		
 				self.TYPE = "mysql"
 				dns = dict(
