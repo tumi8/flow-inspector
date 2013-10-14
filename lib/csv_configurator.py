@@ -162,7 +162,7 @@ def read_field_dict_from_csv(backend, csv_file):
 		type_generic_oracle = readDictionary(os.path.join(os.path.dirname(__file__), '..', 'config', "generic_oracle.csv"))
 		
 		def __convert_generic(generic_type):
-			return type_generic_mysql[generic_type]
+			return type_generic_oracle[generic_type]
 		
 		def __convert_snmp(snmp_type):
 			return type_generic_oracle[type_snmp_generic[snmp_type]]
