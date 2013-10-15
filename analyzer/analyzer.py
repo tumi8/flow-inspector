@@ -4,7 +4,7 @@ import math
 import sys
 import os
 
-import csv
+import csv_configurator
 from ordered_dict import OrderedDict
 
 class Analyzer:
@@ -30,12 +30,13 @@ class EWMAAnalyzer(Analyzer):
 		self.field = field
 		self.last_value = None
 
-		values = csv.readDictionary("AnalyzerConfig.csv")[self.__class__.__name__]
+		values = csv_configurator.readDictionary("AnalyzerConfig.csv")[self.__class__.__name__]
 		self.st = values['st']
 		self.p_st = values['p_st']
 		self.ewmv = values['ewmv']
 		self.p_ewmv = values['p_ewmv']
 		self.L = values['L'] 
+		self.tolerance = values['tolerance']
 	
 	def passDataSet(self, data):
 		mainid = self.mainid
@@ -74,9 +75,9 @@ class EWMAAnalyzer(Analyzer):
 			
 		# print >> sys.stderr, parameterdump		
 
-		if lower_bound - t > 6e-14:
+		if lower_bound - t > 6e-14 and lower_bound - t > self.tolerance:
 			return (self.__class__.__name__, mainid, subid, "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
-		if upper_bound - t < -6e-14:
+		if t - upper_bound > 6e-14 and t - upper_bound > self.tolerance:
 			return (self.__class__.__name__, mainid, subid, "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
 
 
