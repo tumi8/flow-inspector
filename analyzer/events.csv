@@ -19,7 +19,7 @@ events_subid||use_type||sstring20
 
 events_eventtype||name||seventtype
 events_eventtype||table||sevents
-events_eventtype||use_type||sstring20
+events_eventtype||use_type||sstring50
 
 events_start||name||sstart
 events_start||table||sevents

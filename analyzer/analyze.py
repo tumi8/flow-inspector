@@ -12,9 +12,13 @@ import config
 import datetime
 import sys
 
+
+active_analyzers = (analyzer.LinkStateAnalyzer, analyzer.TimeStampAnalyzer)
+
 analyzer_store = {}
 importer = importer.FlowBackendImporter()
-exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
+#exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
+exporter = (exporter.FlowBackendExporter(),)
 
 # Skip first result 
 skip = 10
@@ -23,25 +27,41 @@ for i in range(0, skip):
         (timestamp, data) = importer.getNextDataSet()
 
 	print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
-
-        for key, initArgs in analyzer.TimeStampAnalyzer.getInstances(data):
-            if not key in analyzer_store:
-                analyzer_store[key] = analyzer.TimeStampAnalyzer(*initArgs)
-            result = analyzer_store[key].passDataSet(data)
+	
+	for analyzer_class in active_analyzers:
+		for key, initArgs in analyzer_class.getInstances(data):
+			# make keys unique
+			key = analyzer_class.__name__ + key
+			if not key in analyzer_store:
+				analyzer_store[key] = analyzer_class(*initArgs)
+			analyzer_store[key].passDataSet(data)
 
 # Actual main loop
 while True:
+	
+	for exp in exporter:
+		exp.flushCache()
+
 	(timestamp, data) = importer.getNextDataSet()
 
 	print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
 
-	for key, initArgs in analyzer.TimeStampAnalyzer.getInstances(data):
-	    if not key in analyzer_store:
-	    	analyzer_store[key] = analyzer.TimeStampAnalyzer(*initArgs)
-	    result = analyzer_store[key].passDataSet(data)
-	    if result != None:
-	    	for exp in exporter:
-	    		exp.writeEventDataSet(*result)
+	for analyzer_class in active_analyzers:
+		for key, initArgs in analyzer_class.getInstances(data):
+			# make keys unique
+			key = analyzer_class.__name__ + key
+			if not key in analyzer_store:
+				analyzer_store[key] = analyzer_class(*initArgs)
 
+			result = analyzer_store[key].passDataSet(data)
+
+			if result != None:
+				try:
+					for res in result:
+						for exp in exporter:
+							exp.writeEventDataSet(*res)
+				except:	
+					for exp in exporter:
+						exp.writeEventDataSet(*result)
 
 

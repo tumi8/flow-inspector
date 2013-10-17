@@ -27,6 +27,8 @@ class Exporter:
 	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description, parameterdump):
 		pass
 
+	def flushCache(self):
+		pass
 
 
 class ConsoleExporter(Exporter):
@@ -62,12 +64,14 @@ class FlowBackendExporter(Exporter):
 		# prepare database connection and create required collection objects
 		db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name, "UPDATE")
 		db.prepareCollection("events", fieldDict["events"])
-		global events
-		events = db.getCollection("events")
+		self.events = db.getCollection("events")
 
 	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description, parameterdump):
-		events.update(
+		self.events.update(
 			{"analyzer": analyzer, "mainid": mainid, "subid": subid, "eventtype": eventtype, "start": start},
 			{"$set": {"end": end, "description": description, "parameterdump": parameterdump}}
 		)
-		events.flushCache()
+		#events.flushCache()
+	
+	def flushCache(self):
+		self.events.flushCache()
