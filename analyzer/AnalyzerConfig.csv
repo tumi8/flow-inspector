@@ -1,0 +1,8 @@
+TimestampAnalyzer||st||d1.0
+TimestampAnalyzer||p_st||d1.0
+TimestampAnalyzer||ewmv||d0.5
+TimestampAnalyzer||p_ewmv||d0.5
+TimestampAnalyzer||L||d0.5
+
+ThresholdAnalyzer||interface_phy||ifInErrors||d1
+ThresholdAnalyzer||interface_phy||ifOutErrors||d1
