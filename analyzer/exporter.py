@@ -57,13 +57,11 @@ class FlowBackendExporter(Exporter):
 		# prepare mysql target database
 		# TODO: make this more generic later on
 
-		# prepare fieldDict
-		generic_mysql = csv_configurator.readDictionary("../config/generic_mysql.csv")
-		fieldDict = csv_configurator.create_fieldDict("mysql", lambda generic_type: generic_mysql[generic_type], lambda snmp_type: snmp_type, "../analyzer/events.csv")
-
 		# prepare database connection and create required collection objects
 		db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name, "UPDATE")
-		db.prepareCollection("events", fieldDict["events"])
+		for name, fields in csv_configurator.read_field_dict_from_csv(config.data_backend, "../config/events.csv").items():
+			db.prepareCollection(name, fields)
+		
 		self.events = db.getCollection("events")
 
 	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description, parameterdump):
