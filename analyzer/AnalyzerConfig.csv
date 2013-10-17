@@ -5,5 +5,7 @@ TimestampAnalyzer||p_ewmv||d0.5
 TimestampAnalyzer||L||d0.5
 TimestampAnalyzer||tolerance||d1.5
 
-ThresholdAnalyzer||interface_phy||ifInErrors||d1
-ThresholdAnalyzer||interface_phy||ifOutErrors||d1
+LinkStateAnalyzer||active||d1
+
+#ThresholdAnalyzer||interface_phy||ifInErrors||d1
+#ThresholdAnalyzer||interface_phy||ifOutErrors||d1

@@ -28,17 +28,18 @@ class Importer:
 
 class FlowBackendImporter(Importer):
 	
-	def __init__(self):
+	def __init__(self, last_timestamp = -1):
 		# prepare database connection and create required collection objects
 		self.db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name)
 		interface_phy = self.db.getCollection("interface_phy")
 
 		# get all timestamps
-		self.timestamps = sorted(interface_phy.distinct("timestamp"))
+		self.timestamps = sorted(interface_phy.distinct("timestamp", {"timestamp": {"$gt": last_timestamp}}))
 
 	def getNextDataSet(self):
 		interface_phy = self.db.getCollection("interface_phy")
 		timestamp = self.timestamps.pop(0)
+		self.last_timestamp = timestamp
 		db_result = interface_phy.find({"timestamp": timestamp})
 		result = {}
 		for data in db_result:
@@ -46,3 +47,11 @@ class FlowBackendImporter(Importer):
 				result[data["router"]] = dict()
 			result[data["router"]][data["ifIndex"]] = data
 		return (timestamp, result)
+
+	def __getinitargs__(self):
+		return (self.last_timestamp,)
+
+	def __getstate__(self):
+		return {}
+
+

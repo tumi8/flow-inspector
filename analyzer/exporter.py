@@ -38,14 +38,14 @@ class ConsoleExporter(Exporter):
 
 	def writeEventDataSet(self, analyzer, mainid, subid, eventtype, start, end, description, parameterdump):
 		key = (analyzer, mainid, subid, eventtype, start)
-		
+	
 		from datetime import datetime
-		start = datetime.fromtimestamp(int(start)).strftime("%d.%m.%Y %H:%M:%S")
+		end = datetime.fromtimestamp(int(end)).strftime("%d.%m.%Y %H:%M:%S")
 		
 		if key in self.keys:
-			print "UPDATE: %s: %s - %s/%s - %s - %s" % (start, analyzer, mainid, subid, eventtype, description)
+			print "UPDATE: %s: %s - %s/%s - %s - %s" % (end, analyzer, mainid, subid, eventtype, description)
 		else:
-			print "%s: %s - %s/%s - %s - %s" % (start, analyzer, mainid, subid, eventtype, description)
+			print "%s: %s - %s/%s - %s - %s" % (end, analyzer, mainid, subid, eventtype, description)
 	
 		self.keys.add((analyzer, mainid, subid, eventtype, start))
 
@@ -73,3 +73,9 @@ class FlowBackendExporter(Exporter):
 	
 	def flushCache(self):
 		self.events.flushCache()
+
+	def __getinitargs__(self):
+		return ()
+
+	def __getstate__(self):
+		return {}
