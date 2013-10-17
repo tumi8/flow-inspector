@@ -126,8 +126,8 @@ class Collection:
 	def flushCache(self, collectionName=None):
 		return self.backendObject.flushCache(collectionName)
 
-	def distinct(self, field):
-		return self.backendObject.distinct(self.collectionName, field)
+	def distinct(self, field, spec=[]):
+		return self.backendObject.distinct(self.collectionName, field, spec)
 
 	def count(self):
 		return self.backendObject.count(self.collectionName)
