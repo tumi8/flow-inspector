@@ -10,7 +10,7 @@ import backend
 import config
 import csv_configurator
 
-import pickle
+import cPickle as pickle
 import datetime
 import sys
 
