@@ -26,7 +26,10 @@ def report_backend_usage(dst_db):
 			pass
 		report_string +=  "Table:  " +  table.ljust(30) +  ' Number of entries:  ' + str(coll.count()).ljust(10)
 		if firstTime != None:
-			report_string += "First: " + str(datetime.datetime.fromtimestamp(firstTime)).ljust(10) + " Last: " + str(datetime.datetime.fromtimestamp(lastTime)).ljust(10) + '\n'
+			first = datetime.datetime.fromtimestamp(firstTime)
+			last = datetime.datetime.fromtimestamp(lastTime)
+			diff = last - first
+			report_string += "First: " + str(first).ljust(10) + " Last: " + str(last).ljust(10) + " Duration: " + str(diff).ljust(10) + '\n'
 		else:
 			report_string += "\n"
 	return report_string
