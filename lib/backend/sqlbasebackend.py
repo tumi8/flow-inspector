@@ -848,7 +848,7 @@ class SQLBaseBackend(Backend):
 			ret = self.dictCursor.fetchall()
 		return ret
 	
-	def distinct(self, collectionName, field, spec = []):
+	def distinct(self, collectionName, field, spec = {}):
 		d =  self.find(collectionName, spec, {"DISTINCT " + field: 1})
 		ret = []
 		for entry in d:
