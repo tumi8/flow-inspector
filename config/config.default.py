@@ -99,5 +99,5 @@ smtp_port = 25
 smtp_username = None
 smtp_password = None
 smtp_from = "vermont"
-smtp_to   = "test@example.com"
+smtp_to   = [ "test@example.com" ]
 

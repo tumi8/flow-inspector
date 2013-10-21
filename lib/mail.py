@@ -13,7 +13,7 @@ def send_mail(subject, message, attach_file = None):
 
 	msg.attach(body)
 	msg.add_header('From', config.smtp_from)
-	msg.add_header('To', config.smtp_to)
+	msg.add_header('To', ", ".join(config.smtp_to))
 	msg.add_header('Subject', subject)
 
 
@@ -27,6 +27,6 @@ def send_mail(subject, message, attach_file = None):
 	mailer = smtplib.SMTP(config.smtp_host, config.smtp_port)
 	if config.smtp_username != None and config.smtp_password != None:
 		mailer.login(config.smtp_username, config.smtp_password)
-	mailer.sendmail([config.smtp_from], [config.smtp_to], msg.as_string())
+	mailer.sendmail([config.smtp_from], config.smtp_to, msg.as_string())
 
 
