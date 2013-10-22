@@ -24,6 +24,7 @@ from ordered_dict import OrderedDict
 			- items are seperated by |
 			- for each items the same rules as for <token> apply
 			- tsstring1|string2|ffunc gets ("string1", "string2", func)
+		- 'b' encodes boolean values
 		- 'n' encodes NoneType
 	- commentary lines begin with #
 """
@@ -40,6 +41,7 @@ def readDictionary(file):
 			'd': lambda x: float(x),
 			'f': lambda x: __findFunction(x),
 			't': lambda x: tuple(map(__parseToken, x.split("|"))),
+			'b': lambda x: bool(x),
 			'n': lambda x: None 
 		}[token[0]](token[1:])
 	
