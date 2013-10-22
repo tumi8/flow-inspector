@@ -23,7 +23,7 @@ if __name__ == "__main__":
 	for name, config in analyzerConfig.items():
 		importName = __import__(config['class'], fromlist=[config['class']])
 		className = importName.__dict__[config['class']]
-		analyzerStore.append(className(config))
+		analyzerStore.append(className(name, config))
 
 	# assume pickeled state exists
 	try:
@@ -33,8 +33,8 @@ if __name__ == "__main__":
 	except:
 
 		importer = importer.FlowBackendImporter()
-		exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
-#		exporter = (exporter.FlowBackendExporter(),)
+#		exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
+		exporter = (exporter.FlowBackendExporter(),)
 	
 		# Skip first results 
 		skip = 10
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 		try:
 			(timestamp, data) = importer.getNextDataSet()	
 		# No more data available
-		except:
+		except IndexError:
 			for exp in exporter:
 				exp.flushCache()
 #			pickle.dump((importer, exporter, analyzer_store), open('save.analyzer.state', 'wb'))
@@ -70,22 +70,16 @@ if __name__ == "__main__":
 		
 			# pass and process data
 			result = analyzer.passDataSet(data)
-			
+		
 			# export results
-			if result != None:
-				# we can have multiple results
-				try:
-					for res in result:
-						for exp in exporter:
-							exp.writeEventDataSet(*res)
-				# or just a single one
-				except:	
+			if len(result) > 0:
+				for res in result:
 					for exp in exporter:
-						exp.writeEventDataSet(*result)
+						exp.writeEventDataSet(*res)
 
 		# flush caches and write data to backend
-		for exp in exporter:
-			exp.flushCache()
+		# for exp in exporter:
+		#	exp.flushCache()
 		
 
 #		pickle.dump((importer, exporter, analyzer_store), open('save.analyzer.state', 'wb'))

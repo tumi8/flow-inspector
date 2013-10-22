@@ -4,8 +4,9 @@ import analyzer
 
 class LinkStateAnalyzer(analyzer.Analyzer):
 	
-	def __init__(self, parameters):
+	def __init__(self, name, parameters):
 		self.state = {}
+		self.name = name
 
 	def passDataSet(self, data):
 
@@ -57,18 +58,18 @@ class LinkStateAnalyzer(analyzer.Analyzer):
 		if (record["ifOperStatus"] != record["ifAdminStatus"]):
 			if state['begin_mismatch'] == -1:
 				state['begin_mismatch'] = timestamp
-			result.append((self.__class__.__name__, state['router'], state['interface'], "Mismatch", state['begin_mismatch'], timestamp, "%s <> %s" % (record["ifOperStatus"], record["ifAdminStatus"]), str(parameterdump)))
+			result.append((self.name, state['router'], state['interface'], "Mismatch", state['begin_mismatch'], timestamp, "%s <> %s" % (record["ifOperStatus"], record["ifAdminStatus"]), str(parameterdump)))
 		else:
 			state['begin_mismatch'] = -1
 
 		# check for status change in ifOperStatus
 		if (record["ifOperStatus"] != state['last_ifOperStatus']):
-			result.append((self.__class__.__name__, state['router'], state['interface'], "Change in ifOperStatus", state['last_timestamp'], timestamp, "%s -> %s" % (state['last_ifOperStatus'], record["ifOperStatus"]), str(parameterdump)))
+			result.append((self.name, state['router'], state['interface'], "Change in ifOperStatus", state['last_timestamp'], timestamp, "%s -> %s" % (state['last_ifOperStatus'], record["ifOperStatus"]), str(parameterdump)))
 			state['last_ifOperStatus'] = record["ifOperStatus"]
 
 		# check for status change in ifAdminStatus
 		if (record["ifAdminStatus"] != state['last_ifAdminStatus']):
-			result.append((self.__class__.__name__, state['router'], state['interface'], "Change in ifAdminStatus", state['last_timestamp'], timestamp, "%s -> %s" % (state['last_ifAdminStatus'], record["ifAdminStatus"]), str(parameterdump)))
+			result.append((self.name, state['router'], state['interface'], "Change in ifAdminStatus", state['last_timestamp'], timestamp, "%s -> %s" % (state['last_ifAdminStatus'], record["ifAdminStatus"]), str(parameterdump)))
 			state['last_ifAdminStatus'] = record["ifAdminStatus"]
 
 		state['last_timestamp'] = timestamp

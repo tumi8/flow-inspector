@@ -7,7 +7,7 @@ import sys
 
 class EWMAAnalyzer(analyzer.Analyzer):
 	
-	def __init__(self, parameters):
+	def __init__(self, name, parameters):
 		
 		# store state for individual 'instances'
 		self.state = dict()
@@ -17,6 +17,7 @@ class EWMAAnalyzer(analyzer.Analyzer):
 		self.ewmv = parameters['ewmv']
 	
 		# constant parameters for all instances
+		self.name = name
 		self.field = parameters['field']
 		self.p_st = parameters['p_st']
 		self.p_ewmv = parameters['p_ewmv']
@@ -94,9 +95,9 @@ class EWMAAnalyzer(analyzer.Analyzer):
 		# print >> sys.stderr, parameterdump		
 
 		if lower_bound - t > 6e-14 and lower_bound - t > self.tolerance:
-			return (self.__class__.__name__, state['mainid'], state['subid'], "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
+			return (self.name, state['mainid'], state['subid'], "LowValue", timestamp, timestamp, "%s < %s" % (t, lower_bound), str(parameterdump))
 		if t - upper_bound > 6e-14 and t - upper_bound > self.tolerance:
-			return (self.__class__.__name__, state['mainid'] , state['subid'], "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
+			return (self.name, state['mainid'] , state['subid'], "HighValue", timestamp, timestamp, "%s > %s" % (t, upper_bound), str(parameterdump))
 
 
 

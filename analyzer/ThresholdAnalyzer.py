@@ -6,11 +6,11 @@ from ordered_dict import OrderedDict
 
 class ThresholdAnalyzer(analyzer.Analyzer):
 	
-	def __init__(self, parameters):
+	def __init__(self, name, parameters):
 		
 		# store state for individual 'instances'
 		self.state = dict()
-		
+		self.name = name
 	
 		# constant parameters for all instances
 		self.field = parameters['field']
@@ -66,5 +66,5 @@ class ThresholdAnalyzer(analyzer.Analyzer):
 		])
 
 		if value > self.limit:
-			return (self.__class__.__name__, state['mainid'], state['subid'], "ValueException", timestamp, timestamp, "%s > %s" % (value, self.limit), str(parameterdump))
+			return (self.name, state['mainid'], state['subid'], "ValueException", timestamp, timestamp, "%s > %s" % (value, self.limit), str(parameterdump))
 
