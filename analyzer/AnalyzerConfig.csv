@@ -9,11 +9,10 @@ TimestampAnalyzer||differential_mode||bTrue
 TimestampAnalyzer||field||stimestamp
 
 LinkStateAnalyzer||class||sLinkStateAnalyzer
-LinkStateAnalyzer||active||bTrue
 
-ThresholdAnalyzer||class||sThresholdAnalyzer
-ThresholdAnalyzer||field||sifInErrors
-ThresholdAnalyzer||limit||d1
-ThresholdAnalyzer||differential_mode||bTrue
+ThresholdAnalyzer5||class||sThresholdAnalyzer
+ThresholdAnalyzer5||field||sifInErrors
+ThresholdAnalyzer5||limit||d1
+ThresholdAnalyzer5||differential_mode||bTrue
 
 #ThresholdAnalyzer||interface_phy||ifOutErrors||d1

@@ -33,8 +33,8 @@ if __name__ == "__main__":
 	except:
 
 		importer = importer.FlowBackendImporter()
-#		exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
-		exporter = (exporter.FlowBackendExporter(),)
+		exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
+#		exporter = (exporter.FlowBackendExporter(),)
 	
 		# Skip first results 
 		skip = 10
@@ -78,8 +78,8 @@ if __name__ == "__main__":
 						exp.writeEventDataSet(*res)
 
 		# flush caches and write data to backend
-		# for exp in exporter:
-		#	exp.flushCache()
+		for exp in exporter:
+			exp.flushCache()
 		
 
 #		pickle.dump((importer, exporter, analyzer_store), open('save.analyzer.state', 'wb'))

@@ -54,6 +54,7 @@ class ThresholdAnalyzer(analyzer.Analyzer):
 				state['last_value'] = data[state['mainid']][state['subid']][self.field]
 				return
 			value = value - state['last_value']
+			state['last_value'] = data[state['mainid']][state['subid']][self.field]
 
 		timestamp = data[state['mainid']][state['subid']]["timestamp"]
 
