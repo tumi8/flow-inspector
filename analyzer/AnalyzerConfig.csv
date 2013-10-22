@@ -8,11 +8,12 @@ TimestampAnalyzer||tolerance||d1.5
 TimestampAnalyzer||differential_mode||bTrue
 TimestampAnalyzer||field||stimestamp
 
-#LinkStateAnalyzer||class||sLinkStateAnalyzer
-#LinkStateAnalyzer||active||bTrue
+LinkStateAnalyzer||class||sLinkStateAnalyzer
+LinkStateAnalyzer||active||bTrue
 
-#ThresholdAnalyzer||class||sThresholdAnalyzer
-#ThresholdAnalyzer||field||sifInErrors
-#ThresholdAnalyzer||limit||d1
+ThresholdAnalyzer||class||sThresholdAnalyzer
+ThresholdAnalyzer||field||sifInErrors
+ThresholdAnalyzer||limit||d1
+ThresholdAnalyzer||differential_mode||bTrue
 
 #ThresholdAnalyzer||interface_phy||ifOutErrors||d1
