@@ -16,29 +16,22 @@ import sys
 
 if __name__ == "__main__":
 
-	# read analyzer config and store references to analyzer class in active_analyyers
-	active_analyzers = []
-	analyzers = csv_configurator.readDictionary("AnalyzerConfig.csv")
-	for analyzer in analyzers:
-		importName = __import__(analyzer, fromlist=[analyzer])
-		className =  importName.__dict__[analyzer]
-		active_analyzers.append(className)
-#		analyzer_object = className()
-#		print  analyzer_object
-#		moduleConfigName = className.__name__ + "Config"
-#		if not moduleConfigName in config:
-#			print config
-#			raise Exception("Could not find section %s for module %s in configuration" % (moduleConfigName, moduleConfigName))
+	# read analyzer config and store references to analyzer class in analyzerConfig
+	analyzerConfig = csv_configurator.readDictionary("AnalyzerConfig.csv")
+	analyzerStore = []
 
+	for name, config in analyzerConfig.items():
+		importName = __import__(config['class'], fromlist=[config['class']])
+		className = importName.__dict__[config['class']]
+		analyzerStore.append(className(config))
 
 	# assume pickeled state exists
 	try:
-		importer, exporter, analyzer_store = pickle.load(open('save.analyzer.state', 'rb'))
+		importer, exporter, analyzerStore = pickle.load(open('save.analyzer.state', 'rb'))
 	
-	# create state
+	# else create state
 	except:
 
-		analyzer_store = {}
 		importer = importer.FlowBackendImporter()
 		exporter = (exporter.FlowBackendExporter(), exporter.ConsoleExporter())
 #		exporter = (exporter.FlowBackendExporter(),)
@@ -51,40 +44,48 @@ if __name__ == "__main__":
 
 			print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
 	
-			for analyzer_class in active_analyzers:
-				for key, initArgs in analyzer_class.getInstances(data):
-					# make keys unique
-					key = analyzer_class.__name__ + key
-					if not key in analyzer_store:
-						analyzer_store[key] = analyzer_class(*initArgs)
-					analyzer_store[key].passDataSet(data)
+			for analyzer in analyzerStore:
+				analyzer.passDataSet(data)
 
 	# Actual main loop
 	while True:
 	
-		for exp in exporter:
-			exp.flushCache()
+		# Get next data set from Importer
+		try:
+			(timestamp, data) = importer.getNextDataSet()	
+		# No more data available
+		except:
+			for exp in exporter:
+				exp.flushCache()
+#			pickle.dump((importer, exporter, analyzer_store), open('save.analyzer.state', 'wb'))
+			sys.exit(0)
 
-		(timestamp, data) = importer.getNextDataSet()
-
+		# Print debug information to stderr
 		print >> sys.stderr, datetime.datetime.fromtimestamp(int(timestamp))
 
-		for analyzer_class in active_analyzers:
-			for key, initArgs in analyzer_class.getInstances(data):
-				# make keys unique
-				key = analyzer_class.__name__ + key
-				if not key in analyzer_store:
-					analyzer_store[key] = analyzer_class(*initArgs)
+		# Analyze data
 
-				result = analyzer_store[key].passDataSet(data)
-
-				if result != None:
-					try:
-						for res in result:
-							for exp in exporter:
-								exp.writeEventDataSet(*res)
-					except:	
+		# Iterate over all active analyzer classes
+		for analyzer in analyzerStore:
+		
+			# pass and process data
+			result = analyzer.passDataSet(data)
+			
+			# export results
+			if result != None:
+				# we can have multiple results
+				try:
+					for res in result:
 						for exp in exporter:
-							exp.writeEventDataSet(*result)
+							exp.writeEventDataSet(*res)
+				# or just a single one
+				except:	
+					for exp in exporter:
+						exp.writeEventDataSet(*result)
 
-		pickle.dump((importer, exporter, analyzer_store), open('save.analyzer.state', 'wb'))
+		# flush caches and write data to backend
+		for exp in exporter:
+			exp.flushCache()
+		
+
+#		pickle.dump((importer, exporter, analyzer_store), open('save.analyzer.state', 'wb'))
