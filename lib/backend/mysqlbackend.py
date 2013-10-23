@@ -184,3 +184,11 @@ class MysqlBackend(SQLBaseBackend):
 
 	def check_index_column(self, column, collectionName):
 		return column in self.getIndexes(collectionName)
+
+	def get_table_sizes(self):
+		self.execute("SHOW TABLE STATUS")
+		ret = {}
+		for entry in self.cursor.fetchall():
+			ret[entry[0]] = entry[6]
+		return ret
+

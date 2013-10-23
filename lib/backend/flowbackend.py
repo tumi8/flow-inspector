@@ -138,6 +138,9 @@ class Collection:
 	def max(self, field):
 		return self.backendObject.max(self.collectionName, field)
 
+	def get_table_sizes(self):
+		return self.backendObject.get_table_sizes()
+
 class Backend:
 	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
 		self.host = host
@@ -323,6 +326,10 @@ class Backend:
 
 	def fillDynamicTypeWrapper(self, name, fieldDict):
 		pass
+
+	def get_table_sizes(self):
+		return {}
+
 
 	def execute(self, string, params = None, cursor=None):
 		"""
