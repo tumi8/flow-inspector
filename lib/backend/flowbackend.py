@@ -126,8 +126,8 @@ class Collection:
 	def flushCache(self, collectionName=None):
 		return self.backendObject.flushCache(collectionName)
 
-	def distinct(self, field):
-		return self.backendObject.distinct(self.collectionName, field)
+	def distinct(self, field, spec={}):
+		return self.backendObject.distinct(self.collectionName, field, spec)
 
 	def count(self):
 		return self.backendObject.count(self.collectionName)
@@ -137,6 +137,9 @@ class Collection:
 
 	def max(self, field):
 		return self.backendObject.max(self.collectionName, field)
+
+	def get_table_sizes(self):
+		return self.backendObject.get_table_sizes()
 
 class Backend:
 	def __init__(self, host, port, user, password, databaseName, insertMode="UPDATE"):
@@ -287,7 +290,7 @@ class Backend:
 	def run_query(self, collectionName, query):
 		pass
 
-	def distinct(self, collectionName, field):
+	def distinct(self, collectionName, field, spec={}):
 		pass
 
 	def handle_index_update(self, collectionName, statement, document, insertIfnotExists):
@@ -323,6 +326,10 @@ class Backend:
 
 	def fillDynamicTypeWrapper(self, name, fieldDict):
 		pass
+
+	def get_table_sizes(self):
+		return {}
+
 
 	def execute(self, string, params = None, cursor=None):
 		"""

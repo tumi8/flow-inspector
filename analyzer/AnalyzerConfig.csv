@@ -1,8 +1,18 @@
-TimestampAnalyzer||st||d1.0
-TimestampAnalyzer||p_st||d1.0
-TimestampAnalyzer||ewmv||d0.5
-TimestampAnalyzer||p_ewmv||d0.5
-TimestampAnalyzer||L||d0.5
+TimestampAnalyzer||class||sEWMAAnalyzer
+TimestampAnalyzer||st||d300.0
+TimestampAnalyzer||p_st||d0.15
+TimestampAnalyzer||ewmv||d0.0
+TimestampAnalyzer||p_ewmv||d0.15
+TimestampAnalyzer||L||d2
+TimestampAnalyzer||tolerance||d1.5
+TimestampAnalyzer||differential_mode||bTrue
+TimestampAnalyzer||field||stimestamp
 
-ThresholdAnalyzer||interface_phy||ifInErrors||d1
-ThresholdAnalyzer||interface_phy||ifOutErrors||d1
+LinkStateAnalyzer||class||sLinkStateAnalyzer
+
+ThresholdAnalyzer5||class||sThresholdAnalyzer
+ThresholdAnalyzer5||field||sifInErrors
+ThresholdAnalyzer5||limit||d1
+ThresholdAnalyzer5||differential_mode||bTrue
+
+#ThresholdAnalyzer||interface_phy||ifOutErrors||d1
