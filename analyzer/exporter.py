@@ -58,7 +58,7 @@ class FlowBackendExporter(Exporter):
 		# TODO: make this more generic later on
 
 		# prepare database connection and create required collection objects
-		db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_name, "UPDATE")
+		db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_table, "UPDATE")
 		for name, fields in csv_configurator.read_field_dict_from_csv(config.data_backend, "../config/events.csv").items():
 			db.prepareCollection(name, fields)
 		

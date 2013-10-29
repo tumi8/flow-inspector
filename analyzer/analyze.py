@@ -1,9 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
+import os
 import importer
 import exporter
 import analyzer
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'tools'))
+
 
 import common
 import backend
@@ -12,7 +20,6 @@ import csv_configurator
 
 import cPickle as pickle
 import datetime
-import sys
 
 if __name__ == "__main__":
 
