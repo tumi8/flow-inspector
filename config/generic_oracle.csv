@@ -7,6 +7,7 @@ string50||tsVARCHAR(50)|n|n
 string100||tsVARCHAR(100)|n|n
 string150||tsVARCHAR(150)|n|n
 string255||tsVARCHAR(255)|n|n
+string1000||tsVARCHAR(1000)|n|n
 uint4294967295||tsNUMBER(11)|n|n
 uint234||tsNUMBER(3)|n|n
 uint1||tsNUMBER(3)|n|n
