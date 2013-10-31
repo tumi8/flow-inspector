@@ -26,41 +26,6 @@ import snmp_preprocess
 import config_snmp_dump
 
 
-def update_interface_status(coll, device_id, if_number, value):
-	doc = {}
-	entry = {}
-	
-	if 'ifAlias' in value:
-		if_alias = value['ifAlias']
-	else:
-		if_alias = None
-
-	entry['if_number'] = value['if_number']
-	entry['if_alias'] = if_alias
-	entry['if_name'] = value['ifName']
-	entry['if_status'] = value['ifOperStatus']
-	entry['if_type'] = value['ifType']
-	doc['$set'] = entry
-	coll.update({'device_id': device_id, 'if_number': if_number}, doc)
-
-
-def update_cpu_status(coll, device_id, cpu):
-	doc = {}
-	entry = {}
-	entry['note'] = ""
-	doc['$set'] = entry;
-	coll.update({'device_id': device_id, 'cpu_number': cpu}, entry)
-
-
-def update_mem_status(coll, device_id, mem_number):
-	doc = {}
-	entry = {}
-	entry['note'] = ""
-	doc['$set'] = entry
-	coll.update({'device_id': device_id, 'pool_number': mem_number}, entry)
-
-
-
 def generate_output_string(value, allowed_collections):
 	output = ""
 	for field in config_snmp_dump.data_source_fields: 
@@ -86,19 +51,7 @@ def dump_to_rrd(snmp_dump_file, rrd_dir, timestamp):
 	os.system(os.path.join(os.path.dirname(__file__), '..', 'tools', 'update-rras') + " " + snmp_dump_file + " " + rrd_dir + " " + str(timestamp))
 
 
-def prepare_data_and_update_infos(doc, outfile, snmp_ips):
-	"""
-	This method prepares the incoming data for dumps to RRD database. While doing so
-	it updates the info tables in the database for the interfaces, cpu, and memeory counters
-	"""
-	update_db = backend.databackend.getBackendObject(
-		args.backend, args.dst_host, args.dst_port,
-		args.dst_user, args.dst_password, args.dst_database, "UPDATE")
-
-	interface_coll = update_db.getCollection("interface_list")
-	cpu_list_coll =  update_db.getCollection('cpu_list')
-	mem_list_coll =  update_db.getCollection('mem_list')
-
+def prepare_data_for_rrd_dump(doc, outfile):
 	interfaceResultSet = {}
 	cpuResultSet = {}
 	memoryResultSet = {}
@@ -128,7 +81,8 @@ def prepare_data_and_update_infos(doc, outfile, snmp_ips):
 				if dict_key in memoryResultSet:
 					# this should never happen. Log an error
 					print "Error: Device", keys['router'], "with Pool", keys["pool_number"], "is already in result dictionary. Please investigate."
-				memoryResultSet[dict_key] = dict(keys.items() + value[1]["$set"].items())			
+				memoryResultSet[dict_key] = dict(keys.items() + value[1]["$set"].items())
+			
 
 	#print "Dumping interface data to disk ..."
 
@@ -138,8 +92,6 @@ def prepare_data_and_update_infos(doc, outfile, snmp_ips):
 			continue 
 		router = value["router"]
 		interface = value["if_number"]
-				
-		update_interface_status(interface_coll, snmp_ips[router]['_id'], interface, value)
 
 		output = generate_output_string(value, ['interface_phy', 'ifXTable'])
 		
@@ -150,8 +102,6 @@ def prepare_data_and_update_infos(doc, outfile, snmp_ips):
 		router = value["router"]
 		cpu = value["cpu_number"]
 
-		update_cpu_status(snmp_ips[value['router']]['_id'], value['cpu_number'])
-
 		output = generate_output_string(value, [ "ciscoCpu" ])
 		f_desc.write("cpu_" + router + "_" + cpu + " " + output + "\n")
 
@@ -159,15 +109,11 @@ def prepare_data_and_update_infos(doc, outfile, snmp_ips):
 	for key, value in memoryResultSet.items():
 		router = value["router"]
 		pool = value["pool_number"]
-		
-		update_mem_status(snmp_ips[value['router']]['_id'], value["pool_number"])
 
 		output = generate_output_string(value, [ "ciscoMemory" ])
 		f_desc.write("ciscomemory_" + router + "_" + pool + " " + output + "\n")
 	f_desc.close()
-	interface_coll.flushCache()
-	cpu_list_coll.flushCache()
-	mem_list_coll.flushCache()
+	
 
 
 def parse_snmp_data(source_dir):
@@ -204,6 +150,7 @@ def parse_snmp_data(source_dir):
 		print "ERROR: There should only be a single timestamp in the directory. Check your configuration ..."
 		sys.exit(1)
 	return doc
+
 
 
 def perform_snmp_measurement(ip_list_community_strings, output_dir):
@@ -246,6 +193,7 @@ if __name__ == "__main__":
 	for result in resultSet:
 		snmp_ips[result['ip']] = result
 
+
 	# prepare output directories
 	# make one directory for each measurmenet run under config.snmp_query_tmp_dir
 	# we want to have the directory name as snmp_query_tmp_dir/<current_timestamp>
@@ -264,7 +212,7 @@ if __name__ == "__main__":
 	# dump data to rrd files 
 	snmp_dump_file = os.path.join(output_dir,"snmp_dump_tmp_file.tmp")
 
-	prepare_data_and_update_infos(doc, snmp_dump_file, snmp_ips)
+	prepare_data_for_rrd_dump(doc, snmp_dump_file)
 	if not os.path.isdir(config.rrd_file_dir):
 		os.makedirs(config.rrd_file_dir)
 	dump_to_rrd(snmp_dump_file, config.rrd_file_dir, measurement_time)
