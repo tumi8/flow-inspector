@@ -54,15 +54,18 @@ def perform_snmp_availability_check(ip_list_community_strings):
 def perform_live_check(ip_list):
 	"""
 	Retrieves a list of IP addresses that should be checked. All IPs 
-	are checked with fping and a list of unreachable IPs is returend to the caller.
+	are checked with fping/onlinecheck and a list of unreachable IPs is returend to the caller.
 	"""
-	fping_pipe = subprocess.Popen(['fping', '-u', '-i', '10', '-p', '20', '-t', '50'], stdout=subprocess.PIPE,stdin=subprocess.PIPE)
+	#checker_pipe = subprocess.Popen(['fping', '-u', '-i', '10', '-p', '20', '-t', '50'], stdout=subprocess.PIPE,stdin=subprocess.PIPE)
+	checker_pipe = subprocess.Popen([os.path.join(os.path.dirname(__file__), '..', 'tools', 'onlinecheck')], stdout=subprocess.PIPE,stdin=subprocess.PIPE)
 
-	input_for_fping = ""
-	for ip in monitoring_ips:
-		input_for_fping += ip + "\n"
+	input_for_checker = ""
+	for ip in ip_list:
+		if ip_list[ip]['do_live_check'] == 0:
+			continue 
 
-	output = fping_pipe.communicate(input=input_for_fping)[0].split('\n')
+		input_for_checker += ip + "\n"
+	output = checker_pipe.communicate(input=input_for_checker)[0].split('\n')
 	
 	unreachable_ips = []
 	for line in output:
@@ -70,14 +73,18 @@ def perform_live_check(ip_list):
 		# skip empty lines
 		if len(line) == 0:
 			continue
+		
 		unreachable_ips.append(line)
 	return unreachable_ips
 
 
-def update_results(collection, checked_ips, previous_results):
+def update_results(collection, unreachable_ips, previous_results):
 	# first: check if we need an update on the devices that we 
 	# now found unreachble
-	for ip in checked_ips:
+	for ip in unreachable_ips:
+		if not ip in monitoring_ips:
+			print "IP %s was checked but is now in list of known monitoring_ips!" % (ip)
+			continue
 		device_id = monitoring_ips[ip]['_id']
 		table_entry = {}
 		if not device_id in previous_results:
@@ -91,6 +98,7 @@ def update_results(collection, checked_ips, previous_results):
 		else:
 			# device has previously failed 
 			table_entry = previous_results[device_id]
+			del table_entry['device_id']
 			table_entry['last_checked'] = timestamp
 			table_entry['last_fail'] = timestamp
 			if table_entry['status'] == 1:
@@ -101,17 +109,17 @@ def update_results(collection, checked_ips, previous_results):
 				table_entry['first_fail'] = 0
 			# remove this ip from the list (we need to update the others later on 
 			del previous_results[device_id]
-				
 
 		doc = {}
 		doc["$set"] = table_entry
 		collection.update({"device_id": device_id}, doc)
-		
+
 	for device_id in previous_results:
 		# the remaining ips in the monitoring list are online. update their last_check 	for device_id in previous_results:
 		table_entry = previous_results[device_id]
 		table_entry["status"] = 1
 		table_entry["last_checked"] = timestamp
+		del table_entry['device_id']
 		doc = {}
 		doc["$set"] = table_entry
 		collection.update({"device_id": device_id}, doc)
@@ -139,17 +147,17 @@ if __name__ == "__main__":
 
 		
 	# get the ips that should be monitored for live checks
-	resultSet = device_table.find({'do_live_check': 1}, {'_id': 1, 'ip': 1})
+	resultSet = device_table.find({'status': 1}, {'_id': 1, 'ip': 1, 'do_live_check': 1, 'do_snmp': 1})
 	monitoring_ips = dict()
 	for result in resultSet:
 		monitoring_ips[result['ip']] = result
 	# get the ips that should be monitored for snmp availability
-	resultSet = device_table.find({'do_snmp': 1}, {'_id': 1, 'ip': 1, 'community_string': 1})
+	resultSet = device_table.find({'do_snmp': 1, 'status': 1}, {'_id': 1, 'ip': 1, 'community_string': 1})
 	snmp_ips = dict()
 	for result in resultSet:
 		snmp_ips[result['ip']] = result
 
-	timestamp = time.time()
+	timestamp = long(time.time())
 
 	# do the live checks
 	unreachable_list = perform_live_check(monitoring_ips)
