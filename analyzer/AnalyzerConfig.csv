@@ -1,12 +1,22 @@
 IfInErrors||class||sThresholdAnalyzer
 IfInErrors||field||sifInErrors
-IfInErrors||limit||d100
+IfInErrors||limit||d1000
 IfInErrors||differential_mode||bTrue
 
 IfOutErrors||class||sThresholdAnalyzer
 IfOutErrors||field||sifOutErrors
-IfOutErrors||limit||d100
+IfOutErrors||limit||d1000
 IfOutErrors||differential_mode||bTrue
+
+IfInDiscards||class||sThresholdAnalyzer
+IfInDiscards||field||sifInDiscards
+IfInDiscards||limit||d1000
+IfInDiscards||differential_mode||bTrue
+
+IfOutDiscards||class||sThresholdAnalyzer
+IfOutDiscards||field||sifOutDiscards
+IfOutDiscards||limit||d1000
+IfOutDiscards||differential_mode||bFalse
 
 
 #ThresholdAnalyzer||interface_phy||ifOutErrors||d1

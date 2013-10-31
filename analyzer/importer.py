@@ -33,7 +33,7 @@ class FlowBackendImporter(Importer):
 		# prepare database connection and create required collection objects
 		self.db = backend.databackend.getBackendObject(config.data_backend, config.data_backend_host, config.data_backend_port, config.data_backend_user, config.data_backend_password, config.data_backend_snmp_table)
 
-		measurement_map_filename =  os.path.join(os.path.dirname(__file__), "..", "config",  "monitoring_devices.csv")
+		measurement_map_filename =  os.path.join(os.path.dirname(__file__), "..", "config",  "oidmap.csv")
 		for name, fields in csv_configurator.read_field_dict_from_csv(config.data_backend, measurement_map_filename).items():
 			self.db.prepareCollection(name, fields)
 
@@ -53,6 +53,9 @@ class FlowBackendImporter(Importer):
 				result[data["router"]] = dict()
 			result[data["router"]][data["ifIndex"]] = data
 		return (timestamp, result)
+
+	def getLastDataSet(self):
+		pass
 
 	def __getinitargs__(self):
 		return (self.last_timestamp,)
