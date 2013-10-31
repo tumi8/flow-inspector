@@ -84,13 +84,8 @@ int start_process(const std::string& app_name, char* const args[], const std::st
 	}
 }
 
-int perform_ping_measurement(const std::string& filename)
+int perform_ping_measurement(std::istream& in)
 {
-	std::ifstream in(filename.c_str());
-	if (!in) {
-		std::cerr << "Error opening snmp device list (" << filename << "): " << strerror(errno) << std::endl;
-		return -1;
-	}
 	std::string line;
 	while (!in.eof()) {
 		std::getline(in, line);
@@ -126,10 +121,22 @@ int perform_ping_measurement(const std::string& filename)
 
 int main(int argc, char** argv)
 {
-	if (argc != 2) {
-		std::cerr << "Usage: " << argv[0] << " <ip_list>" << std::endl;
+	if (argc != 2 && argc != 1) {
+		std::cerr << "Usage: " << argv[0] << " [ <ip_list_file> ]" << std::endl;
+		std::cerr << "\tIf <ip_list_file> is provided, " << argv[0] << " will read one IP address per line and perform a ping measurement to the host" << std::endl;
+		std::cerr << "\tif no parameter is given, then " << argv[0] << " will read IPs from stdin." << std::endl;
 		return -1;
 	}
 
-	return perform_ping_measurement(argv[1]);
+	if (argc == 2) {
+		std::ifstream in(argv[1]);
+		if (!in) {
+			std::cerr << "Error opening snmp device list (" << argv[1] << "): " << strerror(errno) << std::endl;
+			return -1;
+		}
+		return perform_ping_measurement(in);
+	} else {
+		return perform_ping_measurement(std::cin);
+	}
+
 }
