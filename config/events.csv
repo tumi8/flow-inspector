@@ -21,13 +21,13 @@ events_eventtype||name||seventtype
 events_eventtype||table||sevents
 events_eventtype||use_type||sstring50
 
-events_start||name||sstart
-events_start||table||sevents
-events_start||use_type||stimestamp
+events_start_time||name||sstart_time
+events_start_time||table||sevents
+events_start_time||use_type||stimestamp
 
-events_end||name||send
-events_end||table||sevents
-events_end||use_type||stimestamp
+events_end_time||name||send_time
+events_end_time||table||sevents
+events_end_time||use_type||stimestamp
 
 events_description||name||sdescription
 events_description||table||sevents
@@ -40,5 +40,5 @@ events_parameterdump||use_type||sstring1000
 events_index||name||sevents_index
 events_index||table||sevents
 events_index||use_type||spredef_value
-events_index||value||tsUNIQUE INDEX|sstart, mainid, subid, eventtype, analyzer
+events_index||value||tsUNIQUE INDEX|sstart_time, mainid, subid, eventtype, analyzer
 
