@@ -4,51 +4,44 @@
 	<meta charset="UTF-8">
 	<title>Flow Inspector</title>
 	<meta name="description" content="Visualize and analyse traffic flows with Flow Inspector.">
-    <meta name="authors" content="Mario Volke, Lothar Braun">
+	<meta name="authors" content="Mario Volke, Lothar Braun">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <link href="/static/css/dev/bootstrap.css" rel="stylesheet">
-    <link href="/static/css/dev/jquery.jscrollpane.css" rel="stylesheet">
-    <link href="/static/css/dev/screen.css" rel="stylesheet">
+	<link href="/static/css/dev/bootstrap.css" rel="stylesheet">
+	<link href="/static/css/dev/jquery.jscrollpane.css" rel="stylesheet">
+	<link href="/static/css/dev/screen.css" rel="stylesheet">
 </head>
 <body>
+	<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
 
-	<header class="topbar">
-		<div class="topbar-inner">
-			<div class="container-fluid">
-				<a class="brand" href="/">Flow Inspector</a>
-				<ul class="nav primary-nav">
+	</div>
+
+	<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+		<div class="container">
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+					<span class="sr-only">Toggle navigation</span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+				<a class="navbar-brand" href="#">Flow Inspector</a>
+			</div>
+			<div class="collapse navbar-collapse">
+				<ul class="nav navbar-nav">
 					<li class="overview"><a href="/">Overview</a></li>
-					<!--<li class="pcap"><a href="/pcap">PCAP</a></li>
-					<li class="query-page"><a href="/query-page">Flow Querys</a></li>-->
+					<li class="query-page"><a href="/query-page">Flow Querys</a></li>
 					<li class="dashboard"><a href="/dashboard">Dashboard</a></li>
 					<li class="flow-details"><a href="/flow-details">Flow Details</a></li>
 					<li class="graph"><a href="/graph">Graph</a></li>
 					<li class="edge-bundle"><a href="/hierarchical-edge-bundle">Hierarchical Edge Bundle</a></li>
 					<li class="hive-plot"><a href="/hive-plot">Hive Plot</a></li>
-					<!--<li class="ip-documentation"><a href="/ip-documentation">IPDB</a></li>-->
 				</ul>
-				
-				<ul class="nav secondary-nav">
-					<li class="dropdown">
-						<a href="javascript:void(0)" class="dropdown-toggle">Actions</a>
-						<ul class="dropdown-menu">
-							<li><a class="export" href="javascript:void(0)">Export to SVG</a></li>
-						</ul>
-					</li>
-				</ul>
-			</div>
+			</div><!--/.nav-collapse -->
 		</div>
-	</header>
-	
-	<div class="alerts">
-	    <!--<div class="alert-message warning">
-	    	<a class="close" href="#">×</a>
-	    	<p><strong>Holy guacamole!</strong> Best check yo self, you’re not looking too good.</p>
-	    </div>-->
 	</div>
-    
+
     <div id="bd"></div>
-    
     <div id="select-svg-overlay"><div><span>click</span><br />to save</div></div>
 	
 	{% for file in frontend_templates %}
