@@ -306,5 +306,5 @@ def server_static(path):
 
 if __name__ == "__main__":
 	#run(server=PasteServer, host=config.host, port=config.port, reloader=config.debug)
-	run(host=config.host, port=config.port, reloader=config.debug)
+	run(host=config.host, port=config.port, reloader=True, debug=config.debug)
 	debug(config.debug)

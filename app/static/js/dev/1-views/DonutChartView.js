@@ -14,7 +14,7 @@ var DonutChartView = Backbone.View.extend({
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
 		this.index = options.index;
-		this.index.bind("reset", this.render, this);
+		this.index.bind("sync", this.render, this);
 
 		if (options.fetchEmptyInterval !== undefined) {
 			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
@@ -147,7 +147,7 @@ var DonutChartView = Backbone.View.extend({
 		this.fetchData();
 	},
 	fetchData: function(model, value) {
-		this.index.models = [];
+		this.index.set('models', []);
 		this.render();
 
 		var fetchEmptyInterval = this.model.get("fetchEmptyInterval");

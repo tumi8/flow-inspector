@@ -7,7 +7,7 @@ var AppState = Backbone.Model.extend({
 var Flow = Backbone.Model.extend({
 	parse: function(json) {
 		// convert unix timestamp to JS Date
-		json.bucket = new Date(json.bucket * 1000);
+		json.bucket = new Date(json.bucket);
 		return json;
 	}
 });
@@ -236,6 +236,7 @@ var CachedCollection = Backbone.Collection.extend({
 	    			// otherwise this could lead to intransparent side effects
 	    			setTimeout(function() {
 	    				callback.success.call(this, cp_resp, status, xhr);
+
 	    			}, 1);
     			}());
     		}	

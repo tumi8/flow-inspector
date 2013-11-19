@@ -30,7 +30,7 @@
 			<div class="collapse navbar-collapse">
 				<ul class="nav navbar-nav">
 					<li class="overview"><a href="/">Overview</a></li>
-					<li class="query-page"><a href="/query-page">Flow Querys</a></li>
+					<!--<li class="query-page"><a href="/query-page">Flow Querys</a></li>-->
 					<li class="dashboard"><a href="/dashboard">Dashboard</a></li>
 					<li class="flow-details"><a href="/flow-details">Flow Details</a></li>
 					<li class="graph"><a href="/graph">Graph</a></li>

@@ -17,7 +17,7 @@ var HostView = Backbone.View.extend({
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
     	
 		this.index = options.index;// new IndexQuery(null, { index: this.model.get("index") });
-		this.index.bind("reset", this.render, this);
+		this.index.bind("sync", this.render, this);
 
 		if (options.fetchEmptyInterval !== undefined) {
 			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
@@ -445,7 +445,7 @@ var HostView = Backbone.View.extend({
 			return;
 		}
 
-		this.index.models = [];
+		this.index.set('models', []);
 		this.render();
 
 		this.index.fetch({data: data});
