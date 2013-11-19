@@ -83,7 +83,7 @@ class BaseImporter:
 			try:
 				print "Failed to connect to postgresql db. Reason: ", e
 				print "Trying mysql instead ..."
-				#import MySQLdb
+				import MySQLdb
 				#import _mysql_exceptions
 		
 				self.TYPE = "mysql"
@@ -109,8 +109,7 @@ class BaseImporter:
 					self.TYPE = "oracle"
 				except Exception, e:
 					print >> sys.stderr, "Could not connect to source database:", e
-					sys.exit(1)
-
+					raise
 
 	
 class VermontDB(BaseImporter):
