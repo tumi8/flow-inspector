@@ -22,7 +22,7 @@ import backend
 
 import operator
 
-from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error, response, redirect
+from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, static_file, error, response, redirect
 from bottle import jinja2_view as view, jinja2_template as template
 from bottle import PasteServer
 
