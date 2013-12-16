@@ -55,7 +55,7 @@ var DonutChartView = Backbone.View.extend({
 				.attr("height", h);
     		
 		// no data there yet, show loader
-		if(data.length === 0) {
+		if(data.length === 1) {
 			container.append(this.loaderTemplate());
 			return;
 		}

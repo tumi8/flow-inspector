@@ -1,28 +1,26 @@
 <script type="text/template" id="graph-page-template">
-	<div class="container-fixed dark page-graph">
-	    <aside id="sidebar" class="well">
-	    	<h5>Layout</h5>
-	    	<p>
-	    		<a class="btn disabled reset help" 
-	    			href="javascript:void(0)"
-	    			title="Reset & Force Graph" 
-	    			data-content="Shuffle and rearrange all nodes on the canvas.">
-	    			Reset & Force Graph</a>
-	    	</p>
-	    	<p>
-	    		<a class="btn disabled force help" 
-	    			href="javascript:void(0)"
-	    			title="Force Graph" 
-	    			data-content="Optimize node arrangement on the canvas based on current positions.">
-	    			Force Graph</a>
-	    	</p>
-	    	<p>
-	    		<a class="btn disabled hilbert help" 
-	    			href="javascript:void(0)"
-	    			title="Hilbert Curve" 
-	    			data-content="Set positions of all nodes on the canvas with a Hilber curve.">
-	    			Hilbert Curve</a>
-	    	</p>
+	<div class="container row dark page-graph">
+		<div id="sidebar" class="col-lg-2">
+			<h5>Layout</h5>
+			<div class="btn-group-horizontal">
+				<button class="btn btn-default disabled reset help" 
+					href="javascript:void(0)"
+					title="Reset & Force Graph" 
+					data-content="Shuffle and rearrange all nodes on the canvas.">
+					Reset & Force Graph
+				</button>
+	  	  		<button class="btn btn-default disabled force help" 
+					href="javascript:void(0)"
+					title="Force Graph" 
+					data-content="Optimize node arrangement on the canvas based on current positions.">
+					Force Graph
+				</button>
+	    			<button class="btn btn-default disabled hilbert help" 
+					href="javascript:void(0)"
+					title="Hilbert Curve" 
+					data-content="Set positions of all nodes on the canvas with a Hilber curve.">
+					Hilbert Curve
+				</button>
 		<p>
 			<div class="clearfix help"
 				title="Charge"
@@ -70,16 +68,8 @@
 	    		</fieldset>
 	    	</form>
 		-->
-	    	<h5>Filters</h5>
+		{% include "views/frontend/filter-sidebar-elements.tpl.common" %}
 	    	<form class="form-stacked">
-	    	    	<p>
-		    		<a class="btn enabled apply-filter help" 
-		    			href="javascript:void(0)"
-		    			title="Apply Filter" 
-		    			data-content="Applies the filters defined in the fields below.">
-		    			Apply Filter</a>
-		    	</p>
-
 	    		<fieldset>
 				
 				<div class="help"
@@ -112,59 +102,20 @@
 	    					<option value="1000">1000</option>
 	    				</select>
 	    			</div>
-					<div class="clearfix help"
-					title="Protocol"
-	    				data-content="Filter for protocols. Enter one protocol per line. Supported Protocols: tcp, udp, icmp, other">
-						<label for="filterProtocols">Protocol</label>
-						<textarea id="filterProtocols" rows="10"></textarea>
-						<div class="clearfix">
-							<select id="filterProtocolsType">
-								<option value="inclusive">include listed protocols</option>
-								<option value="exclusive">exclude listed protocols</option>
-							</select>
-						</div>
-					</div>
-					<div class="help"
-						title="Port filter"
-						data-content="Filter flows by port numbers. Enter one port number per line. Ports can be included in the visualization which means only the listed ports will be shown. Or they can be excluded which means only flows that don't contain such a port number are shown.">
-						<div class="clearfix">
-							<label for="filterPorts">Ports</label>
-							<textarea id="filterPorts" rows="10"></textarea>
-						</div>
-						<div class="clearfix">
-							<select id="filterPortsType">
-								<option value="inclusive">include only listed ports</option>
-								<option value="exclusive">exclude listed ports</option>
-							</select>
-						</div>
-					</div>
-					<div class="help"
-						title="IP address filter"
-						data-content="Filter flows and node lists by IP addresses. Enter one IP address per line (no subnets are allowed at the moment). Addresses can be included in the visualization which means only the listed addresses will be shown. Or they can e excluded which means only flows that don't contain that address are shown.">
-						<div class="clearfix">
-							<label for="filterIPs">IP Addresses</label>
-							<textarea id="filterIPs" rows="10"></textarea>
-						</div>
-						<div class="clearfix">
-							<select id="filterIPsType">
-								<option value="inclusive">include only listed IPs</option>
-								<option value="exclusive">exclude listed IPs</option>
-							</select>
-						</div>
-	    		</fieldset>
+	  		</fieldset>
 	    	</form>
-	    </aside>
-	    <div id="content" class="content">
+	    </div>
+	    <div id="content" class="col-lg-10">
 	    	<div class="scroll">
 	    		<div class="canvas"></div>
 	    	</div>
 	    </div>
-		<footer id="footbar" class="well">
-	    		<ul class="pills timeline-value">
+	<footer id="footbar" class="row">
+	    		<ul class="nav nav-pills timeline-value">
 				<li data-value="flows"><a href="javascript:void(0)"># Flows</a></li>
 				<li data-value="packetDeltaCount"><a href="javascript:void(0)"># Packets</a></li>
 				<li data-value="octetDeltaCount"><a href="javascript:void(0)"># Bytes</a></li>
 			</ul>
-		</footer>
+	</footer>
 	</div>
 </script>

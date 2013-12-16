@@ -54,7 +54,7 @@ body {
 
 /* Containers */
 
-.container {width: 1200px; }
+.container {width: auto; }
 
 .container .content {
 	background-color: #fff;
@@ -83,28 +83,19 @@ body {
 	left: 0;
 	right: 0;
 }
-.container-fixed > aside {
-	position: absolute;
-	left: 10px;
-	top: 10px;
-	bottom: 10px;
-	width: 180px;
-	margin-bottom: 0;
-	outline: none;
-	overflow: auto;
-}
-.container-fixed > aside .form-stacked {
+
+.container > #sidebar .form-stacked {
 	padding-left: 0;
 }
-.container-fixed > aside .btn {
+.container > #sidebar .btn {
 	width: 150px;
 }
-.container-fixed > aside select {
-	width: 180px;
+.container > #sidebar select {
+	width: 100%;
 }
-.container-fixed > aside textarea,
-.container-fixed > aside input {
-	width: 170px;
+.container > #sidebar textarea,
+.container > #sidebar input {
+	width: 100%;
 }
 .container-fixed > footer {
 	position: absolute;
@@ -200,16 +191,16 @@ body {
 .jspCorner {
 	background: none;
 }
-.container-fixed > aside:hover .jspVerticalBar {
+.container > .aside:hover .jspVerticalBar {
 	width: 6px;
 }
-.container-fixed > aside:hover .jspHorizontalBar {
+.container > .aside:hover .jspHorizontalBar {
 	height: 6px;
 }
-.container-fixed > .content:hover .jspVerticalBar {
+.container > .content:hover .jspVerticalBar {
 	width: 6px;
 }
-.container-fixed > .content:hover .jspHorizontalBar {
+.container > .content:hover .jspHorizontalBar {
 	height: 6px;
 }
 

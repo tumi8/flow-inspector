@@ -4,7 +4,7 @@ var FlowDetailsPageView = PageView.extend({
 		"click .hostview-value a": "clickHostviewValue",
 		"click .bucket-chart-value a": "clickBucketChartValue",
 		"click .donut-chart-value a": "clickDonutChartValue",
-		"click a.apply-filter": "clickApplyFilter",
+		"click button.apply-filter": "clickApplyFilter",
 		"blur #filterProtocols": "changeFilterProtocols",
 		"blur #filterPorts": "changeFilterPorts",
 		"blur #filterIPs": "changeFilterIPs",
