@@ -7,6 +7,72 @@
 #include <dirent.h>
 
 #include <rrd.h>
+#include <tsdb_api.h>
+
+tsdb_handler db;
+#define LINE_SIZE 4096
+
+void init_tsdb(const char* filename)
+{
+	int ret;
+
+	uint16_t vals_per_entry = 1; // defines how many entries we can have
+				     // we currently store one value per entry.
+				     // this means we do not group by IP_interface
+				     // but have a value vor IP_interface_ifInOctets, ...
+				     // maybe we want to change that
+	uint16_t slot_seconds = 300; // defines measurment interval
+
+	
+	ret = tsdb_open(filename, &db, &vals_per_entry, slot_seconds, 0);
+	if (ret != 0) {
+		fprintf(stderr, "ERROR: Creating tsdb file!\n");
+		exit(-1);
+	}
+}
+
+void update_tsdb(const char* key_prefix, const char* line)
+{
+	// create a copy of the line for strtok
+	char* tmp_line = (char*) malloc(sizeof(char) * (strlen(line) + 1));
+	if (!tmp_line) {
+		fprintf(stderr, "ERROR: malloc of tmp_line: %s\n", strerror(errno));
+		exit(-1);
+	}
+
+	strcpy(tmp_line, line);
+	char delimiter[] = " :";
+	char* ptr;
+	char key[LINE_SIZE];
+	int ret; 
+
+	// the input line format is KEY1:VALUE KEY2:VALUE2 KEY3:VALUE3 ...
+	// We parse a token. If we have a key, we construct the final
+	// key from key_prefix_key (which results in IP_interface_KEY1, IP_interface_KEY2, ...)
+	ptr = strtok(tmp_line, delimiter);
+	int is_key = 1; // if key is one, then we have a key, otherwise we have a value 
+	int first_template = 1; // 1 if this is the first entry to the template string, 0 otherwise
+	while (ptr) {
+		if (is_key == 1) {
+			// store the 
+			snprintf(key, LINE_SIZE, "%s_%s", key_prefix, ptr);
+		} else {
+			uint64_t val = atoi(ptr);
+			ret = tsdb_set(&db, key, &val);
+			if (ret != 0) {
+				fprintf(stderr, "ERROR: updating value (%llu) for key (%s) in tsdb\n", val, key);
+			}
+		}
+		is_key = is_key?0:1;
+		ptr = strtok(NULL, delimiter);
+	}
+
+}
+
+void close_tsdb()
+{
+	tsdb_close(&db);
+}
 
 void create_rra(const char* filename, const char* line, char* data_type)
 {
@@ -55,7 +121,7 @@ void update_rra(const char* filename, const char* line, const char* timestamp)
 	// create the structures that we need for the call to rrd_update
 	// we need only 4 args to the call:
 	// "update", filename, "updatestring"
-	char* rrd_args[5];
+	char* rrd_args[6];
 #define RRD_ELEM_LEN 4096
 #define TEMPLATE_LEN 1024
 #define VALUE_LEN 1024
@@ -130,6 +196,64 @@ void update_rra(const char* filename, const char* line, const char* timestamp)
 	free(tmp_line);
 }
 
+int read_cache_file(const char* cache_file, const char* rrd_dir, const char* timestamp)
+{
+	FILE* fd = fopen(cache_file, "r");
+	int fgets_ret = 0;
+	size_t counter = 0;
+	char line[LINE_SIZE];
+	while (fgets(line, LINE_SIZE, fd)) {
+		// the expected line format is
+		// <type>_<ip>_<subid> <field1>:<field_value1> <field2>:<field_value2> ...
+		// where <type> denotes the type as in (interface, cpu, loadbalancing, ...)
+		// <ip> denotes the device id
+		// <subid> denotes an id that depends on the <type>, e.g. if <type> == interface, then subid denotes the interface id
+		char* delim = strchr(line, ' ');
+		if (NULL == delim) {
+			fprintf(stderr, "ERROR: Filename \"%s\" does not match the pattern <control_string> <field_data>'!\n", line);
+			continue;
+		}
+		// extract the control string
+		char control_string[LINE_SIZE];
+		strncpy(control_string, line, delim - line);
+		control_string[delim-line] = 0;
+		char* data = delim + 1;
+		// last character is probably a '\n'. Remove it
+		if (data[strlen(data) - 1] == '\n') {
+			data[strlen(data) - 1] = 0;
+		}
+
+		// construct the desired name of the rra file. which should be rra-dir/<control_string>.rrd
+		char rra_filename[2*LINE_SIZE];
+		snprintf(rra_filename, 2*LINE_SIZE, "%s/%s.rrd", rrd_dir, control_string);
+		// check if the rra exists and if we have write access to it
+		//printf("Examining \"%s\"...\n", cache_filename);
+		if (-1 == access(rra_filename, W_OK | F_OK)) {
+			//printf("Creating rra \"%s\"...\n", rra_filename);
+			if (strstr(control_string, "cpu_") == control_string || strstr(control_string, "ciscomemory_") == control_string) {
+				create_rra(rra_filename, data, "GAUGE");
+			} else {
+				create_rra(rra_filename, data, "COUNTER");
+			}
+		}
+		//printf("Updating \"%s\"...\n", rra_filename);
+		// now try to update the rra
+		update_rra(rra_filename, data, timestamp);
+		//update_tsdb(control_string, data);
+
+		counter++;
+		if (counter % 1000 == 0) {
+			//printf("Worked on %lu rrdfiles ...\n", counter);
+		}
+
+	}
+	if (ferror(fd)) {
+		fprintf(stderr, "ERROR: reading cache file %s: %s\n", cache_file, strerror(errno));
+	}
+	fclose(fd);
+	return 0;
+}
+
 int read_cache_dir(const char* cache_dir, const char* rrd_dir, const char* timestamp)
 {
 	// walk through all files in cache_dir (do not recurse ...)
@@ -161,63 +285,7 @@ int read_cache_dir(const char* cache_dir, const char* rrd_dir, const char* times
 	}
 	fprintf(stderr, "ERROR: Could not find a SNMP file in directory!\n");
 	closedir(dir);
-}
-
-int read_cache_file(const char* cache_file, const char* rrd_dir, const char* timestamp)
-{
-	FILE* fd = fopen(cache_file, "r");
-	int fgets_ret = 0;
-	size_t counter = 0;
-#define LINE_SIZE 4096
-	char line[LINE_SIZE];
-	while (fgets(line, LINE_SIZE, fd)) {
-		// the expected line format is
-		// <type>_<ip>_<subid> <field1>:<field_value1> <field2>:<field_value2> ...
-		// where <type> denotes the type as in (interface, cpu, loadbalancing, ...)
-		// <ip> denotes the device id
-		// <subid> denotes an id that depends on the <type>, e.g. if <type> == interface, then subid denotes the interface id
-		char* delim = strchr(line, ' ');
-		if (NULL == delim) {
-			fprintf(stderr, "ERROR: Filename \"%s\" does not match the pattern <control_string> <field_data>'!\n", line);
-			continue;
-		}
-		// extract the control string
-		char control_string[LINE_SIZE];
-		strncpy(control_string, line, delim - line);
-		control_string[delim-line] = 0;
-		char* data = delim + 1;
-		// last character is probably a '\n'. Remove it
-		if (data[strlen(data) - 1] == '\n') {
-			data[strlen(data) - 1] = 0;
-		}
-
-		// construct the desired name of the rra file. which should be rra-dir/<control_string>.rrd
-		char rra_filename[2*LINE_SIZE];
-		snprintf(rra_filename, 2*LINE_SIZE, "%s/%s.rrd", rrd_dir, control_string);
-		// check if the rra exists and if we have write access to it
-		//printf("Examining \"%s\"...\n", cache_filename);
-		if (-1 == access(rra_filename, W_OK | F_OK)) {
-			printf("Creating rra \"%s\"...\n", rra_filename);
-			if (strstr(control_string, "cpu_") == control_string || strstr(control_string, "ciscomemory_") == control_string) {
-				create_rra(rra_filename, data, "GAUGE");
-			} else {
-				create_rra(rra_filename, data, "COUNTER");
-			}
-		}
-		//printf("Updating \"%s\"...\n", rra_filename);
-		// now try to update the rra
-		update_rra(rra_filename, data, timestamp);
-
-		counter++;
-		if (counter % 1000 == 0) {
-			//printf("Worked on %lu rrdfiles ...\n", counter);
-		}
-
-	}
-	if (ferror(fd)) {
-		fprintf(stderr, "ERROR: reading cache file %s: %s\n", cache_file, strerror(errno));
-	}
-	fclose(fd);
+	return 0;
 }
 
 int main(int argc, char** argv)
@@ -257,8 +325,24 @@ int main(int argc, char** argv)
 		exit(-3);
 	}
 
+	char tsdb_file[2*LINE_SIZE];
+	int ret;
+	snprintf(tsdb_file, 2*LINE_SIZE, "%s/%s", rra_dir, "snmp.tsdb");
+	init_tsdb(tsdb_file);
+	int t = atoi(timestamp);
+	ret = tsdb_goto_epoch(&db, t, 0, 1);
+	if (ret != 0) {
+		fprintf("ERROR: tsdb failed to go to epoch %lu\n", t);
+		exit(1);
+	}
+
+
 	read_cache_file(cache_file, rra_dir, timestamp);
 	
+	tsdb_flush(&db);
+	fprintf(stderr, "asdfasdf\n");
+	close_tsdb();
+
 
 	return 0;
 }
