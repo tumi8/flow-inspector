@@ -134,6 +134,12 @@ class MysqlBackend(SQLBaseBackend):
 		elif error == 1072:
 			# programming error: field not in table
 			raise
+		elif error == 2006:
+			# mysql server has gone away. This should be able to fix this with a reconnect
+			# because the most common caus of this problem is a timeout on the database
+			# connection
+			self.connect()
+			return True
 
 		print "ERROR: Received exception (" + str(error) + "):", message
 		return True
