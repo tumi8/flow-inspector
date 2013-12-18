@@ -7,19 +7,40 @@
 #include <sys/wait.h>
 #include <arpa/inet.h>
 
-#define LINE_SIZE 10000
+#define LINE_SIZE 100000
 #define MAX_NETWORKS 50000
 
 typedef struct network_stats {
 	uint32_t id;
 
 	uint64_t in_pkts;
-	uint64_t out_pkts;
+	uint64_t in_tcp_pkts;
+	uint64_t in_udp_pkts;
+	uint64_t in_icmp_pkts;
+	uint64_t in_other_pkts;
+	
 	uint64_t in_bytes;
+	uint64_t in_tcp_bytes;
+	uint64_t in_udp_bytes;
+	uint64_t in_icmp_bytes;
+	uint64_t in_other_bytes;
+
+	uint64_t out_pkts;
+	uint64_t out_tcp_pkts;
+	uint64_t out_udp_pkts;
+	uint64_t out_icmp_pkts;
+	uint64_t out_other_pkts;
+
 	uint64_t out_bytes;
+	uint64_t out_tcp_bytes;
+	uint64_t out_udp_bytes;
+	uint64_t out_icmp_bytes;
+	uint64_t out_other_bytes;
 } network_stats_t;
 
 void* network_tree = NULL;
+tsdb_handler db;
+int counter = 0;
 
 /***********************************  Methods *************************/
 
@@ -233,11 +254,42 @@ int consume_flow(const char* line, struct lpm_tree* tree)
 	d_net->in_pkts  += packets;
 	d_net->in_bytes += bytes;
 
+	switch (proto) {
+	case 1: // ICMP
+		s_net->out_icmp_pkts  += packets;
+		s_net->out_icmp_bytes += bytes;
+
+		d_net->in_icmp_pkts  += packets;
+		d_net->in_icmp_bytes += bytes;
+		break;
+	case 6: // TCP
+		s_net->out_tcp_pkts  += packets;
+		s_net->out_tcp_bytes += bytes;
+
+		d_net->in_tcp_pkts  += packets;
+		d_net->in_tcp_bytes += bytes;
+		break;
+	case 17: // UDP 
+		s_net->out_udp_pkts  += packets;
+		s_net->out_udp_bytes += bytes;
+
+		d_net->in_udp_pkts  += packets;
+		d_net->in_udp_bytes += bytes;
+		break;
+	default:
+		s_net->out_other_pkts  += packets;
+		s_net->out_other_bytes += bytes;
+
+		d_net->in_other_pkts  += packets;
+		d_net->in_other_bytes += bytes;
+		break;
+	}
+
 	return 0;
 }
 
 
-int read_nfdump_files(const char* nfdump_dir, struct lpm_tree* tree)
+int read_nfdump_files(const char* profile_dir, const char* capfile, struct lpm_tree* tree)
 			
 {
 	int pipefd[2];
@@ -252,7 +304,7 @@ int read_nfdump_files(const char* nfdump_dir, struct lpm_tree* tree)
 		// and inherit stdin and stdout from parent
 		dup2(pipefd[1],STDOUT_FILENO);
 		close(pipefd[0]);              // not using the right side
-		execlp("nfdump", "nfdump","-R", nfdump_dir, "-o", "pipe", NULL);
+		execlp("nfdump", "nfdump","-M", profile_dir, "-r", capfile, "-o", "pipe", NULL);
 		perror("exec of nfdump failed");
 		exit(-2);
 	} 
@@ -279,24 +331,74 @@ int read_nfdump_files(const char* nfdump_dir, struct lpm_tree* tree)
 
 void store_records_in_db(const void *nodep, VISIT value, int level)
 {
-	if (value == leaf || value == preorder) {
+	char key[LINE_SIZE];
+	if (value == leaf) {
 		network_stats_t* n = *(network_stats_t**)nodep;
-		printf("Value: %u %llu %llu %llu %llu\n", n->id, n->in_pkts,
-			n->in_bytes, n->out_pkts, n->out_bytes);	
+		//printf("Value: %u %llu %llu %llu %llu\n", n->id, n->in_pkts,
+		//	n->in_bytes, n->out_pkts, n->out_bytes);	
+		snprintf(key, LINE_SIZE, "%u_in_pkts", n->id);
+		tsdb_set(&db, key, &n->in_pkts);
+		snprintf(key, LINE_SIZE, "%u_in_tcp_pkts", n->id);
+		tsdb_set(&db, key, &n->in_tcp_pkts);
+		snprintf(key, LINE_SIZE, "%u_in_udp_pkts", n->id);
+		tsdb_set(&db, key, &n->in_udp_pkts);
+		snprintf(key, LINE_SIZE, "%u_in_icmp_pkts", n->id);
+		tsdb_set(&db, key, &n->in_icmp_pkts);
+		snprintf(key, LINE_SIZE, "%u_in_other_pkts", n->id);
+		tsdb_set(&db, key, &n->in_other_pkts);
+		snprintf(key, LINE_SIZE, "%u_in_bytes", n->id);
+		tsdb_set(&db, key, &n->in_bytes);
+		snprintf(key, LINE_SIZE, "%u_in_tcp_bytes", n->id);
+		tsdb_set(&db, key, &n->in_tcp_bytes);
+		snprintf(key, LINE_SIZE, "%u_in_udp_bytes", n->id);
+		tsdb_set(&db, key, &n->in_udp_bytes);
+		snprintf(key, LINE_SIZE, "%u_in_icmp_bytes", n->id);
+		tsdb_set(&db, key, &n->in_icmp_bytes);
+		snprintf(key, LINE_SIZE, "%u_in_other_bytes", n->id);
+		tsdb_set(&db, key, &n->in_other_bytes);
+
+		snprintf(key, LINE_SIZE, "%u_out_pkts", n->id);
+		tsdb_set(&db, key, &n->out_pkts);
+		snprintf(key, LINE_SIZE, "%u_out_tcp_pkts", n->id);
+		tsdb_set(&db, key, &n->out_tcp_pkts);
+		snprintf(key, LINE_SIZE, "%u_out_udp_pkts", n->id);
+		tsdb_set(&db, key, &n->out_udp_pkts);
+		snprintf(key, LINE_SIZE, "%u_out_icmp_pkts", n->id);
+		tsdb_set(&db, key, &n->out_icmp_pkts);
+		snprintf(key, LINE_SIZE, "%u_out_other_pkts", n->id);
+		tsdb_set(&db, key, &n->out_other_pkts);
+		snprintf(key, LINE_SIZE, "%u_out_bytes", n->id);
+		tsdb_set(&db, key, &n->out_bytes);
+		snprintf(key, LINE_SIZE, "%u_out_tcp_bytes", n->id);
+		tsdb_set(&db, key, &n->out_tcp_bytes);
+		snprintf(key, LINE_SIZE, "%u_out_udp_bytes", n->id);
+		tsdb_set(&db, key, &n->out_udp_bytes);
+		snprintf(key, LINE_SIZE, "%u_out_icmp_bytes", n->id);
+		tsdb_set(&db, key, &n->out_icmp_bytes);
+		snprintf(key, LINE_SIZE, "%u_out_other_bytes", n->id);
+		tsdb_set(&db, key, &n->out_other_bytes);
+
+		printf("%u\n", n->id);
+		if (counter % 100 == 0) {
+			//fprintf(stderr, "Dumped %u entries ...\n", counter);
+		}
+		counter++;
 	}
 }
 
 
 int main(int argc, char** argv) 
 {
-	if (argc != 4) {
+	if (argc != 6) {
 		fprintf(stderr, "Usage: %s <prefix-file> <tsdb-file> " 
-			"<nfdump_dir>\n", argv[0]);
+			"<profile_dir> <capfile> <unix-timestamp>\n", argv[0]);
 		exit(1);
 	}
 	char* prefix_file = argv[1];
 	char* tsdb_file = argv[2];
-	char* nfdump_dir = argv[3];
+	char* profile_dir = argv[3];
+	char* capfile = argv[4];
+	time_t epoch = atoi(argv[5]);
 
         uint16_t vals_per_entry = 1; // defines how many entries we can have
                                      // we currently store one value per entry.
@@ -312,16 +414,24 @@ int main(int argc, char** argv)
 		exit(1);
 	}
 
-	tsdb_handler db;
 	if (0 != tsdb_open(tsdb_file, &db, &vals_per_entry, slot_seconds, 0)) {
 		fprintf(stderr, "ERROR: Could not open tsdb database!\n");
 		exit(1);
 	}
 
-	read_nfdump_files(nfdump_dir, tree);
+	if (0 != tsdb_goto_epoch(&db, epoch, 0, 1)) {
+		fprintf(stderr, "ERROR: Could not set epoch to %u\n", epoch);
+		exit(1);
+	}
+
+	fprintf(stderr, "reading nfdump files ...\n");
+	read_nfdump_files(profile_dir, capfile, tree);
+	fprintf(stderr, "Dumping to tsdb ... \n");
 	twalk(network_tree, &store_records_in_db);
 
+	fprintf(stderr, "Cleaning up!\n");
 	lpm_destroy(tree);
+	tsdb_flush(&db);
 	tsdb_close(&db);
 
 	return 0;
