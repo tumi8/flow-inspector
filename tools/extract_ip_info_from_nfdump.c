@@ -50,11 +50,7 @@ static int compare_networks(const void *a, const void *b)
 	const network_stats_t* na = (const network_stats_t*)a;
 	const network_stats_t* nb = (const network_stats_t*)b;
 
-	if (na->id > nb->id) {
-		return na->id - nb->id;
-	} else {
-		return nb->id - na->id;
-	}
+	return (na->id > nb->id) - (na->id < nb->id);
 }
 
 static struct lpm_tree* read_prefix_file(const char* prefix_file)
