@@ -328,7 +328,7 @@ int read_nfdump_files(const char* profile_dir, const char* capfile, struct lpm_t
 void store_records_in_db(const void *nodep, VISIT value, int level)
 {
 	char key[LINE_SIZE];
-	if (value == leaf) {
+	if (value == leaf || value == postorder) {
 		network_stats_t* n = *(network_stats_t**)nodep;
 		//printf("Value: %u %llu %llu %llu %llu\n", n->id, n->in_pkts,
 		//	n->in_bytes, n->out_pkts, n->out_bytes);	
