@@ -331,7 +331,7 @@ int main(int argc, char** argv)
 	int t = atoi(timestamp);
 	ret = tsdb_goto_epoch(&db, t, 0, 1);
 	if (ret != 0) {
-		fprintf("ERROR: tsdb failed to go to epoch %lu\n", t);
+		fprintf(stderr, "RROR: tsdb failed to go to epoch %lu\n", t);
 		exit(1);
 	}
 
