@@ -223,7 +223,6 @@ int read_cache_file(const char* cache_file, const char* rrd_dir, const char* tim
 			data[strlen(data) - 1] = 0;
 		}
 
-		/*
 		// construct the desired name of the rra file. which should be rra-dir/<control_string>.rrd
 		char rra_filename[2*LINE_SIZE];
 		snprintf(rra_filename, 2*LINE_SIZE, "%s/%s.rrd", rrd_dir, control_string);
@@ -236,10 +235,9 @@ int read_cache_file(const char* cache_file, const char* rrd_dir, const char* tim
 				create_rra(rra_filename, data, "COUNTER");
 			}
 		}
-		*/
 		//printf("Updating \"%s\"...\n", rra_filename);
 		// now try to update the rra
-		//update_rra(rra_filename, data, timestamp);
+		update_rra(rra_filename, data, timestamp);
 		update_tsdb(control_string, data);
 
 		counter++;
@@ -341,7 +339,6 @@ int main(int argc, char** argv)
 	read_cache_file(cache_file, rra_dir, timestamp);
 	
 	tsdb_flush(&db);
-	fprintf(stderr, "asdfasdf\n");
 	close_tsdb();
 
 
