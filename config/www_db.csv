@@ -2,10 +2,8 @@
 
 www_user_table||name||suser_name
 www_user_table||table||swww_user_table
-www_user_table||use_type||char255
+www_user_table||use_type||sstring255
 
 www_user_table||name||srole
 www_user_table||table||swww_user_table
-www_user_table||use_type||char255
-
-
+www_user_table||use_type||sstring255
