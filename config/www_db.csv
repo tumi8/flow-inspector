@@ -1,0 +1,9 @@
+#### User table #############
+
+www_user_table_user_name||name||suser_name
+www_user_table_user_name||table||swww_user_table
+www_user_table_user_name||use_type||sstring255
+
+www_user_table_role||name||srole
+www_user_table_role||table||swww_user_table
+www_user_table_role||use_type||sstring255
