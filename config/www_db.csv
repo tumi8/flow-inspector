@@ -1,5 +1,10 @@
 #### User table #############
 
+www_user_table_id||name||sid
+www_user_table_id||table||swww_user_table
+www_user_table_id||use_type||sprimary_key
+
+
 www_user_table_user_name||name||suser_name
 www_user_table_user_name||table||swww_user_table
 www_user_table_user_name||use_type||sstring255
@@ -7,3 +12,9 @@ www_user_table_user_name||use_type||sstring255
 www_user_table_role||name||srole
 www_user_table_role||table||swww_user_table
 www_user_table_role||use_type||sstring255
+
+
+www_user_table_name_index||name||sname_idx
+www_user_table_name_index||table||swww_user_table
+www_user_table_name_index||use_type||spredef_value
+www_user_table_name_index||value||tsUNIQUE INDEX|suser_name ASC
