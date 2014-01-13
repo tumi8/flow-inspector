@@ -216,7 +216,7 @@ mem_list_note||use_type||suint1
 
 location_table_id||name||slocation_id
 location_table_id||table||slocation_table
-location_table_id||use_type||sprimary_key_self
+location_table_id||use_type||sstring255
 
 location_table_description||name||sdescription
 location_table_description||table||slocation_table

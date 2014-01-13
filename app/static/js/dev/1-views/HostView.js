@@ -13,11 +13,11 @@ var HostView = Backbone.View.extend({
 		this.loaderTemplate = _.template($("#loader-template").html());
     	
 		// chart formatting
-		this.m = [10, 20, 30, 70];
+		this.m = [10, 20, 35, 70];
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
     	
 		this.index = options.index;// new IndexQuery(null, { index: this.model.get("index") });
-		this.index.bind("reset", this.render, this);
+		this.index.bind("sync", this.render, this);
 
 		if (options.fetchEmptyInterval !== undefined) {
 			this.model.set({fetchEmptyInterval : options.fetchEmptyInterval})
@@ -43,10 +43,47 @@ var HostView = Backbone.View.extend({
 			return ;
 		}
 
-		if(data.length === 0) {
+		if(data.length === 1 || data.length === 0) {
 			container.append(this.loaderTemplate());
 			return this;
 		}
+
+		var table = d3.select(container.get(0)).append("table"),
+			thead = table.append("thead"),
+			tbody = table.append("tbody");
+
+
+		columns = data[0].keys();
+		// append the header row
+		thead.append("tr")
+			.selectAll("th")
+			.data(columns)
+			.enter()
+				.append("th")
+				.text(function(column) { return column; });
+
+
+		// create a row for each object in the data
+		var rows = tbody.selectAll("tr")
+			.data(data)
+			.enter()
+				.append("tr");
+
+		// create a cell in each row for each column
+		var cells = rows.selectAll("td")
+			.data(function(row) {
+				console.log(row);
+				return columns.map(function(column) {
+					return {column: column, value: row.get(column)};
+       				});
+			})
+			.enter()
+				.append("td")
+					.text(function(d) { console.log(d); return d.value; });
+    
+
+		return;
+
 
 		this.svg = d3.select(container.get(0))
 			.append("svg:svg")
@@ -445,7 +482,7 @@ var HostView = Backbone.View.extend({
 			return;
 		}
 
-		this.index.models = [];
+		this.index.set('models', []);
 		this.render();
 
 		this.index.fetch({data: data});

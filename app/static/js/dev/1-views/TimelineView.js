@@ -27,7 +27,7 @@ var TimelineView = Backbone.View.extend({
 		this.stroke = d3.interpolateRgb("#0064cd", "#c43c35");
 		
 		this.flows = new Flows();
-		this.flows.bind("reset", this.resetFlows, this);
+		this.flows.bind("sync", this.resetFlows, this);
 		// fetch at the end because a cached request calls render immediately!
 		this.flows.fetch({ data: { "resolution": 1000 } });
 	},
@@ -140,7 +140,7 @@ var TimelineView = Backbone.View.extend({
 			.attr("text-anchor", "end")
 			.text("#" + num_val);
     		
-		$(".bar", this.el).twipsy({ delayIn: 1000, offset: 3 });
+		//$(".bar", this.el).twipsy({ delayIn: 1000, offset: 3 });
     	
 		this.changeBucketInterval();
 
@@ -196,7 +196,7 @@ var TimelineView = Backbone.View.extend({
 		this.labelGroup.select("text")
 			.text("#" + value);
     		
-		$(".bar", this.el).twipsy({ offset: 3 });
+		//$(".bar", this.el).twipsy({ offset: 3 });
 	},
 	getXAxis: function(h, scaleX) {
     		return d3.svg.axis().scale(scaleX)

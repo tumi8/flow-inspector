@@ -19,7 +19,7 @@ var BucketChartView = Backbone.View.extend({
 		}
 	
 		this.flows = new Flows();
-		this.flows.bind("reset", this.render, this);
+		this.flows.bind("sync", this.render, this);
 		// fetch at the end because a cached request calls render immediately!
 		this.fetchFlows();
 	},
@@ -42,7 +42,7 @@ var BucketChartView = Backbone.View.extend({
 		if(w <= 0) {
 			return;
 		}
-    		
+
 		// A SVG element.
 		this.svg = d3.select(container.get(0))
 			.data([data])
@@ -214,7 +214,7 @@ var BucketChartView = Backbone.View.extend({
 
 	
 
-		$(".bar", this.el).twipsy({ offset: 3 });
+		//$(".bar", this.el).twipsy({ offset: 3 });
     	
 		return this;
 	},
@@ -314,7 +314,7 @@ var BucketChartView = Backbone.View.extend({
 		this.labelGroup.select("text")
 			.text("#" + value);
     		
-		$(".bar", this.el).twipsy({ offset: 3 });
+		//$(".bar", this.el).twipsy({ offset: 3 });
 	},
 	getXAxis: function(h, scaleX) {
 		return d3.svg.axis().scale(scaleX)

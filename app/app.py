@@ -22,7 +22,7 @@ import backend
 
 import operator
 
-from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, validate, static_file, error, response, redirect
+from bottle import TEMPLATE_PATH, HTTPError, post, get, run, debug, request, static_file, error, response, redirect
 from bottle import jinja2_view as view, jinja2_template as template
 from bottle import PasteServer
 
@@ -306,5 +306,5 @@ def server_static(path):
 
 if __name__ == "__main__":
 	#run(server=PasteServer, host=config.host, port=config.port, reloader=config.debug)
-	run(host=config.host, port=config.port, reloader=config.debug)
+	run(host=config.host, port=config.port, reloader=True, debug=config.debug)
 	debug(config.debug)

@@ -20,7 +20,6 @@ def report_backend_usage(dst_db):
 		print table, table_sizes[table]
 		report_string += table.ljust(20) + " " + str(round(float(table_sizes[table]) / 1000000000, 2)).ljust(7) + "GB\n"
 	print report_string
-	sys.exit(0)
 
 	for table in  dst_db.getCollectionList():
 		coll = dst_db.getCollection(table)

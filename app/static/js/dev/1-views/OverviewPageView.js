@@ -30,13 +30,10 @@ var OverviewPageView = PageView.extend({
 		
 		$(".hostview-value li[data-value='" + this.hostModel.get("value") + "']", this.el)
 			.addClass("active");
-		
 		$(".bucketview-value li[data-value='" + this.bucketChartModel.get("value") + "']", this.el)
 			.addClass("active");
-		
 		$(".donut-chart-value li[data-value='" + this.nodesDonutModel.get("value") + "']", this.el)
 			.addClass("active");
-
 		$(".viz-buckets", this.el).append(this.bucketChartView.el);
 		$(".viz-hostview", this.el).append(this.hostView.el);
 		$(".viz-donut-nodes", this.el).append(this.nodesDonutView.el);

@@ -1,0 +1,38 @@
+<h5>Filters</h5>
+<div class="btn-group-vertical">
+	<button class="btn btn-default enabled apply-filter help" 
+		href="javascript:void(0)"
+		title="Apply Filter" 
+		data-content="Applies the filters defined in the fields below.">
+		Apply Filter
+	</button>
+</div>
+<form role="form">
+	<div class="form-group"
+		data-content="Filter for protocols. Enter one protocol per line. Supported Protocols: tcp, udp, icmp, other">
+			<label for="filterProtocols">Protocol</label>
+			<textarea id="filterProtocols" rows="10"></textarea>
+			<select id="filterProtocolsType">
+				<option value="inclusive">include listed protocols</option>
+				<option value="exclusive">exclude listed protocols</option>
+			</select>
+	</div>
+	<div class="form-group"
+		data-content="Filter flows by port numbers. Enter one port number per line. Ports can be included in the visualization which means only the listed ports will be shown. Or they can be excluded which means only flows that don't contain such a port number are shown.">
+			<label for="filterPorts">Ports</label>
+			<textarea id="filterPorts" rows="10"></textarea>
+			<select id="filterPortsType">
+				<option value="inclusive">include only listed ports</option>
+				<option value="exclusive">exclude listed ports</option>
+			</select>
+	</div>
+	<div class="form-group"
+		data-content="Filter flows and node lists by IP addresses. Enter one IP address per line (no subnets are allowed at the moment). Addresses can be included in the visualization which means only the listed addresses will be shown. Or they can e excluded which means only flows that don't contain that address are shown.">
+			<label for="filterIPs">IP Addresses</label>
+			<textarea id="filterIPs" rows="10"></textarea>
+			<select id="filterIPsType">
+				<option value="inclusive">include only listed IPs</option>
+				<option value="exclusive">exclude listed IPs</option>
+			</select>
+	</div>
+</form>
