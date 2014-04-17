@@ -7,11 +7,15 @@
 #include <dirent.h>
 
 #include <rrd.h>
+
+#ifdef ENABLE_TSDB
 #include <tsdb_api.h>
 
 tsdb_handler db;
+#endif
 #define LINE_SIZE 4096
 
+#ifdef ENABLE_TSDB
 void init_tsdb(const char* filename)
 {
 	int ret;
@@ -73,6 +77,7 @@ void close_tsdb()
 {
 	tsdb_close(&db);
 }
+#endif
 
 void create_rra(const char* filename, const char* line, char* data_type)
 {
@@ -238,7 +243,9 @@ int read_cache_file(const char* cache_file, const char* rrd_dir, const char* tim
 		//printf("Updating \"%s\"...\n", rra_filename);
 		// now try to update the rra
 		update_rra(rra_filename, data, timestamp);
+#ifdef ENABLE_TSDB
 		update_tsdb(control_string, data);
+#endif
 
 		counter++;
 		if (counter % 1000 == 0) {
@@ -324,8 +331,9 @@ int main(int argc, char** argv)
 		exit(-3);
 	}
 
-	char tsdb_file[2*LINE_SIZE];
 	int ret;
+#ifdef ENABLE_TSDB
+	char tsdb_file[2*LINE_SIZE];
 	snprintf(tsdb_file, 2*LINE_SIZE, "%s/%s", rra_dir, "snmp.tsdb");
 	init_tsdb(tsdb_file);
 	int t = atoi(timestamp);
@@ -334,12 +342,15 @@ int main(int argc, char** argv)
 		fprintf(stderr, "RROR: tsdb failed to go to epoch %lu\n", t);
 		exit(1);
 	}
+#endif
 
 
 	read_cache_file(cache_file, rra_dir, timestamp);
 	
+#ifdef ENABLE_TSDB
 	tsdb_flush(&db);
 	close_tsdb();
+#endif 
 
 
 	return 0;
